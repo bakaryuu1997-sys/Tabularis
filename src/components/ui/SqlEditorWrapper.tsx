@@ -7,6 +7,7 @@ import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { useSettings } from "../../hooks/useSettings";
 import { getFontCSS } from "../../utils/settings";
 import { formatSql } from "../../utils/sqlFormat";
+import type { SqlDialect } from "../../utils/sql";
 
 interface SqlEditorWrapperProps {
   initialValue: string;
@@ -16,6 +17,8 @@ interface SqlEditorWrapperProps {
   height?: string | number;
   options?: React.ComponentProps<typeof MonacoEditor>['options'];
   editorKey?: string;
+  /** Active SQL dialect, used so "Format SQL" matches the connection's engine. */
+  dialect?: SqlDialect;
 }
 
 // Internal component that resets when key changes
@@ -25,13 +28,18 @@ const SqlEditorInternal = ({
   onRun,
   onMount,
   height = "100%",
-  options
+  options,
+  dialect
 }: SqlEditorWrapperProps & { editorKey: string }) => {
   const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
   const onRunRef = useRef(onRun);
   onRunRef.current = onRun;
+  // Keep the dialect in a ref so the (mount-time) format action always reads
+  // the current connection's dialect, even after the user switches connections.
+  const dialectRef = useRef(dialect);
+  dialectRef.current = dialect;
   const editorTheme = useEditorTheme();
   const { settings } = useSettings();
 
@@ -122,8 +130,10 @@ const SqlEditorInternal = ({
       });
 
       // Format the SQL in the editor (Shift+Alt+F, the standard "format" chord).
-      // Uses the shared sql-formatter util; on a parse error it returns the
-      // original text unchanged, so this can never corrupt the query.
+      // Formats the current selection when there is one, otherwise the whole
+      // document. Uses the shared sql-formatter util with the connection's
+      // dialect; on a parse error it returns the original text unchanged, so
+      // this can never corrupt the query.
       editor.addAction({
         id: 'tabularis.formatSql',
         label: 'Format SQL',
@@ -133,12 +143,15 @@ const SqlEditorInternal = ({
         run: (ed) => {
           const model = ed.getModel();
           if (!model) return;
-          const current = model.getValue();
-          const formatted = formatSql(current);
-          if (formatted === current) return;
-          ed.executeEdits("tabularis.formatSql", [
-            { range: model.getFullModelRange(), text: formatted },
-          ]);
+          const selection = ed.getSelection();
+          const range =
+            selection && !selection.isEmpty()
+              ? selection
+              : model.getFullModelRange();
+          const source = model.getValueInRange(range);
+          const formatted = formatSql(source, dialectRef.current);
+          if (formatted === source) return;
+          ed.executeEdits("tabularis.formatSql", [{ range, text: formatted }]);
           ed.pushUndoStop();
         },
       });

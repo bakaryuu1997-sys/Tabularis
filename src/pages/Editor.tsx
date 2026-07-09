@@ -3326,6 +3326,7 @@ export const Editor = () => {
             ) : (
               <SqlEditorWrapper
                 height="100%"
+                dialect={activeDialect}
                 initialValue={tab.query}
                 onChange={(val) => {
                   if (isActive) updateTab(tab.id, { query: val });
