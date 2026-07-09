@@ -825,6 +825,42 @@ describe("editor", () => {
       expect(result2).toBe('SELECT * FROM "users"');
     });
 
+    it("should use SELECT DISTINCT when distinct is set", () => {
+      const tab = createMockTab({ distinct: true, sortClause: "name ASC" });
+      const result = reconstructTableQuery(tab);
+      expect(result).toBe('SELECT DISTINCT * FROM "users" ORDER BY name ASC');
+    });
+
+    it("should append OFFSET only when LIMIT is present", () => {
+      const withLimit = createMockTab({ limitClause: 50, offsetClause: 10 });
+      expect(reconstructTableQuery(withLimit)).toBe(
+        'SELECT * FROM "users" LIMIT 50 OFFSET 10',
+      );
+
+      // OFFSET without LIMIT is dropped (invalid on MySQL/MariaDB)
+      const noLimit = createMockTab({ offsetClause: 10 });
+      expect(reconstructTableQuery(noLimit)).toBe('SELECT * FROM "users"');
+    });
+
+    it("should place LIMIT/OFFSET inside the subquery when wrapping", () => {
+      const tab = createMockTab({ limitClause: 100, offsetClause: 20 });
+      const result = reconstructTableQuery(tab, undefined, {
+        wrapLimitSubquery: true,
+      });
+      expect(result).toBe(
+        'SELECT * FROM (SELECT * FROM "users" LIMIT 100 OFFSET 20) AS limited_subset',
+      );
+    });
+
+    it("should honor distinct + offset overrides together", () => {
+      const tab = createMockTab({ limitClause: 25 });
+      const result = reconstructTableQuery(tab, undefined, {
+        distinctOverride: true,
+        offsetOverride: 5,
+      });
+      expect(result).toBe('SELECT DISTINCT * FROM "users" LIMIT 25 OFFSET 5');
+    });
+
     it("should return original query when activeTable is null", () => {
       const tab = createMockTab({
         activeTable: null,

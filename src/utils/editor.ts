@@ -314,6 +314,8 @@ export interface ReconstructQueryOptions {
   filterOverride?: string | null;
   sortOverride?: string | null;
   limitOverride?: number | null;
+  offsetOverride?: number | null;
+  distinctOverride?: boolean;
   wrapLimitSubquery?: boolean;
 }
 
@@ -344,18 +346,31 @@ export function reconstructTableQuery(
     options?.limitOverride !== undefined
       ? options.limitOverride
       : tab.limitClause;
+  const offsetClause =
+    options?.offsetOverride !== undefined
+      ? options.offsetOverride
+      : tab.offsetClause;
+  const distinct =
+    options?.distinctOverride !== undefined
+      ? options.distinctOverride
+      : tab.distinct;
 
   const filter = filterClause ? `WHERE ${filterClause}` : "";
   const sort = sortClause ? `ORDER BY ${sortClause}` : "";
   const quotedTable = quoteTableRef(tab.activeTable, driver, tab.schema);
+  const select = distinct ? "SELECT DISTINCT *" : "SELECT *";
 
-  let baseQuery = `SELECT * FROM ${quotedTable} ${filter} ${sort}`.trim();
+  let baseQuery = `${select} FROM ${quotedTable} ${filter} ${sort}`.trim();
 
   if (limitClause && limitClause > 0) {
+    // OFFSET is only emitted alongside LIMIT: `OFFSET n` without `LIMIT` is a
+    // syntax error on MySQL/MariaDB, and pagination already handles row-skipping.
+    const offsetPart =
+      offsetClause && offsetClause > 0 ? ` OFFSET ${offsetClause}` : "";
     if (options?.wrapLimitSubquery) {
-      baseQuery = `SELECT * FROM (${baseQuery} LIMIT ${limitClause}) AS limited_subset`;
+      baseQuery = `SELECT * FROM (${baseQuery} LIMIT ${limitClause}${offsetPart}) AS limited_subset`;
     } else {
-      baseQuery = `${baseQuery} LIMIT ${limitClause}`;
+      baseQuery = `${baseQuery} LIMIT ${limitClause}${offsetPart}`;
     }
   }
 

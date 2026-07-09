@@ -68,11 +68,13 @@ describe("JsonInput", () => {
     expect(codeProps.current?.value).toBe(JSON.stringify({ a: 1, b: 2 }, null, 2));
   });
 
-  it("switches to Tree mode when the tab is clicked", () => {
+  it("switches to Tree mode when the tab is clicked", async () => {
     render(<JsonInput value={{ a: 1 }} onChange={vi.fn()} />);
 
     fireEvent.click(getTab("tree"));
 
+    // The tree view is lazy-loaded (json-edit-react is code-split).
+    await screen.findByTestId("mock-tree-view");
     expect(screen.getByTestId("json-input-tree")).toBeInTheDocument();
     expect(screen.queryByTestId("json-input-code")).not.toBeInTheDocument();
     expect(getTab("tree").getAttribute("aria-selected")).toBe("true");
@@ -127,11 +129,12 @@ describe("JsonInput", () => {
     expect(screen.getByText("jsonInput.valid")).toBeInTheDocument();
   });
 
-  it("emits raw values from Tree mode edits", () => {
+  it("emits raw values from Tree mode edits", async () => {
     const onChange = vi.fn();
     render(<JsonInput value={{ a: 1 }} onChange={onChange} />);
 
     fireEvent.click(getTab("tree"));
+    await screen.findByTestId("mock-tree-view");
     treeProps.current?.onChange?.({ a: 99 });
 
     expect(onChange).toHaveBeenCalledWith({ a: 99 });
@@ -178,7 +181,7 @@ describe("JsonInput", () => {
     );
   });
 
-  it("passes null to Tree mode when the text is invalid JSON", () => {
+  it("passes null to Tree mode when the text is invalid JSON", async () => {
     render(<JsonInput value={{ a: 1 }} onChange={vi.fn()} />);
 
     fireEvent.change(screen.getByTestId("mock-code-editor"), {
@@ -186,6 +189,7 @@ describe("JsonInput", () => {
     });
     fireEvent.click(getTab("tree"));
 
+    await screen.findByTestId("mock-tree-view");
     expect(treeProps.current?.value).toBeNull();
   });
 
@@ -196,11 +200,12 @@ describe("JsonInput", () => {
       expect(codeProps.current?.readOnly).toBe(true);
     });
 
-    it("forwards readOnly to JsonTreeView in tree mode", () => {
+    it("forwards readOnly to JsonTreeView in tree mode", async () => {
       render(<JsonInput value={{ a: 1 }} onChange={vi.fn()} readOnly />);
 
       fireEvent.click(getTab("tree"));
 
+      await screen.findByTestId("mock-tree-view");
       expect(treeProps.current?.readOnly).toBe(true);
     });
 

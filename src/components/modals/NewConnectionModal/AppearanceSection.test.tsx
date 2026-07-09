@@ -28,6 +28,11 @@ vi.mock("emoji-picker-react", () => ({
   SkinTonePickerLocation: { SEARCH: "search", PREVIEW: "preview" },
 }));
 
+// The section reads the current theme to pick the emoji picker's light/dark mode.
+vi.mock("../../../hooks/useTheme", () => ({
+  useTheme: () => ({ currentTheme: { monacoTheme: { base: "vs-dark" } } }),
+}));
+
 describe("AppearanceSection — color", () => {
   it("renders 12 swatches", () => {
     render(<AppearanceSection value={{}} onChange={() => {}} connectionId="1" />);

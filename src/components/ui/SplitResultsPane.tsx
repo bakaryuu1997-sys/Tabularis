@@ -1,0 +1,234 @@
+import type { ComponentProps } from "react";
+import { useTranslation } from "react-i18next";
+import { X, Table2, ArrowLeftRight, ChevronLeft, ChevronRight, Save } from "lucide-react";
+import type { Tab } from "../../types/editor";
+import type { QueryResultEntry } from "../../types/editor";
+import { ResultEntryContent } from "./ResultEntryContent";
+import { DataGrid } from "./DataGrid";
+import {
+  buildSyncPayload,
+  hasMultiResults,
+  singleResultToEntry,
+  type CopyFormat,
+} from "../../utils/resultsWindowSync";
+
+/** DataGrid props (minus the data itself) prepared by the parent with the split
+ * tab's metadata and edit handlers already bound to the split tab's id. */
+export type SplitEditGridProps = Omit<
+  ComponentProps<typeof DataGrid>,
+  "columns" | "data"
+>;
+
+interface SplitResultsPaneProps {
+  tab: Tab;
+  /** All tabs pinned into the split pane (for the switcher strip). */
+  pinnedTabs?: Tab[];
+  /** Id of the pinned tab currently shown. */
+  activeSplitTabId?: string;
+  /** Switch which pinned tab is shown. */
+  onSelectPinned?: (id: string) => void;
+  /** Unpin a specific tab from the strip. */
+  onUnpin?: (id: string) => void;
+  connectionId: string | null;
+  copyFormat: CopyFormat;
+  csvDelimiter: string;
+  csvIncludeHeaders: boolean;
+  /** Re-run the pinned tab at the given page (routes through the main query path). */
+  onPageChange: (page: number) => void;
+  /** Unpin / close the split pane. */
+  onClose: () => void;
+  /** Make the pinned tab the active (main) tab. */
+  onFocusTab: () => void;
+  /** Swap the pinned (right) tab with the active (left) tab. */
+  onSwap: () => void;
+  /** When provided, the pane renders an editable grid (single-result tabs only). */
+  editGridProps?: SplitEditGridProps;
+  /** Commit the split tab's pending changes directly (without swapping). */
+  onSave?: () => void;
+}
+
+function countPending(tab: Tab): number {
+  return (
+    Object.keys(tab.pendingChanges || {}).length +
+    Object.keys(tab.pendingDeletions || {}).length +
+    Object.keys(tab.pendingInsertions || {}).length
+  );
+}
+
+/**
+ * A read-only "reference" pane docked to the right of the workspace that mirrors
+ * another tab's result grid, so a table can stay visible while the main pane is
+ * used to write SQL. It reuses the same renderer as the detached results window
+ * ({@link ResultEntryContent}) but is fed directly from tab state instead of
+ * cross-window events.
+ */
+export function SplitResultsPane({
+  tab,
+  pinnedTabs,
+  activeSplitTabId,
+  onSelectPinned,
+  onUnpin,
+  connectionId,
+  copyFormat,
+  csvDelimiter,
+  csvIncludeHeaders,
+  onPageChange,
+  onClose,
+  onFocusTab,
+  onSwap,
+  editGridProps,
+  onSave,
+}: SplitResultsPaneProps) {
+  const { t } = useTranslation();
+
+  const payload = buildSyncPayload(tab, {
+    connectionId,
+    copyFormat,
+    csvDelimiter,
+    csvIncludeHeaders,
+  });
+
+  let entry: QueryResultEntry | null = null;
+  if (hasMultiResults(payload)) {
+    entry =
+      payload.results!.find((r) => r.id === payload.activeResultId) ??
+      payload.results![0];
+  } else if (payload.result || payload.error || payload.isLoading) {
+    entry = singleResultToEntry(payload);
+  }
+
+  // Editable mode: single-result table tab with a result and bound edit props.
+  const editable =
+    !!editGridProps &&
+    !hasMultiResults(payload) &&
+    !!tab.result &&
+    tab.result.columns.length > 0;
+  const pagination = tab.result?.pagination;
+  const pendingCount = countPending(tab);
+
+  return (
+    <div className="flex flex-col h-full min-w-0 bg-base border-l border-default">
+      {/* Header */}
+      <div className="h-9 shrink-0 flex items-center gap-2 px-2 bg-elevated border-b border-default">
+        <Table2 size={13} className="text-muted shrink-0" />
+        <button
+          onClick={onFocusTab}
+          title={t("editor.split.focusTab")}
+          className="text-xs text-secondary font-medium truncate hover:text-primary transition-colors min-w-0"
+        >
+          {tab.title}
+        </button>
+        <div className="flex-1" />
+        {pendingCount > 0 && (
+          <button
+            onClick={onSave ?? onSwap}
+            title={onSave ? t("editor.split.save") : t("editor.split.saveHint")}
+            className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-colors shrink-0"
+          >
+            {onSave && <Save size={11} />}
+            {t("editor.split.unsaved", { count: pendingCount })}
+          </button>
+        )}
+        <button
+          onClick={onSwap}
+          title={t("editor.split.swap")}
+          className="text-muted hover:text-secondary transition-colors p-1 hover:bg-surface-secondary rounded shrink-0"
+        >
+          <ArrowLeftRight size={14} />
+        </button>
+        <button
+          onClick={onClose}
+          title={t("editor.split.close")}
+          className="text-muted hover:text-secondary transition-colors p-1 hover:bg-surface-secondary rounded shrink-0"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Pinned-tab switcher strip (only when more than one tab is pinned) */}
+      {pinnedTabs && pinnedTabs.length > 1 && (
+        <div className="shrink-0 flex items-stretch gap-0.5 px-1 py-1 bg-base border-b border-default overflow-x-auto no-scrollbar">
+          {pinnedTabs.map((p) => {
+            const isActive = p.id === (activeSplitTabId ?? tab.id);
+            return (
+              <div
+                key={p.id}
+                className={`group/chip flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xs cursor-pointer whitespace-nowrap transition-colors ${
+                  isActive
+                    ? "bg-blue-600/20 text-blue-200 border border-blue-500/40"
+                    : "text-muted hover:text-secondary hover:bg-surface-secondary border border-transparent"
+                }`}
+                onClick={() => onSelectPinned?.(p.id)}
+              >
+                <span className="truncate max-w-[120px]">{p.title}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUnpin?.(p.id);
+                  }}
+                  title={t("editor.split.close")}
+                  className="opacity-0 group-hover/chip:opacity-100 hover:text-secondary transition-opacity"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Body */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        {editable ? (
+          <>
+            <div className="flex-1 min-h-0">
+              <DataGrid
+                columns={tab.result!.columns}
+                data={tab.result!.rows}
+                {...editGridProps!}
+              />
+            </div>
+            {pagination && (
+              <div className="h-7 shrink-0 flex items-center justify-end gap-1 px-2 bg-elevated border-t border-default text-xs text-muted">
+                <span className="mr-auto">
+                  {t("editor.rowsRetrieved", { count: tab.result!.rows.length })}
+                </span>
+                <button
+                  disabled={pagination.page <= 1 || tab.isLoading}
+                  onClick={() => onPageChange(pagination.page - 1)}
+                  className="p-0.5 rounded hover:bg-surface-secondary disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={t("editor.previousPage", { defaultValue: "Previous" })}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="font-mono px-1">{pagination.page}</span>
+                <button
+                  disabled={!pagination.has_more || tab.isLoading}
+                  onClick={() => onPageChange(pagination.page + 1)}
+                  className="p-0.5 rounded hover:bg-surface-secondary disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={t("editor.nextPage", { defaultValue: "Next" })}
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </>
+        ) : entry ? (
+          <ResultEntryContent
+            entry={entry}
+            connectionId={connectionId}
+            copyFormat={copyFormat}
+            csvDelimiter={csvDelimiter}
+            csvIncludeHeaders={csvIncludeHeaders}
+            onPageChange={onPageChange}
+            compact
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-surface-tertiary text-sm px-4 text-center">
+            {t("editor.split.empty")}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

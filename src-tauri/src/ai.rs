@@ -7,6 +7,20 @@ use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 
+/// Build an HTTP client for AI provider calls with a request timeout.
+///
+/// Without a timeout, a hung provider (a stalled network, an overloaded remote
+/// API, or a slow local Ollama model) would leave the request pending forever —
+/// the UI stays stuck on "Generating…" with no way to recover but a restart.
+/// 120s is generous for remote APIs while still bounding a true hang. If the
+/// client fails to build we fall back to the default client rather than panic.
+fn ai_http_client() -> Client {
+    Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .unwrap_or_else(|_| Client::new())
+}
+
 // --- Data Structures ---
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -98,7 +112,7 @@ struct AiModelsCache {
 fn load_default_models() -> HashMap<String, Vec<String>> {
     let yaml_content = include_str!("ai_models.yaml");
     serde_yaml::from_str(yaml_content).unwrap_or_else(|e| {
-        println!("Failed to parse models.yaml: {}", e);
+        log::warn!("Failed to parse models.yaml: {}", e);
         HashMap::new() // Fallback to empty map on critical error (should be caught by tests)
     })
 }
@@ -141,7 +155,7 @@ fn save_cache(app: &AppHandle, models: &HashMap<String, Vec<String>>) {
 // --- Fetchers ---
 
 async fn fetch_ollama_models(port: u16) -> Vec<String> {
-    let client = Client::new();
+    let client = ai_http_client();
     let url = format!("http://localhost:{}/api/tags", port);
     match client.get(&url).send().await {
         Ok(res) => {
@@ -160,7 +174,7 @@ async fn fetch_openai_models(api_key: &str) -> Vec<String> {
     if api_key.is_empty() {
         return Vec::new();
     }
-    let client = Client::new();
+    let client = ai_http_client();
     match client
         .get("https://api.openai.com/v1/models")
         .header("Authorization", format!("Bearer {}", api_key))
@@ -188,7 +202,7 @@ async fn fetch_anthropic_models(api_key: &str) -> Vec<String> {
     if api_key.is_empty() {
         return Vec::new();
     }
-    let client = Client::new();
+    let client = ai_http_client();
     match client
         .get("https://api.anthropic.com/v1/models")
         .header("x-api-key", api_key)
@@ -212,7 +226,7 @@ async fn fetch_minimax_models(api_key: &str) -> Vec<String> {
     if api_key.is_empty() {
         return Vec::new();
     }
-    let client = Client::new();
+    let client = ai_http_client();
     match client
         .get("https://api.minimax.io/v1/models")
         .header("Authorization", format!("Bearer {}", api_key))
@@ -232,7 +246,7 @@ async fn fetch_minimax_models(api_key: &str) -> Vec<String> {
 }
 
 async fn fetch_openrouter_models() -> Vec<String> {
-    let client = Client::new();
+    let client = ai_http_client();
     match client
         .get("https://openrouter.ai/api/v1/models")
         .send()
@@ -276,7 +290,7 @@ async fn fetch_custom_openai_models(base_url: &str, api_key: &str) -> Vec<String
         return Vec::new();
     }
 
-    let client = Client::new();
+    let client = ai_http_client();
 
     let url = build_api_url(base_url, "/models");
 
@@ -535,7 +549,7 @@ async fn dispatch_provider(
         String::new()
     };
 
-    let client = Client::new();
+    let client = ai_http_client();
     match gen_req.provider.as_str() {
         "openai" => generate_openai(&client, &api_key, gen_req, system_prompt).await,
         "anthropic" => generate_anthropic(&client, &api_key, gen_req, system_prompt).await,

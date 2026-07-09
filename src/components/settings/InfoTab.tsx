@@ -3,10 +3,8 @@ import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { invoke } from "@tauri-apps/api/core";
 import {
-  Github,
   CheckCircle2,
   Circle,
-  Heart,
   Info,
   Code2,
   Library,
@@ -15,7 +13,6 @@ import {
   ExternalLink,
   Activity,
   Sparkles,
-  Share2,
 } from "lucide-react";
 import clsx from "clsx";
 import { useSettings } from "../../hooks/useSettings";
@@ -27,7 +24,6 @@ import { ROADMAP } from "../../utils/settings";
 import { SettingRow, SettingSection, SettingToggle } from "./SettingControls";
 import { WhatsNewModal } from "../modals/WhatsNewModal";
 import { OpenSourceLibrariesModal } from "../modals/OpenSourceLibrariesModal";
-import { SocialLinks } from "../SocialLinks";
 
 export function InfoTab() {
   const { t } = useTranslation();
@@ -78,13 +74,6 @@ export function InfoTab() {
         </p>
 
         <div className="flex justify-center gap-4 flex-wrap">
-          <button
-            onClick={() => openUrl("https://github.com/TabularisDB/tabularis")}
-            className="flex items-center gap-2 bg-surface-secondary hover:bg-surface-tertiary text-primary px-4 py-2 rounded-lg font-medium transition-colors border border-strong"
-          >
-            <Github size={18} />
-            {t("settings.starOnGithub")}
-          </button>
           <div className="flex items-center gap-2 bg-accent/10 text-accent px-4 py-2 rounded-lg border border-accent/30">
             <span className="text-xs font-bold uppercase tracking-wider">
               {t("settings.version")}
@@ -282,32 +271,6 @@ export function InfoTab() {
       </SettingSection>
 
       {/* Follow us */}
-      <SettingSection
-        title={t("settings.followUs")}
-        icon={<Share2 size={14} className="text-muted" />}
-        description={t("settings.followUsDesc")}
-      >
-        <div className="pt-3">
-          <SocialLinks showLabels />
-        </div>
-      </SettingSection>
-
-      {/* Support */}
-      <SettingSection
-        title={t("settings.support")}
-        icon={<Heart size={14} className="text-muted" />}
-        description={t("settings.supportDesc")}
-      >
-        <div className="pt-3 flex flex-col items-center text-center">
-          <button
-            onClick={() => openUrl("https://github.com/TabularisDB/tabularis")}
-            className="text-blue-400 hover:text-blue-300 font-medium text-sm hover:underline"
-          >
-            github.com/TabularisDB/tabularis
-          </button>
-        </div>
-      </SettingSection>
-
       <WhatsNewModal
         isOpen={isWhatsNewOpen}
         onClose={() => setIsWhatsNewOpen(false)}

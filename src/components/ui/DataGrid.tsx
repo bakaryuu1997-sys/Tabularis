@@ -31,6 +31,8 @@ import {
   FileDigit,
   ExternalLink,
   PanelBottomOpen,
+  EyeOff,
+  Eye,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -75,6 +77,13 @@ import type {
   ForeignKey,
 } from "../../types/editor";
 import { MemoRow, type RowCtx } from "./DataGridRow";
+import {
+  toggleHiddenColumn,
+  computeColumnVisibility,
+  pruneHiddenColumns,
+  loadHiddenColumns,
+  saveHiddenColumns,
+} from "../../utils/columnVisibility";
 
 interface DataGridProps {
   columns: string[];
@@ -116,6 +125,9 @@ interface DataGridProps {
   sortClause?: string;
   onSort?: (colName: string) => void;
   readonly?: boolean;
+  /** When set, client-side hidden columns are persisted under this key
+   * (e.g. `${connectionId}:${tableName}`). Omit for session-only visibility. */
+  columnVisibilityKey?: string;
 }
 
 export const DataGrid = React.memo(
@@ -152,12 +164,45 @@ export const DataGrid = React.memo(
     sortClause,
     onSort,
     readonly: readonlyProp,
+    columnVisibilityKey,
   }: DataGridProps) => {
     const { t } = useTranslation();
     const { activeSchema, connections } = useDatabase();
     const { showAlert } = useAlert();
     const { settings } = useSettings();
     const colorByType = settings.resultColorByType ?? false;
+
+    // Client-side hidden columns (presentational only — never changes the SQL).
+    const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() =>
+      loadHiddenColumns(columnVisibilityKey),
+    );
+    // Re-load when the persistence key changes (e.g. switching table/tab).
+    useEffect(() => {
+      setHiddenColumns(loadHiddenColumns(columnVisibilityKey));
+    }, [columnVisibilityKey]);
+    // Drop stale names whenever the visible column set changes.
+    useEffect(() => {
+      setHiddenColumns((prev) => {
+        const pruned = pruneHiddenColumns(prev, columns);
+        return pruned.size === prev.size ? prev : pruned;
+      });
+    }, [columns]);
+
+    const hideColumn = useCallback((col: string) => {
+      setHiddenColumns((prev) => {
+        const next = new Set(prev).add(col);
+        return next;
+      });
+    }, []);
+    const toggleColumn = useCallback((col: string) => {
+      setHiddenColumns((prev) => toggleHiddenColumn(prev, col));
+    }, []);
+    const showAllColumns = useCallback(() => setHiddenColumns(new Set()), []);
+
+    // Persist explicit hide/show changes (the columns-effect above only prunes).
+    useEffect(() => {
+      saveHiddenColumns(columnVisibilityKey, hiddenColumns);
+    }, [hiddenColumns, columnVisibilityKey]);
 
     const detectJsonInTextColumns = useMemo(() => {
       if (!connectionId) return false;
@@ -871,10 +916,19 @@ export const DataGrid = React.memo(
       [mergedRows],
     );
 
+    const columnVisibility = useMemo(
+      () => computeColumnVisibility(hiddenColumns),
+      [hiddenColumns],
+    );
+
     const table = useReactTable({
       data: tableData,
       columns: tableColumns,
       getCoreRowModel: coreRowModel,
+      state: { columnVisibility },
+      onColumnVisibilityChange: () => {
+        /* visibility is controlled externally via hiddenColumns */
+      },
     });
 
     const { rows: tableRows } = table.getRowModel();
@@ -1248,6 +1302,7 @@ export const DataGrid = React.memo(
     const rowCtx: RowCtx = useMemo(
       () => ({
         columns,
+        hiddenColumns,
         autoIncrementColumns,
         defaultValueColumns,
         nullableColumns,
@@ -1285,6 +1340,7 @@ export const DataGrid = React.memo(
       }),
       [
         columns,
+        hiddenColumns,
         autoIncrementColumns,
         defaultValueColumns,
         nullableColumns,
@@ -1633,6 +1689,27 @@ export const DataGrid = React.memo(
               y={headerContextMenu.y}
               onClose={() => setHeaderContextMenu(null)}
               items={[
+                {
+                  label: t("dataGrid.hideColumn"),
+                  icon: EyeOff,
+                  action: () => hideColumn(headerContextMenu.colName),
+                },
+                ...(hiddenColumns.size > 0
+                  ? [
+                      ...[...hiddenColumns].map((col) => ({
+                        label: t("dataGrid.showColumn", { col }),
+                        icon: Eye,
+                        action: () => toggleColumn(col),
+                      })),
+                      {
+                        label: t("dataGrid.showAllColumns", {
+                          count: hiddenColumns.size,
+                        }),
+                        icon: Eye,
+                        action: showAllColumns,
+                      },
+                    ]
+                  : []),
                 {
                   label: t("dataGrid.copyColumnName"),
                   icon: Copy,

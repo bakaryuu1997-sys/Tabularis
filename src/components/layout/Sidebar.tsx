@@ -2,9 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Plug2, Settings, Cpu, PanelLeft, Layers, Star, Clock, BookOpen } from "lucide-react";
-import { DiscordIcon } from "../icons/DiscordIcon";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { DISCORD_URL } from "../../config/links";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useTheme } from "../../hooks/useTheme";
 import { SlotAnchor } from "../ui/SlotAnchor";
@@ -15,7 +12,6 @@ import { OpenConnectionItem } from "./sidebar/OpenConnectionItem";
 import { ConnectionGroupItem } from "./sidebar/ConnectionGroupItem";
 import { ExplorerSidebar, type SidebarTab } from "./ExplorerSidebar";
 import { PanelDatabaseProvider } from "./PanelDatabaseProvider";
-import { DiscordCommunityCallout } from "./sidebar/DiscordCommunityCallout";
 import { QuickNavigatorModal } from "../modals/QuickNavigatorModal";
 import { GenerateSQLModal } from "../modals/GenerateSQLModal";
 import { SchemaModal } from "../modals/SchemaModal";
@@ -280,21 +276,6 @@ export const Sidebar = () => {
         </nav>
 
         <div className="mt-auto">
-          <div className="relative mb-2">
-            <button
-              onClick={() => openUrl(DISCORD_URL)}
-              className="flex items-center justify-center w-12 h-12 rounded-lg transition-colors relative group text-secondary hover:bg-surface-secondary hover:text-indigo-400"
-            >
-              <div className="relative">
-                <DiscordIcon size={24} />
-              </div>
-              <span className="absolute left-14 bg-surface-secondary text-primary text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-30 pointer-events-none">
-                Discord
-              </span>
-            </button>
-            <DiscordCommunityCallout />
-          </div>
-
           <NavItem
             to="/mcp"
             icon={Cpu}

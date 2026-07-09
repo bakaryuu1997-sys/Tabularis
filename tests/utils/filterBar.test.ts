@@ -7,6 +7,8 @@ import {
   buildSingleFilterClause,
   buildStructuredFilterClause,
   createEmptyFilter,
+  buildGlobalSearchClause,
+  isTextColumn,
 } from "../../src/utils/filterBar";
 import type { TableColumn } from "../../src/types/editor";
 import type { StructuredFilter } from "../../src/utils/filterBar";
@@ -417,6 +419,63 @@ describe("filterBar utils", () => {
       const f1 = createEmptyFilter(columns);
       const f2 = createEmptyFilter(columns);
       expect(f1.id).not.toBe(f2.id);
+    });
+  });
+
+  describe("isTextColumn", () => {
+    it("detects textual types", () => {
+      expect(isTextColumn("VARCHAR")).toBe(true);
+      expect(isTextColumn("text")).toBe(true);
+      expect(isTextColumn("CHARACTER VARYING")).toBe(true);
+      expect(isTextColumn("longtext")).toBe(true);
+    });
+    it("rejects non-textual types", () => {
+      expect(isTextColumn("INTEGER")).toBe(false);
+      expect(isTextColumn("DATETIME")).toBe(false);
+      expect(isTextColumn("")).toBe(false);
+    });
+  });
+
+  describe("buildGlobalSearchClause", () => {
+    const columns: TableColumn[] = [
+      makeColumn("id", "INTEGER"),
+      makeColumn("name", "VARCHAR"),
+      makeColumn("email", "TEXT"),
+      makeColumn("created_at", "DATETIME"),
+    ];
+
+    it("ORs a LIKE across every text column", () => {
+      expect(buildGlobalSearchClause(columns, "foo")).toBe(
+        "(name LIKE '%foo%' OR email LIKE '%foo%')"
+      );
+    });
+
+    it("omits parentheses for a single text column", () => {
+      expect(buildGlobalSearchClause([makeColumn("name", "VARCHAR")], "x")).toBe(
+        "name LIKE '%x%'"
+      );
+    });
+
+    it("escapes single quotes in the term", () => {
+      expect(
+        buildGlobalSearchClause([makeColumn("name", "VARCHAR")], "O'Brien")
+      ).toBe("name LIKE '%O''Brien%'");
+    });
+
+    it("returns empty string for a blank term", () => {
+      expect(buildGlobalSearchClause(columns, "   ")).toBe("");
+    });
+
+    it("returns empty string when there are no text columns", () => {
+      expect(
+        buildGlobalSearchClause([makeColumn("id", "INTEGER")], "foo")
+      ).toBe("");
+    });
+
+    it("quotes identifiers per driver", () => {
+      expect(
+        buildGlobalSearchClause([makeColumn("Name", "VARCHAR")], "x", "postgres")
+      ).toBe('"Name" LIKE \'%x%\'');
     });
   });
 });

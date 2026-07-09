@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -19,7 +19,11 @@ import {
 } from "../../utils/json";
 import { CellCodeEditor } from "./CellCodeEditor";
 import { CellDiffEditor } from "./CellDiffEditor";
-import { JsonTreeView } from "./JsonTreeView";
+// Code-split the tree view (pulls in json-edit-react) — only loads when the
+// user switches a JSON cell to tree mode.
+const JsonTreeView = lazy(() =>
+  import("./JsonTreeView").then((m) => ({ default: m.JsonTreeView })),
+);
 import {
   MIN_SIDE_BY_SIDE_WIDTH,
   useContainerWidth,
@@ -248,12 +252,14 @@ export const JsonInput: React.FC<JsonInputProps> = ({
             data-testid="json-input-tree"
             className={fillHeight ? "flex-1 min-h-0 flex flex-col" : ""}
           >
-            <JsonTreeView
-              value={treeValue}
-              onChange={handleTreeChange}
-              readOnly={readOnly}
-              fillHeight={fillHeight}
-            />
+            <Suspense fallback={<div className="h-16" />}>
+              <JsonTreeView
+                value={treeValue}
+                onChange={handleTreeChange}
+                readOnly={readOnly}
+                fillHeight={fillHeight}
+              />
+            </Suspense>
           </div>
         )}
 

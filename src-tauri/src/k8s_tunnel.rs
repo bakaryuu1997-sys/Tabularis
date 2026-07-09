@@ -35,7 +35,7 @@ impl K8sTunnel {
         resource_name: &str,
         remote_port: u16,
     ) -> Result<Self, String> {
-        println!(
+        log::info!(
             "[K8s Tunnel] New request: context={}, namespace={}, {}/{}:{}",
             context, namespace, resource_type, resource_name, remote_port
         );
@@ -47,12 +47,12 @@ impl K8sTunnel {
         let local_port = {
             let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| {
                 let err = format!("Failed to find free local port: {}", e);
-                eprintln!("[K8s Tunnel Error] {}", err);
+                log::error!("[K8s Tunnel Error] {}", err);
                 err
             })?;
             listener.local_addr().unwrap().port()
         };
-        println!("[K8s Tunnel] Assigned local port: {}", local_port);
+        log::info!("[K8s Tunnel] Assigned local port: {}", local_port);
 
         // Build the kubectl port-forward command
         let port_forward_spec = format!("{}:{}", local_port, remote_port);
@@ -69,7 +69,7 @@ impl K8sTunnel {
             &port_forward_spec,
         ]);
 
-        println!("[K8s Tunnel] Executing: kubectl {:?}", args);
+        log::info!("[K8s Tunnel] Executing: kubectl {:?}", args);
 
         let mut child = Command::new("kubectl")
             .args(&args)
@@ -81,7 +81,7 @@ impl K8sTunnel {
                     "Failed to launch kubectl: {}. Ensure 'kubectl' is in PATH.",
                     e
                 );
-                eprintln!("[K8s Tunnel Error] {}", err);
+                log::error!("[K8s Tunnel Error] {}", err);
                 err
             })?;
 
@@ -95,8 +95,7 @@ impl K8sTunnel {
                 let reader = BufReader::new(stdout);
                 for line in reader.lines() {
                     if let Ok(l) = line {
-                        #[cfg(debug_assertions)]
-                        println!("[K8s kubectl Out] {}", l);
+                        log::debug!("[K8s kubectl Out] {}", l);
                         if let Ok(mut g) = log.lock() {
                             g.push(l);
                         }
@@ -111,8 +110,7 @@ impl K8sTunnel {
                 let reader = BufReader::new(stderr);
                 for line in reader.lines() {
                     if let Ok(l) = line {
-                        #[cfg(debug_assertions)]
-                        eprintln!("[K8s kubectl Err] {}", l);
+                        log::debug!("[K8s kubectl Err] {}", l);
                         if let Ok(mut g) = log.lock() {
                             g.push(l);
                         }
@@ -139,7 +137,7 @@ impl K8sTunnel {
                         "kubectl port-forward exited prematurely with status: {}.\nStderr: {}\nStdout: {}",
                         status, stderr_content, stdout_content
                     );
-                    eprintln!("[K8s Tunnel Error] {}", err_msg);
+                    log::error!("[K8s Tunnel Error] {}", err_msg);
                     return Err(err_msg);
                 }
             }
@@ -147,7 +145,7 @@ impl K8sTunnel {
             // Try connecting to the local port
             match TcpStream::connect(format!("127.0.0.1:{}", local_port)) {
                 Ok(_) => {
-                    println!(
+                    log::info!(
                         "[K8s Tunnel] Tunnel established successfully on port {}",
                         local_port
                     );
@@ -168,7 +166,7 @@ impl K8sTunnel {
                 "Timed out waiting for kubectl port-forward to establish ({}s)",
                 K8S_TUNNEL_TIMEOUT_SECS
             );
-            eprintln!("[K8s Tunnel Error] {}", err);
+            log::error!("[K8s Tunnel Error] {}", err);
             return Err(err);
         }
 
@@ -182,7 +180,7 @@ impl K8sTunnel {
     pub fn stop(&self) {
         if let Ok(mut c) = self.child.lock() {
             let _ = c.kill();
-            println!(
+            log::info!(
                 "[K8s Tunnel] Stopped tunnel on port {}",
                 self.local_port
             );
@@ -232,7 +230,7 @@ pub fn test_k8s_connection(
     context: &str,
     namespace: &str,
 ) -> Result<String, String> {
-    println!(
+    log::info!(
         "[K8s Test] Testing connection: context={}, namespace={}",
         context, namespace
     );
@@ -248,7 +246,7 @@ pub fn test_k8s_connection(
 
     if output.status.success() {
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        println!("[K8s Test] Connection successful: {}", stdout);
+        log::info!("[K8s Test] Connection successful: {}", stdout);
         Ok(format!(
             "Kubernetes connection to context '{}' namespace '{}' verified successfully!",
             context, namespace
@@ -256,7 +254,7 @@ pub fn test_k8s_connection(
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let err = format!("K8s connection test failed: {}", stderr.trim());
-        eprintln!("[K8s Test Error] {}", err);
+        log::error!("[K8s Test Error] {}", err);
         Err(err)
     }
 }
@@ -276,7 +274,7 @@ pub fn get_k8s_contexts() -> Result<Vec<String>, String> {
     }
 
     let contexts = parse_lines(&String::from_utf8_lossy(&output.stdout));
-    println!("[K8s Discovery] Found {} contexts", contexts.len());
+    log::info!("[K8s Discovery] Found {} contexts", contexts.len());
     Ok(contexts)
 }
 
@@ -306,7 +304,7 @@ pub fn get_k8s_namespaces(context: &str) -> Result<Vec<String>, String> {
     }
 
     let namespaces = parse_lines_with_prefix(&String::from_utf8_lossy(&output.stdout), "namespace/");
-    println!(
+    log::info!(
         "[K8s Discovery] Found {} namespaces in context '{}'",
         namespaces.len(),
         context
@@ -357,7 +355,7 @@ pub fn get_k8s_resources(
 
     let prefix = format!("{}/", resource_type);
     let resources = parse_lines_with_prefix(&String::from_utf8_lossy(&output.stdout), &prefix);
-    println!(
+    log::info!(
         "[K8s Discovery] Found {} {} in context '{}' namespace '{}'",
         resources.len(),
         resource_type,

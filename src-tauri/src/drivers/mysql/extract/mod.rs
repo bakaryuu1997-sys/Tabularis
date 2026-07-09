@@ -57,8 +57,8 @@ pub fn extract_value(
         return value;
     }
 
-    eprintln!(
-        "[WARNING] Column '{}' [{}] type '{}' could not be extracted",
+    log::warn!(
+        "Column '{}' [{}] type '{}' could not be extracted",
         col_name, index, col_type
     );
     serde_json::Value::Null

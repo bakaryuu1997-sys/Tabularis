@@ -108,6 +108,8 @@ export interface Tab {
   filterClause?: string; // SQL WHERE clause (without "WHERE")
   sortClause?: string; // SQL ORDER BY clause (without "ORDER BY")
   limitClause?: number; // SQL LIMIT value
+  offsetClause?: number; // SQL OFFSET value (only applied together with LIMIT)
+  distinct?: boolean; // When true, the table query uses SELECT DISTINCT
   queryParams?: Record<string, string>; // Saved values for query parameters
   schema?: string; // Schema name (PostgreSQL) for query reconstruction
   readOnly?: boolean; // Hides the Run button (e.g. for definition views)

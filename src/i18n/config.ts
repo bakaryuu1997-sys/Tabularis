@@ -10,6 +10,7 @@ import fr from './locales/fr.json';
 import de from './locales/de.json';
 import ja from './locales/ja.json';
 import ru from './locales/ru.json';
+import vi from './locales/vi.json';
 
 /**
  * Single source of truth for supported languages.
@@ -24,6 +25,7 @@ export const SUPPORTED_LANGUAGES = [
   { id: "de", label: "Deutsch", translation: de },
   { id: "ja", label: "日本語", translation: ja },
   { id: "ru", label: "Русский", translation: ru },
+  { id: "vi", label: "Tiếng Việt", translation: vi },
 ] as const;
 
 export type AppLanguage = "auto" | (typeof SUPPORTED_LANGUAGES)[number]["id"];

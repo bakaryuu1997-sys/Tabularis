@@ -97,18 +97,40 @@ pub async fn install_plugin(
         .find(|r| r.version == target_version)
         .ok_or_else(|| format!("No release found for version {}", target_version))?;
 
-    let download_url = release
-        .assets
-        .get(&platform)
-        .or_else(|| release.assets.get("universal"))
-        .ok_or_else(|| {
-            format!(
-                "Plugin '{}' does not support platform '{}'",
-                plugin_id, platform
-            )
-        })?;
+    // Resolve the asset key we will actually download so we can pair it with the
+    // matching checksum from the registry.
+    let asset_key = if release.assets.contains_key(&platform) {
+        platform.clone()
+    } else if release.assets.contains_key("universal") {
+        "universal".to_string()
+    } else {
+        return Err(format!(
+            "Plugin '{}' does not support platform '{}'",
+            plugin_id, platform
+        ));
+    };
+    let download_url = &release.assets[&asset_key];
 
-    installer::download_and_install(&plugin_id, download_url).await?;
+    // Integrity policy:
+    //  - checksum present for this asset -> verify before install.
+    //  - release publishes checksums but none for this asset -> suspicious, refuse.
+    //  - no checksums at all (legacy) -> install with a loud warning.
+    let expected_sha256 = release.checksums.get(&asset_key).map(|s| s.as_str());
+    if expected_sha256.is_none() && !release.checksums.is_empty() {
+        return Err(format!(
+            "Plugin '{}' release {} publishes checksums but none for asset '{}'. Refusing to install.",
+            plugin_id, target_version, asset_key
+        ));
+    }
+    if expected_sha256.is_none() {
+        log::warn!(
+            "Plugin '{}' release {} has no checksum in the registry; installing WITHOUT integrity verification.",
+            plugin_id,
+            target_version
+        );
+    }
+
+    installer::download_and_install(&plugin_id, download_url, expected_sha256).await?;
 
     let installed_plugin = installer::read_installed_plugin(&plugin_id)?;
     if installed_plugin.id != plugin_id {

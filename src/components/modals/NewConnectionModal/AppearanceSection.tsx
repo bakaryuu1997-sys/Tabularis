@@ -1,9 +1,8 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { HexColorPicker, HexColorInput } from "react-colorful";
-import EmojiPicker, { Theme, EmojiStyle, SuggestionMode, SkinTonePickerLocation, type EmojiClickData } from "emoji-picker-react";
 import clsx from "clsx";
 import { Check, Sparkles, Grid3x3, Smile, Image as ImageIcon, Pipette, Upload, Trash2 } from "lucide-react";
 import type { ConnectionAppearance, IconOverride } from "../../../contexts/DatabaseContext";
@@ -11,6 +10,11 @@ import type { PluginManifest } from "../../../types/plugins";
 import { ALL_ICON_NAMES, getLucideIconComponent, camelToKebab } from "../../../utils/connectionIconPack";
 import { getConnectionIcon } from "../../../utils/driverUI";
 import { ConnectionIconImage } from "../../ConnectionIconImage";
+import { useTheme } from "../../../hooks/useTheme";
+import { themeRegistry } from "../../../themes/themeRegistry";
+
+// Code-split the emoji picker: it only loads when the user opens the emoji tab.
+const LazyEmojiPicker = lazy(() => import("./LazyEmojiPicker"));
 
 const PALETTE = [
   "#64748b", "#ef4444", "#f97316", "#f59e0b",
@@ -51,6 +55,8 @@ export function AppearanceSection({
   onImageUploaded,
 }: Props) {
   const { t } = useTranslation();
+  const { currentTheme } = useTheme();
+  const isDarkTheme = themeRegistry.isDarkTheme(currentTheme);
   const [customOpen, setCustomOpen] = useState(false);
 
   // Derive the active tab from the icon type. userTab holds an explicit user
@@ -394,18 +400,21 @@ export function AppearanceSection({
               </div>
             )}
             <div className="rounded-md border border-default overflow-hidden shadow-sm emoji-picker-wrap">
-              <EmojiPicker
-                theme={Theme.DARK}
-                emojiStyle={EmojiStyle.NATIVE}
-                width="100%"
-                height={340}
-                searchPlaceholder={t("connectionAppearance.emojiSearch", { defaultValue: "Search emoji…" })}
-                suggestedEmojisMode={SuggestionMode.RECENT}
-                skinTonePickerLocation={SkinTonePickerLocation.SEARCH}
-                previewConfig={{ showPreview: false }}
-                lazyLoadEmojis
-                onEmojiClick={(data: EmojiClickData) => setIcon({ type: "emoji", value: data.emoji })}
-              />
+              <Suspense
+                fallback={
+                  <div className="h-[340px] flex items-center justify-center text-muted text-xs">
+                    {t("common.loading")}
+                  </div>
+                }
+              >
+                <LazyEmojiPicker
+                  dark={isDarkTheme}
+                  searchPlaceholder={t("connectionAppearance.emojiSearch", {
+                    defaultValue: "Search emoji…",
+                  })}
+                  onPick={(emoji) => setIcon({ type: "emoji", value: emoji })}
+                />
+              </Suspense>
             </div>
           </div>
         )}

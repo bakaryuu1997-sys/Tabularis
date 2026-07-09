@@ -6,6 +6,7 @@ import { loadMonacoTheme } from "../../themes/themeUtils";
 import { readText } from "@tauri-apps/plugin-clipboard-manager";
 import { useSettings } from "../../hooks/useSettings";
 import { getFontCSS } from "../../utils/settings";
+import { formatSql } from "../../utils/sqlFormat";
 
 interface SqlEditorWrapperProps {
   initialValue: string;
@@ -118,6 +119,28 @@ const SqlEditorInternal = ({
         contextMenuOrder: 2,
         keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyV],
         run: tauriPaste,
+      });
+
+      // Format the SQL in the editor (Shift+Alt+F, the standard "format" chord).
+      // Uses the shared sql-formatter util; on a parse error it returns the
+      // original text unchanged, so this can never corrupt the query.
+      editor.addAction({
+        id: 'tabularis.formatSql',
+        label: 'Format SQL',
+        contextMenuGroupId: '1_modification',
+        contextMenuOrder: 1,
+        keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+        run: (ed) => {
+          const model = ed.getModel();
+          if (!model) return;
+          const current = model.getValue();
+          const formatted = formatSql(current);
+          if (formatted === current) return;
+          ed.executeEdits("tabularis.formatSql", [
+            { range: model.getFullModelRange(), text: formatted },
+          ]);
+          ed.pushUndoStop();
+        },
       });
 
       // Remove the built-in Paste from context menu (doesn't work in Tauri)

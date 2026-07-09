@@ -49,6 +49,7 @@ import {
   Maximize2,
   Minimize2,
   ExternalLink,
+  PanelRight,
   CheckCircle2,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
@@ -56,8 +57,22 @@ import { listen, emit } from "@tauri-apps/api/event";
 import { TableToolbar } from "../components/ui/TableToolbar";
 import { DataGrid } from "../components/ui/DataGrid";
 import { MultiResultPanel } from "../components/ui/MultiResultPanel";
+import { SplitResultsPane } from "../components/ui/SplitResultsPane";
+import {
+  resolveSplitTab,
+  resolvePinnedTabs,
+  togglePinnedTab,
+  splitRatioFromClientX,
+  loadSplitState,
+  saveSplitState,
+} from "../utils/splitView";
 import { ErrorDisplay } from "../components/ui/ErrorDisplay";
 import { NewRowModal } from "../components/modals/NewRowModal";
+import { ConfirmModal } from "../components/modals/ConfirmModal";
+import {
+  useDangerousQueryGuard,
+  DANGEROUS_QUERY_I18N,
+} from "../hooks/useDangerousQueryGuard";
 import { QuerySelectionModal } from "../components/modals/QuerySelectionModal";
 import { ExplainSelectionModal } from "../components/modals/ExplainSelectionModal";
 import { TabSwitcherModal } from "../components/modals/TabSwitcherModal";
@@ -321,6 +336,35 @@ export const Editor = () => {
   const [editorHeight, setEditorHeight] = useState(300);
   const editorHeightRef = useRef(300);
   const [isResultsCollapsed, setIsResultsCollapsed] = useState(false);
+
+  // Split view: one or more tabs pinned into a resizable right-hand pane (with a
+  // tab strip to switch between them) so tables stay visible while the main pane
+  // is used to write SQL. splitRatio is the LEFT (main) pane's width fraction.
+  // Restored from storage; stale ids are ignored by resolvePinnedTabs.
+  const [splitTabIds, setSplitTabIds] = useState<string[]>(
+    () => loadSplitState().splitTabIds,
+  );
+  const [activeSplitTabId, setActiveSplitTabId] = useState<string | null>(
+    () => loadSplitState().activeSplitTabId,
+  );
+  const [splitRatio, setSplitRatio] = useState(
+    () => loadSplitState().splitRatio,
+  );
+  const workspaceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    saveSplitState({ splitTabIds, activeSplitTabId, splitRatio });
+  }, [splitTabIds, activeSplitTabId, splitRatio]);
+
+  // Pin/unpin a tab into the split pane (toggles), updating the active pin.
+  const togglePin = useCallback(
+    (tabId: string) => {
+      const res = togglePinnedTab(splitTabIds, activeSplitTabId, tabId);
+      setSplitTabIds(res.splitTabIds);
+      setActiveSplitTabId(res.activeSplitTabId);
+    },
+    [splitTabIds, activeSplitTabId],
+  );
   // Ids of tabs whose results are detached into their own separate windows (one
   // window per tab). Each window keeps showing its tab even when the user
   // switches tabs in the main window.
@@ -338,6 +382,11 @@ export const Editor = () => {
   const [selectableQueries, setSelectableQueries] = useState<string[]>([]);
   const [isQuerySelectionModalOpen, setIsQuerySelectionModalOpen] =
     useState(false);
+  const {
+    pending: dangerousQuery,
+    guardQuery: guardDangerousQuery,
+    resolve: resolveDangerousQuery,
+  } = useDangerousQueryGuard();
   const [isTabSwitcherOpen, setIsTabSwitcherOpen] = useState(false);
   const [isRunDropdownOpen, setIsRunDropdownOpen] = useState(false);
   const [isDbDropdownOpen, setIsDbDropdownOpen] = useState(false);
@@ -645,6 +694,8 @@ export const Editor = () => {
         pendingDeletions?: Record<string, unknown>;
         pendingInsertions?: Record<string, PendingInsertion>;
       },
+      distinctOverride?: boolean,
+      offsetOverride?: number,
     ) => {
       const targetTabId = tabId || activeTabIdRef.current;
       if (!activeConnectionId || !targetTabId) return;
@@ -672,12 +723,18 @@ export const Editor = () => {
             sortOverride: sortOverride !== undefined ? sortOverride : undefined,
             limitOverride:
               limitOverride !== undefined ? limitOverride : undefined,
+            offsetOverride:
+              offsetOverride !== undefined ? offsetOverride : undefined,
+            distinctOverride:
+              distinctOverride !== undefined ? distinctOverride : undefined,
             wrapLimitSubquery: true,
           },
         );
       }
 
       if (!textToRun || !textToRun.trim()) return;
+
+      if (!(await guardDangerousQuery(textToRun))) return;
 
       // Check for parameters
       const params = extractQueryParams(textToRun);
@@ -848,6 +905,7 @@ export const Editor = () => {
       isMultiDb,
       activeDatabaseName,
       addHistoryEntry,
+      guardDangerousQuery,
     ],
   );
 
@@ -858,6 +916,8 @@ export const Editor = () => {
 
       const targetTab = tabsRef.current.find((t) => t.id === targetTabId);
       if (!targetTab) return;
+
+      if (!(await guardDangerousQuery(queries))) return;
 
       // Collect all unique parameters across all queries
       const allParams = [
@@ -1029,7 +1089,7 @@ export const Editor = () => {
       });
       updateTab(targetTabId, { isLoading: false });
     },
-    [activeConnectionId, updateTab, patchResultEntry, settings.resultPageSize, activeSchema, t, isMultiDb, activeDatabaseName, addHistoryEntry],
+    [activeConnectionId, updateTab, patchResultEntry, settings.resultPageSize, activeSchema, t, isMultiDb, activeDatabaseName, addHistoryEntry, guardDangerousQuery],
   );
 
   const runResultEntryPage = useCallback(
@@ -1538,26 +1598,56 @@ export const Editor = () => {
     runQuery,
   ]);
 
-  const handleRefresh = useCallback(() => {
-    const currentTab = tabsRef.current.find(
-      (t) => t.id === activeTabIdRef.current,
-    );
-    if (currentTab?.activeTable && activeConnectionId)
-      runQuery(currentTab.query, currentTab.page);
-  }, [activeConnectionId, runQuery]);
+  const handleRefresh = useCallback(
+    (tabIdArg?: string) => {
+      // Guard: onRefresh may be wired to an onClick, which would pass an event.
+      const targetId =
+        (typeof tabIdArg === "string" ? tabIdArg : undefined) ??
+        activeTabIdRef.current;
+      const currentTab = tabsRef.current.find((t) => t.id === targetId);
+      if (currentTab?.activeTable && activeConnectionId)
+        runQuery(currentTab.query, currentTab.page, currentTab.id);
+    },
+    [activeConnectionId, runQuery],
+  );
 
   const handleToolbarUpdate = useCallback(
-    (filter: string, sort: string, limit: number | undefined) => {
-      if (!activeTabIdRef.current) return;
+    (
+      update: {
+        filter: string;
+        sort: string;
+        limit: number | undefined;
+        offset?: number;
+        distinct?: boolean;
+      },
+      tabIdArg?: string,
+    ) => {
+      const tabId = tabIdArg ?? activeTabIdRef.current;
+      if (!tabId) return;
 
-      updateTab(activeTabIdRef.current, {
+      const { filter, sort, limit, offset, distinct } = update;
+
+      updateTab(tabId, {
         filterClause: filter,
         sortClause: sort,
         limitClause: limit,
+        offsetClause: offset,
+        distinct,
       });
 
       // Pass values directly to runQuery to avoid race conditions with ref updates
-      runQuery(undefined, 1, undefined, undefined, filter, sort, limit);
+      runQuery(
+        undefined,
+        1,
+        tabId,
+        undefined,
+        filter,
+        sort,
+        limit,
+        undefined,
+        distinct,
+        offset,
+      );
     },
     [updateTab, runQuery],
   );
@@ -1583,10 +1673,10 @@ export const Editor = () => {
   );
 
   const handleForeignKeyNavigate = useCallback(
-    (fk: ForeignKey, value: unknown) => {
-      const currentTab = tabsRef.current.find(
-        (tb) => tb.id === activeTabIdRef.current,
-      );
+    (fk: ForeignKey, value: unknown, sourceTab?: Tab) => {
+      const currentTab =
+        sourceTab ??
+        tabsRef.current.find((tb) => tb.id === activeTabIdRef.current);
       if (!currentTab || !activeConnectionId) return;
 
       const sourceType = currentTab.columnMetadata?.find(
@@ -1641,10 +1731,11 @@ export const Editor = () => {
   );
 
   const handleSort = useCallback(
-    (colName: string) => {
-      if (!activeTab) return;
+    (colName: string, sortTab?: Tab) => {
+      const targetTab = sortTab ?? activeTab;
+      if (!targetTab) return;
 
-      const currentSort = activeTab.sortClause || "";
+      const currentSort = targetTab.sortClause || "";
       const parts = currentSort.trim().split(/\s+/);
 
       let newSort = "";
@@ -1668,18 +1759,23 @@ export const Editor = () => {
       }
 
       handleToolbarUpdate(
-        activeTab.filterClause || "",
-        newSort,
-        activeTab.limitClause,
+        {
+          filter: targetTab.filterClause || "",
+          sort: newSort,
+          limit: targetTab.limitClause,
+          offset: targetTab.offsetClause,
+          distinct: targetTab.distinct,
+        },
+        targetTab.id,
       );
     },
     [activeTab, activeDriver, handleToolbarUpdate],
   );
 
   const handlePendingChange = useCallback(
-    (pkVal: unknown, colName: string, value: unknown) => {
-      if (!activeTabIdRef.current) return;
-      const tabId = activeTabIdRef.current;
+    (pkVal: unknown, colName: string, value: unknown, tabIdArg?: string) => {
+      const tabId = tabIdArg ?? activeTabIdRef.current;
+      if (!tabId) return;
 
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
@@ -1720,9 +1816,10 @@ export const Editor = () => {
   );
 
   const handleSelectionChange = useCallback(
-    (indices: Set<number>) => {
-      if (!activeTabIdRef.current) return;
-      updateTab(activeTabIdRef.current, { selectedRows: Array.from(indices) });
+    (indices: Set<number>, tabIdArg?: string) => {
+      const tabId = tabIdArg ?? activeTabIdRef.current;
+      if (!tabId) return;
+      updateTab(tabId, { selectedRows: Array.from(indices) });
     },
     [updateTab],
   );
@@ -1781,9 +1878,9 @@ export const Editor = () => {
   }, [activeTab, updateActiveTab]);
 
   const handlePendingInsertionChange = useCallback(
-    (tempId: string, colName: string, value: unknown) => {
-      if (!activeTabIdRef.current) return;
-      const tabId = activeTabIdRef.current;
+    (tempId: string, colName: string, value: unknown, tabIdArg?: string) => {
+      const tabId = tabIdArg ?? activeTabIdRef.current;
+      if (!tabId) return;
 
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
@@ -1813,9 +1910,9 @@ export const Editor = () => {
   );
 
   const handleDiscardInsertion = useCallback(
-    (tempId: string) => {
-      if (!activeTabIdRef.current) return;
-      const tabId = activeTabIdRef.current;
+    (tempId: string, tabIdArg?: string) => {
+      const tabId = tabIdArg ?? activeTabIdRef.current;
+      if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab?.pendingInsertions) return;
 
@@ -1828,9 +1925,9 @@ export const Editor = () => {
   );
 
   const handleRevertDeletion = useCallback(
-    (pkVal: unknown) => {
-      if (!activeTabIdRef.current) return;
-      const tabId = activeTabIdRef.current;
+    (pkVal: unknown, tabIdArg?: string) => {
+      const tabId = tabIdArg ?? activeTabIdRef.current;
+      if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab?.pendingDeletions) return;
 
@@ -1849,9 +1946,9 @@ export const Editor = () => {
   );
 
   const handleMarkForDeletion = useCallback(
-    (pkVal: unknown) => {
-      if (!activeTabIdRef.current) return;
-      const tabId = activeTabIdRef.current;
+    (pkVal: unknown, tabIdArg?: string) => {
+      const tabId = tabIdArg ?? activeTabIdRef.current;
+      if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
 
@@ -1868,9 +1965,9 @@ export const Editor = () => {
   );
 
   const handleMarkMultipleForDeletion = useCallback(
-    (pkVals: unknown[]) => {
-      if (!activeTabIdRef.current) return;
-      const tabId = activeTabIdRef.current;
+    (pkVals: unknown[], tabIdArg?: string) => {
+      const tabId = tabIdArg ?? activeTabIdRef.current;
+      if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
 
@@ -1885,9 +1982,9 @@ export const Editor = () => {
   );
 
   const handleDuplicateRow = useCallback(
-    (rowData: Record<string, unknown>) => {
-      if (!activeTabIdRef.current) return;
-      const tabId = activeTabIdRef.current;
+    (rowData: Record<string, unknown>, tabIdArg?: string) => {
+      const tabId = tabIdArg ?? activeTabIdRef.current;
+      if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
 
@@ -2041,11 +2138,15 @@ export const Editor = () => {
     showAlert,
   ]);
 
-  const handleSubmitChanges = useCallback(async () => {
-    if (!activeTab || !activeTab.activeTable || !activeConnectionId) return;
+  const handleSubmitChanges = useCallback(async (tabArg?: Tab, schemaArg?: string) => {
+    // Defaults keep the main path identical; the split pane passes its own tab
+    // and schema so it can save without becoming the active tab.
+    const tab = tabArg ?? activeTab;
+    const schema = schemaArg ?? activeSchema;
+    if (!tab || !tab.activeTable || !activeConnectionId) return;
 
     // pkColumns is required for updates/deletions but not for insertions-only
-    const hasPkColumns = !!(activeTab.pkColumns && activeTab.pkColumns.length > 0);
+    const hasPkColumns = !!(tab.pkColumns && tab.pkColumns.length > 0);
 
     const {
       pendingChanges,
@@ -2054,7 +2155,7 @@ export const Editor = () => {
       activeTable,
       pkColumns,
       selectedRows,
-    } = activeTab;
+    } = tab;
     const updates: { pkVal: Record<string, unknown>; colName: string; newVal: unknown }[] = [];
     const deletions: Record<string, unknown>[] = [];
     const insertions: { tempId: string; data: Record<string, unknown> }[] = [];
@@ -2063,11 +2164,11 @@ export const Editor = () => {
     const hasSelection = !applyToAll && selectedRows && selectedRows.length > 0;
     const selectedPkSet = new Set<string>();
 
-    if (hasSelection && activeTab.result && hasPkColumns && pkColumns) {
-      const pkIndices = pkColumns.map((c) => activeTab.result!.columns.indexOf(c));
+    if (hasSelection && tab.result && hasPkColumns && pkColumns) {
+      const pkIndices = pkColumns.map((c) => tab.result!.columns.indexOf(c));
       if (pkIndices.every((i) => i !== -1)) {
         selectedRows.forEach((rowIndex) => {
-          const row = activeTab.result!.rows[rowIndex];
+          const row = tab.result!.rows[rowIndex];
           if (row) selectedPkSet.add(serializePkKey(buildPkMap(pkColumns, row, pkIndices)));
         });
       }
@@ -2100,7 +2201,7 @@ export const Editor = () => {
         const columns = await invoke<TableColumn[]>("get_columns", {
           connectionId: activeConnectionId,
           tableName: activeTable,
-          ...(activeSchema ? { schema: activeSchema } : {}),
+          ...(schema ? { schema } : {}),
         });
 
         const selectedDisplayIndices = new Set<number>();
@@ -2115,7 +2216,7 @@ export const Editor = () => {
 
         // Filter and validate insertions
         // Insertion rows have displayIndex = existingRowCount + insertionIndex
-        const existingRowCount = activeTab.result?.rows.length || 0;
+        const existingRowCount = tab.result?.rows.length || 0;
         let insertionIndex = 0;
         for (const [tempId, insertion] of Object.entries(pendingInsertions)) {
           // Check if this insertion is selected (if filtering by selection)
@@ -2160,14 +2261,14 @@ export const Editor = () => {
     )
       return;
 
-    updateActiveTab({ isLoading: true });
+    updateTab(tab.id, { isLoading: true });
 
     try {
       const promises = [];
 
       const databaseParam =
-        isMultiDatabaseCapable(activeCapabilities) && activeTab?.schema
-          ? { database: activeTab.schema }
+        isMultiDatabaseCapable(activeCapabilities) && tab?.schema
+          ? { database: tab.schema }
           : {};
 
       // Deletions
@@ -2178,7 +2279,7 @@ export const Editor = () => {
               connectionId: activeConnectionId,
               table: activeTable,
               pkMap,
-              ...(activeSchema ? { schema: activeSchema } : {}),
+              ...(schema ? { schema } : {}),
               ...databaseParam,
             }),
           ),
@@ -2195,7 +2296,7 @@ export const Editor = () => {
               pkMap: u.pkVal,
               colName: u.colName,
               newVal: u.newVal,
-              ...(activeSchema ? { schema: activeSchema } : {}),
+              ...(schema ? { schema } : {}),
               ...databaseParam,
             }),
           ),
@@ -2210,7 +2311,7 @@ export const Editor = () => {
               connectionId: activeConnectionId,
               table: activeTable,
               data: insertion.data,
-              ...(activeSchema ? { schema: activeSchema } : {}),
+              ...(schema ? { schema } : {}),
               ...databaseParam,
             }),
           ),
@@ -2250,9 +2351,9 @@ export const Editor = () => {
 
       // Refresh query preserving remaining pending changes
       runQuery(
-        activeTab.query,
-        activeTab.page,
-        undefined,
+        tab.query,
+        tab.page,
+        tab.id,
         undefined,
         undefined,
         undefined,
@@ -2265,7 +2366,7 @@ export const Editor = () => {
       );
     } catch (e) {
       console.error("Batch update failed", e);
-      updateActiveTab({ isLoading: false });
+      updateTab(tab.id, { isLoading: false });
       showAlert(t("dataGrid.updateFailed") + String(e), {
         title: t("common.error"),
         kind: "error",
@@ -2274,7 +2375,7 @@ export const Editor = () => {
   }, [
     activeTab,
     activeConnectionId,
-    updateActiveTab,
+    updateTab,
     runQuery,
     t,
     applyToAll,
@@ -2611,6 +2712,32 @@ export const Editor = () => {
     document.addEventListener("mouseup", stopResize);
   };
 
+  // Horizontal drag on the split divider — resizes the main/right pane widths.
+  const startSplitResize = () => {
+    const container = workspaceRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    const overlay = document.createElement("div");
+    overlay.style.cssText =
+      "position:fixed;inset:0;z-index:9999;cursor:col-resize";
+    document.body.appendChild(overlay);
+
+    const onMove = (e: MouseEvent) => {
+      setSplitRatio(splitRatioFromClientX(e.clientX, rect.left, rect.width));
+    };
+    const onUp = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      overlay.remove();
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
   const cancelExport = useCallback(async () => {
     if (!activeConnectionId) return;
     try {
@@ -2756,8 +2883,18 @@ export const Editor = () => {
   // connection color when present, falling back to the default blue otherwise.
   const tabAccentColor = tabBarAccent ?? "#3b82f6";
 
+  // The tab pinned into the right-hand split pane (null if none / it was closed).
+  const pinnedTabs = resolvePinnedTabs(tabs, splitTabIds);
+  const splitTab =
+    resolveSplitTab(tabs, activeSplitTabId) ??
+    (pinnedTabs.length > 0 ? pinnedTabs[pinnedTabs.length - 1] : null);
+
   return (
     <div className="flex flex-col h-full bg-base">
+      <div ref={workspaceRef} className="flex flex-row flex-1 min-h-0">
+        <div
+          className="flex flex-col h-full min-w-0 flex-1"
+        >
       {/* Tab Bar — tinted with the active connection's accent color */}
       <div
         className="flex items-center bg-elevated border-b border-default h-9 shrink-0"
@@ -3245,6 +3382,8 @@ export const Editor = () => {
               initialFilter={activeTab?.filterClause}
               initialSort={activeTab?.sortClause}
               initialLimit={activeTab?.limitClause}
+              initialOffset={activeTab?.offsetClause}
+              initialDistinct={activeTab?.distinct}
               placeholderColumn={placeholders.column}
               placeholderSort={placeholders.sort}
               defaultLimit={settings.resultPageSize || 100}
@@ -3730,7 +3869,7 @@ export const Editor = () => {
                         </label>
                         <div className="w-[1px] h-4 bg-blue-900/50 mx-0.5"></div>
                         <button
-                          onClick={handleSubmitChanges}
+                          onClick={() => handleSubmitChanges()}
                           disabled={!applyToAll && !selectionHasPending}
                           className="flex items-center gap-1.5 px-2 h-7 text-green-400 hover:bg-green-900/20 hover:text-green-300 rounded text-xs font-medium border border-transparent hover:border-green-900/50 transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-transparent disabled:cursor-not-allowed"
                           title={t("editor.submitChanges")}
@@ -3801,6 +3940,11 @@ export const Editor = () => {
                           : undefined
                       }
                       readonly={driverReadonly || !!activeTab.materialized}
+                      columnVisibilityKey={
+                        activeTab.activeTable
+                          ? `${activeConnectionId ?? ""}:${activeTab.schema ?? ""}:${activeTab.activeTable}`
+                          : undefined
+                      }
                     />
                   </div>
                   {activeFkQuery && activeConnectionId && (
@@ -3836,6 +3980,107 @@ export const Editor = () => {
           </button>
         </div>
       )}
+        </div>
+        {/* end left (main) column */}
+
+        {splitTab && (
+          <>
+            <div
+              onMouseDown={startSplitResize}
+              className="w-1 shrink-0 cursor-col-resize bg-default/40 hover:bg-blue-500/60 transition-colors"
+            />
+            <div
+              className="h-full shrink-0 flex"
+              style={{ width: `${(1 - splitRatio) * 100}%` }}
+            >
+              <SplitResultsPane
+                tab={splitTab}
+                pinnedTabs={pinnedTabs}
+                activeSplitTabId={splitTab.id}
+                onSelectPinned={(id) => setActiveSplitTabId(id)}
+                onUnpin={(id) => togglePin(id)}
+                connectionId={activeConnectionId}
+                copyFormat={copyFormat}
+                csvDelimiter={csvDelimiter}
+                csvIncludeHeaders={csvIncludeHeaders}
+                onPageChange={(page) =>
+                  runQuery(splitTab.query, page, splitTab.id)
+                }
+                onClose={() => togglePin(splitTab.id)}
+                onFocusTab={() => setActiveTabId(splitTab.id)}
+                onSwap={() => {
+                  const previousActive = activeTabIdRef.current;
+                  setActiveTabId(splitTab.id);
+                  // The now-main tab leaves the pins; the previously-active tab
+                  // takes its place as the shown pin.
+                  setSplitTabIds((ids) =>
+                    ids.map((id) =>
+                      id === splitTab.id ? (previousActive ?? id) : id,
+                    ),
+                  );
+                  setActiveSplitTabId(previousActive);
+                }}
+                onSave={() =>
+                  handleSubmitChanges(
+                    splitTab,
+                    splitTab.schema ?? activeSchema ?? undefined,
+                  )
+                }
+                editGridProps={
+                  splitTab.activeTable && splitTab.result
+                    ? {
+                        tableName: splitTab.activeTable,
+                        pkColumns: splitTab.pkColumns,
+                        autoIncrementColumns: splitTab.autoIncrementColumns,
+                        defaultValueColumns: splitTab.defaultValueColumns,
+                        nullableColumns: splitTab.nullableColumns,
+                        columnMetadata: splitTab.columnMetadata,
+                        foreignKeys: splitTab.foreignKeys,
+                        connectionId: activeConnectionId,
+                        onRefresh: () => handleRefresh(splitTab.id),
+                        pendingChanges: splitTab.pendingChanges,
+                        pendingDeletions: splitTab.pendingDeletions,
+                        pendingInsertions: splitTab.pendingInsertions,
+                        onPendingChange: (pk, col, val) =>
+                          handlePendingChange(pk, col, val, splitTab.id),
+                        onPendingInsertionChange: (tid, col, val) =>
+                          handlePendingInsertionChange(tid, col, val, splitTab.id),
+                        onDiscardInsertion: (tid) =>
+                          handleDiscardInsertion(tid, splitTab.id),
+                        onRevertDeletion: (pk) =>
+                          handleRevertDeletion(pk, splitTab.id),
+                        onMarkForDeletion: (pk) =>
+                          handleMarkForDeletion(pk, splitTab.id),
+                        onMarkMultipleForDeletion: (pks) =>
+                          handleMarkMultipleForDeletion(pks, splitTab.id),
+                        onDuplicateRow: (rd) =>
+                          handleDuplicateRow(rd, splitTab.id),
+                        selectedRows: new Set(splitTab.selectedRows || []),
+                        onSelectionChange: (idx) =>
+                          handleSelectionChange(idx, splitTab.id),
+                        onForeignKeyNavigate: (fk, value) =>
+                          handleForeignKeyNavigate(fk, value, splitTab),
+                        onSort:
+                          splitTab.type === "table" &&
+                          (splitTab.result?.rows.length ?? 0) > 0
+                            ? (col) => handleSort(col, splitTab)
+                            : undefined,
+                        sortClause: splitTab.sortClause,
+                        copyFormat,
+                        csvDelimiter,
+                        csvIncludeHeaders,
+                        readonly:
+                          driverReadonly || !!splitTab.materialized,
+                        columnVisibilityKey: `${activeConnectionId ?? ""}:${splitTab.schema ?? ""}:${splitTab.activeTable}`,
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          </>
+        )}
+      </div>
+      {/* end workspace flex-row */}
 
       {activeTab.activeTable && (
         <NewRowModal
@@ -3861,6 +4106,25 @@ export const Editor = () => {
           setIsQuerySelectionModalOpen(false);
         }}
         onClose={() => setIsQuerySelectionModalOpen(false)}
+      />
+      <ConfirmModal
+        isOpen={!!dangerousQuery}
+        onClose={() => resolveDangerousQuery(false)}
+        onConfirm={() => resolveDangerousQuery(true)}
+        title={t(
+          dangerousQuery
+            ? DANGEROUS_QUERY_I18N[dangerousQuery.kind].title
+            : "editor.dangerousQueryTitle",
+        )}
+        message={t(
+          dangerousQuery
+            ? DANGEROUS_QUERY_I18N[dangerousQuery.kind].message
+            : "editor.dangerousQueryMessage",
+        )}
+        sql={dangerousQuery?.sql}
+        confirmLabel={t("editor.dangerousQueryConfirm")}
+        variant="danger"
+        confirmDelaySeconds={5}
       />
       <TabSwitcherModal
         isOpen={isTabSwitcherOpen}
@@ -3924,6 +4188,13 @@ export const Editor = () => {
           y={tabContextMenu.y}
           onClose={() => setTabContextMenu(null)}
           items={[
+            {
+              label: splitTabIds.includes(tabContextMenu.tabId)
+                ? t("editor.split.unpin")
+                : t("editor.split.pin"),
+              icon: PanelRight,
+              action: () => togglePin(tabContextMenu.tabId),
+            },
             ...(tabs.find((t) => t.id === tabContextMenu.tabId)?.type ===
             "notebook"
               ? [

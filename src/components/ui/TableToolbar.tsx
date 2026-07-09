@@ -7,6 +7,9 @@ import {
   Plus,
   SlidersHorizontal,
   X,
+  Play,
+  Search,
+  ChevronDown,
 } from "lucide-react";
 import type { TableColumn } from "../../types/editor";
 import {
@@ -16,6 +19,8 @@ import {
   buildStructuredFilterClause,
   buildSingleFilterClause,
   createEmptyFilter,
+  buildGlobalSearchClause,
+  isTextColumn,
 } from "../../utils/filterBar";
 import type { StructuredFilter } from "../../utils/filterBar";
 import { formatSqlIdentifier } from "../../utils/identifiers";
@@ -24,20 +29,32 @@ import { FilterRow } from "./FilterRow";
 import { SlotAnchor } from "./SlotAnchor";
 import { useDatabase } from "../../hooks/useDatabase";
 
+export interface TableToolbarUpdate {
+  filter: string;
+  sort: string;
+  limit: number | undefined;
+  offset?: number;
+  distinct?: boolean;
+}
+
 interface TableToolbarProps {
   initialFilter?: string;
   initialSort?: string;
   initialLimit?: number | null;
+  initialOffset?: number | null;
+  initialDistinct?: boolean;
   placeholderColumn: string;
   placeholderSort: string;
   defaultLimit: number;
   columnMetadata?: TableColumn[];
-  onUpdate: (filter: string, sort: string, limit: number | undefined) => void;
+  onUpdate: (update: TableToolbarUpdate) => void;
 }
 
 interface TableToolbarInternalProps extends TableToolbarProps {
   panelOpen: boolean;
   onPanelOpenChange: (open: boolean) => void;
+  advancedOpen: boolean;
+  onAdvancedOpenChange: (open: boolean) => void;
   structuredFilters: StructuredFilter[];
   onStructuredFiltersChange: (filters: StructuredFilter[]) => void;
   appliedFilters: Record<string, boolean>;
@@ -52,12 +69,16 @@ const TableToolbarInternal = ({
   initialFilter,
   initialSort,
   initialLimit,
+  initialOffset,
+  initialDistinct,
   placeholderColumn,
   placeholderSort,
   defaultLimit,
   columnMetadata,
   panelOpen,
   onPanelOpenChange,
+  advancedOpen,
+  onAdvancedOpenChange,
   structuredFilters,
   onStructuredFiltersChange,
   appliedFilters,
@@ -73,6 +94,11 @@ const TableToolbarInternal = ({
   const [limitInput, setLimitInput] = useState(
     initialLimit && initialLimit > 0 ? String(initialLimit) : ""
   );
+  const [offsetInput, setOffsetInput] = useState(
+    initialOffset && initialOffset > 0 ? String(initialOffset) : ""
+  );
+  const [distinctInput, setDistinctInput] = useState(initialDistinct ?? false);
+  const [searchInput, setSearchInput] = useState("");
 
   // Autocomplete state — WHERE
   const [autocompleteOpen, setAutocompleteOpen] = useState(false);
@@ -102,18 +128,52 @@ const TableToolbarInternal = ({
     []
   );
 
+  const getOffsetVal = useCallback(
+    (offset: string) => {
+      const n = offset ? parseInt(offset, 10) : undefined;
+      return n && n > 0 ? n : undefined;
+    },
+    []
+  );
+
+  // Applies the given WHERE/ORDER BY/LIMIT together with the current advanced
+  // options (OFFSET, DISTINCT). Explicit (button/Enter) only — never auto-runs.
   const commitSql = useCallback(
     (filter: string, sort: string, limit: string) => {
-      const limitVal = getLimitVal(limit);
-      const filterChanged = (filter || "") !== (initialFilter || "");
-      const sortChanged = (sort || "") !== (initialSort || "");
-      const limitChanged = limitVal !== initialLimit;
-      if (filterChanged || sortChanged || limitChanged) {
-        onUpdate(filter, formatSortClause(sort, activeDriver), limitVal);
-      }
+      onUpdate({
+        filter,
+        sort: formatSortClause(sort, activeDriver),
+        limit: getLimitVal(limit),
+        offset: getOffsetVal(offsetInput),
+        distinct: distinctInput,
+      });
     },
-    [getLimitVal, initialFilter, initialSort, initialLimit, onUpdate, activeDriver]
+    [getLimitVal, getOffsetVal, onUpdate, activeDriver, offsetInput, distinctInput]
   );
+
+  // Emits an already-built clause (structured-panel paths) together with the
+  // current advanced options (OFFSET, DISTINCT).
+  const emit = useCallback(
+    (filter: string, sortFormatted: string, limit: number | undefined) => {
+      onUpdate({
+        filter,
+        sort: sortFormatted,
+        limit,
+        offset: getOffsetVal(offsetInput),
+        distinct: distinctInput,
+      });
+    },
+    [onUpdate, getOffsetVal, offsetInput, distinctInput]
+  );
+
+  // Whether the current inputs differ from the last-applied (initial) values,
+  // so the Apply button lights up exactly when applying would change the query.
+  const isDirty =
+    (filterInput || "") !== (initialFilter || "") ||
+    (sortInput || "") !== (initialSort || "") ||
+    (getLimitVal(limitInput) || undefined) !== (initialLimit || undefined) ||
+    (getOffsetVal(offsetInput) || undefined) !== (initialOffset || undefined) ||
+    (distinctInput || false) !== (initialDistinct || false);
 
   // ── click outside to close panel ─────────────────────────────────────────────
 
@@ -151,8 +211,8 @@ const TableToolbarInternal = ({
     const clause = buildStructuredFilterClause(structuredFilters, activeDriver);
     setFilterInput(clause);
     onPanelOpenChange(false);
-    onUpdate(clause, formatSortClause(sortInput, activeDriver), getLimitVal(limitInput));
-  }, [structuredFilters, sortInput, limitInput, getLimitVal, onUpdate, onPanelOpenChange, activeDriver]);
+    emit(clause, formatSortClause(sortInput, activeDriver), getLimitVal(limitInput));
+  }, [structuredFilters, sortInput, limitInput, getLimitVal, emit, onPanelOpenChange, activeDriver]);
 
   const togglePanel = () => {
     if (panelOpen) {
@@ -167,7 +227,7 @@ const TableToolbarInternal = ({
   // Applies all enabled filters — does NOT close panel
   const handleApplyAll = useCallback(() => {
     const clause = buildStructuredFilterClause(structuredFilters, activeDriver);
-    onUpdate(clause, formatSortClause(sortInput, activeDriver), getLimitVal(limitInput));
+    emit(clause, formatSortClause(sortInput, activeDriver), getLimitVal(limitInput));
     structuredFilters.forEach((f) => {
       if (f.enabled !== false) {
         onTriggerApplied(f.id);
@@ -175,12 +235,12 @@ const TableToolbarInternal = ({
         onResetApplied(f.id);
       }
     });
-  }, [structuredFilters, sortInput, limitInput, getLimitVal, onUpdate, onTriggerApplied, onResetApplied, activeDriver]);
+  }, [structuredFilters, sortInput, limitInput, getLimitVal, emit, onTriggerApplied, onResetApplied, activeDriver]);
 
   // Applies only that single row's filter — resets Applied on all others
   const handleApplySingle = useCallback(
     (filter: StructuredFilter) => {
-      onUpdate(
+      emit(
         buildSingleFilterClause(filter, activeDriver),
         formatSortClause(sortInput, activeDriver),
         getLimitVal(limitInput),
@@ -188,12 +248,12 @@ const TableToolbarInternal = ({
       onResetAllApplied();
       onTriggerApplied(filter.id);
     },
-    [sortInput, limitInput, getLimitVal, onUpdate, onResetAllApplied, onTriggerApplied, activeDriver]
+    [sortInput, limitInput, getLimitVal, emit, onResetAllApplied, onTriggerApplied, activeDriver]
   );
 
   const handleUnset = () => {
     onStructuredFiltersChange([]);
-    onUpdate("", formatSortClause(sortInput, activeDriver), getLimitVal(limitInput));
+    emit("", formatSortClause(sortInput, activeDriver), getLimitVal(limitInput));
   };
 
   const handleAddFilter = () => {
@@ -310,7 +370,72 @@ const TableToolbarInternal = ({
   const handleWhereBlur = () => {
     if (autocompleteMouseDown.current) return;
     setAutocompleteOpen(false);
-    commitSql(filterInput, sortInput, limitInput);
+    // Intentionally does NOT run the query on blur: leaving the field (e.g. to
+    // read the current table) must never wipe the results with a half-typed
+    // clause. Changes are applied explicitly via the Apply button or Enter.
+  };
+
+  // Clear WHERE and re-run immediately — an empty clause is always valid, so
+  // this is a safe one-click "show all rows" shortcut.
+  const handleClearWhere = () => {
+    setFilterInput("");
+    setAutocompleteOpen(false);
+    commitSql("", sortInput, limitInput);
+    filterInputRef.current?.focus();
+  };
+
+  // Clear ORDER BY and re-run immediately.
+  const handleClearSort = () => {
+    setSortInput("");
+    setSortAcOpen(false);
+    commitSql(filterInput, "", limitInput);
+    sortInputRef.current?.focus();
+  };
+
+  // ── global search (advanced row) ──────────────────────────────────────────────
+  // Builds an OR-of-LIKE clause across all text columns and writes it into the
+  // WHERE field so it stays visible/editable, then applies it. Reuses the normal
+  // filter pipeline (no query-shape change).
+  const hasTextColumns = columns.some((c) => isTextColumn(c.data_type));
+
+  const applyGlobalSearch = () => {
+    const term = searchInput.trim();
+    const clause = buildGlobalSearchClause(columns, searchInput, activeDriver);
+    // Non-empty term but nothing searchable (no text columns): do nothing.
+    if (term && !clause) return;
+    setFilterInput(clause);
+    commitSql(clause, sortInput, limitInput);
+  };
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      applyGlobalSearch();
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput("");
+    setFilterInput("");
+    commitSql("", sortInput, limitInput);
+  };
+
+  // ── advanced options: DISTINCT + OFFSET ───────────────────────────────────────
+  // DISTINCT is a deliberate toggle → apply immediately with the current form.
+  const handleToggleDistinct = () => {
+    const next = !distinctInput;
+    setDistinctInput(next);
+    onUpdate({
+      filter: filterInput,
+      sort: formatSortClause(sortInput, activeDriver),
+      limit: getLimitVal(limitInput),
+      offset: getOffsetVal(offsetInput),
+      distinct: next,
+    });
+  };
+
+  const handleOffsetKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") commitSql(filterInput, sortInput, limitInput);
   };
 
   // ── ORDER BY autocomplete ────────────────────────────────────────────────────
@@ -366,10 +491,10 @@ const TableToolbarInternal = ({
   const handleSortBlur = () => {
     if (sortAcMouseDown.current) return;
     setSortAcOpen(false);
-    if (!panelOpen) {
-      commitSql(filterInput, sortInput, limitInput);
-    } else {
-      onUpdate(
+    // Simple mode: do not auto-run on blur (see handleWhereBlur). When the
+    // structured panel is open, ORDER BY still applies live alongside it.
+    if (panelOpen) {
+      emit(
         buildStructuredFilterClause(structuredFilters, activeDriver),
         formatSortClause(sortInput, activeDriver),
         getLimitVal(limitInput),
@@ -378,10 +503,10 @@ const TableToolbarInternal = ({
   };
 
   const handleLimitBlur = () => {
-    if (!panelOpen) {
-      commitSql(filterInput, sortInput, limitInput);
-    } else {
-      onUpdate(
+    // Simple mode: do not auto-run on blur (see handleWhereBlur). When the
+    // structured panel is open, LIMIT still applies live alongside it.
+    if (panelOpen) {
+      emit(
         buildStructuredFilterClause(structuredFilters, activeDriver),
         formatSortClause(sortInput, activeDriver),
         getLimitVal(limitInput),
@@ -443,6 +568,18 @@ const TableToolbarInternal = ({
               placeholder={`${placeholderColumn} > 5 AND status = 'active'`}
             />
 
+            {filterInput && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleClearWhere}
+                title={t("toolbar.clearField")}
+                className="shrink-0 text-muted hover:text-secondary transition-colors"
+              >
+                <X size={12} />
+              </button>
+            )}
+
             {autocompleteOpen && autocompleteItems.length > 0 && (
               <ul
                 className="absolute left-0 top-full mt-1 z-50 bg-elevated border border-default rounded-lg shadow-xl min-w-52 max-h-52 overflow-y-auto"
@@ -495,6 +632,18 @@ const TableToolbarInternal = ({
             placeholder={`${placeholderSort} DESC`}
           />
 
+          {sortInput && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={handleClearSort}
+              title={t("toolbar.clearField")}
+              className="shrink-0 text-muted hover:text-secondary transition-colors"
+            >
+              <X size={12} />
+            </button>
+          )}
+
           {sortAcOpen && sortAcItems.length > 0 && (
             <ul
               className="absolute left-0 top-full mt-1 z-50 bg-elevated border border-default rounded-lg shadow-xl min-w-52 max-h-52 overflow-y-auto"
@@ -534,6 +683,44 @@ const TableToolbarInternal = ({
           />
         </div>
 
+        {/* Advanced row toggle (search + more) */}
+        {hasColumns && (
+          <button
+            onClick={() => onAdvancedOpenChange(!advancedOpen)}
+            title={t("toolbar.advanced")}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs border transition-all shrink-0 ${
+              advancedOpen
+                ? "bg-blue-600/20 border-blue-500/50 text-blue-300"
+                : "text-muted border-default hover:text-blue-300 hover:border-blue-500/40"
+            }`}
+          >
+            <Search size={12} />
+            <ChevronDown
+              size={12}
+              className={`transition-transform ${advancedOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+        )}
+
+        {/* Apply button — commits WHERE/ORDER BY/LIMIT explicitly (simple mode).
+            Runs only on click/Enter so a half-typed clause never clears the
+            currently shown table. Highlighted while there are unapplied edits. */}
+        {!panelOpen && (
+          <button
+            onClick={() => commitSql(filterInput, sortInput, limitInput)}
+            disabled={!isDirty}
+            title={t("toolbar.applyHint")}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium border transition-all shrink-0 ${
+              isDirty
+                ? "bg-blue-600/25 border-blue-500/60 text-blue-200 hover:bg-blue-600/35 hover:border-blue-400/70"
+                : "text-muted border-default/60 opacity-50 cursor-not-allowed"
+            }`}
+          >
+            <Play size={11} className={isDirty ? "fill-current" : ""} />
+            <span>{t("toolbar.apply")}</span>
+          </button>
+        )}
+
         {/* Plugin extension slot */}
         <SlotAnchor
           name="data-grid.toolbar.actions"
@@ -541,6 +728,87 @@ const TableToolbarInternal = ({
           className="flex items-center gap-1"
         />
       </div>
+
+      {/* Advanced row (inline — pushes the grid down, never overlays it) */}
+      {advancedOpen && hasColumns && (
+        <div className="bg-elevated border-b border-default flex items-center px-2 py-1.5 gap-2">
+          {/* Global search across all text columns */}
+          <div className="flex items-center gap-2 flex-1 bg-base border border-default rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors">
+            <Search size={14} className="text-muted shrink-0" />
+            <span className="text-xs text-blue-400 font-mono shrink-0">SEARCH</span>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              disabled={!hasTextColumns}
+              className="bg-transparent border-none outline-none text-xs text-secondary w-full placeholder:text-surface-tertiary font-mono disabled:opacity-50"
+              placeholder={
+                hasTextColumns
+                  ? t("toolbar.searchAllColumns")
+                  : t("toolbar.noTextColumns")
+              }
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                title={t("toolbar.clearField")}
+                className="shrink-0 text-muted hover:text-secondary transition-colors"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={applyGlobalSearch}
+            disabled={!hasTextColumns}
+            title={t("toolbar.applyHint")}
+            className="flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium border transition-all shrink-0 bg-blue-600/25 border-blue-500/60 text-blue-200 hover:bg-blue-600/35 hover:border-blue-400/70 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Search size={11} />
+            <span>{t("toolbar.search")}</span>
+          </button>
+
+          <div className="w-px h-5 bg-default/60 shrink-0" />
+
+          {/* DISTINCT toggle — applies immediately */}
+          <button
+            onClick={handleToggleDistinct}
+            title={t("toolbar.distinctHint")}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono border transition-all shrink-0 ${
+              distinctInput
+                ? "bg-blue-600/25 border-blue-500/60 text-blue-200"
+                : "text-muted border-default hover:text-blue-300 hover:border-blue-500/40"
+            }`}
+          >
+            <span
+              className={`w-3 h-3 rounded-sm border flex items-center justify-center ${
+                distinctInput ? "bg-blue-500/70 border-blue-400" : "border-default"
+              }`}
+            >
+              {distinctInput && <span className="w-1.5 h-1.5 bg-white rounded-[1px]" />}
+            </span>
+            DISTINCT
+          </button>
+
+          {/* OFFSET (only effective together with LIMIT) */}
+          <div className="flex items-center gap-1.5 w-36 bg-base border border-default rounded px-2 py-1 focus-within:border-blue-500/50 transition-colors shrink-0">
+            <span className="text-xs text-blue-400 font-mono shrink-0">OFFSET</span>
+            <input
+              type="number"
+              min={0}
+              value={offsetInput}
+              onChange={(e) => setOffsetInput(e.target.value)}
+              onKeyDown={handleOffsetKeyDown}
+              title={t("toolbar.offsetHint")}
+              className="bg-transparent border-none outline-none text-xs text-secondary w-full placeholder:text-surface-tertiary font-mono"
+              placeholder="0"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Overlay filter panel */}
       {panelOpen && (
@@ -645,6 +913,7 @@ const TableToolbarInternal = ({
 
 export const TableToolbar = (props: TableToolbarProps) => {
   const [panelOpen, setPanelOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [structuredFilters, setStructuredFilters] = useState<StructuredFilter[]>([]);
   const [appliedFilters, setAppliedFilters] = useState<Record<string, boolean>>({});
 
@@ -660,13 +929,15 @@ export const TableToolbar = (props: TableToolbarProps) => {
     setAppliedFilters({});
   }, []);
 
-  const stateKey = `${props.initialFilter}-${props.initialSort}-${props.initialLimit}`;
+  const stateKey = `${props.initialFilter}-${props.initialSort}-${props.initialLimit}-${props.initialOffset}-${props.initialDistinct}`;
   return (
     <TableToolbarInternal
       key={stateKey}
       {...props}
       panelOpen={panelOpen}
       onPanelOpenChange={setPanelOpen}
+      advancedOpen={advancedOpen}
+      onAdvancedOpenChange={setAdvancedOpen}
       structuredFilters={structuredFilters}
       onStructuredFiltersChange={setStructuredFilters}
       appliedFilters={appliedFilters}

@@ -32,6 +32,8 @@ import type { ForeignKey } from "../../types/editor";
  */
 export interface RowCtx {
   columns: string[];
+  /** Column names hidden client-side; their cells are skipped (index preserved). */
+  hiddenColumns: Set<string>;
   autoIncrementColumns?: string[];
   defaultValueColumns?: string[];
   nullableColumns?: string[];
@@ -156,6 +158,7 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
 
   const {
     columns,
+    hiddenColumns,
     autoIncrementColumns,
     defaultValueColumns,
     nullableColumns,
@@ -247,6 +250,8 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
           {isInsertion ? "NEW" : rowIndex + 1}
         </td>
         {columns.map((colName, colIndex) => {
+          // Skip hidden columns without shifting colIndex (edit/focus stay valid).
+          if (hiddenColumns.has(colName)) return null;
           const cellValue = rowOriginal[colIndex];
           const isEditing =
             editingCell?.rowIndex === rowIndex &&

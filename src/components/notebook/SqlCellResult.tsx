@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { DataGrid } from "../ui/DataGrid";
 import { ErrorDisplay } from "../ui/ErrorDisplay";
@@ -6,7 +7,11 @@ import type { CellChartConfig } from "../../types/notebook";
 import { canRenderChart, buildDefaultChartConfig } from "../../utils/notebookChart";
 import { ResultToolbar } from "./ResultToolbar";
 import { ResizeHandle } from "./ResizeHandle";
-import { CellChart } from "./CellChart";
+// Code-split the chart (pulls in recharts, ~385KB) — only loads when a chart
+// cell is actually shown.
+const CellChart = lazy(() =>
+  import("./CellChart").then((m) => ({ default: m.CellChart })),
+);
 import { CellSectionHeader } from "./CellSectionHeader";
 
 interface SqlCellResultProps {
@@ -112,11 +117,13 @@ export function SqlCellResult({
         />
       )}
       {chartCapable && chartVisible && chartConfig && onChartConfigChange && (
-        <CellChart
-          result={result}
-          config={chartConfig}
-          onConfigChange={onChartConfigChange}
-        />
+        <Suspense fallback={<div className="h-40" />}>
+          <CellChart
+            result={result}
+            config={chartConfig}
+            onConfigChange={onChartConfigChange}
+          />
+        </Suspense>
       )}
     </>
   );

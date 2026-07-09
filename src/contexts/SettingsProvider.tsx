@@ -255,6 +255,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     };
 
     loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; isLanguageApplied/queueLanguageApplication are stable useCallbacks
   }, []);
 
   // Update i18n when language changes

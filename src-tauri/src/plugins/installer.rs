@@ -4,6 +4,36 @@ use std::path::{Path, PathBuf};
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+
+/// Compute the lowercase hex SHA-256 of `bytes`.
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+/// Verify a downloaded plugin archive against an expected SHA-256 digest before
+/// it is ever extracted or executed. Comparison is case-insensitive and ignores
+/// surrounding whitespace. Returns an error (never installs) on mismatch.
+pub(crate) fn verify_checksum(
+    plugin_id: &str,
+    bytes: &[u8],
+    expected_sha256: &str,
+) -> Result<(), String> {
+    let actual = sha256_hex(bytes);
+    if actual.eq_ignore_ascii_case(expected_sha256.trim()) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Plugin '{}' checksum mismatch: expected sha256 {}, got {}. Refusing to install.",
+            plugin_id,
+            expected_sha256.trim(),
+            actual
+        ))
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct InstalledPluginInfo {
@@ -53,7 +83,11 @@ pub fn read_installed_plugin(plugin_id: &str) -> Result<InstalledPluginInfo, Str
     read_plugin_info_from_dir(&plugins_dir.join(plugin_id))
 }
 
-pub async fn download_and_install(plugin_id: &str, download_url: &str) -> Result<(), String> {
+pub async fn download_and_install(
+    plugin_id: &str,
+    download_url: &str,
+    expected_sha256: Option<&str>,
+) -> Result<(), String> {
     let plugins_dir = get_plugins_dir()?;
     let tmp_dir = plugins_dir.join(format!(".tmp-{}", plugin_id));
     let final_dir = plugins_dir.join(plugin_id);
@@ -110,6 +144,14 @@ pub async fn download_and_install(plugin_id: &str, download_url: &str) -> Result
         bytes.len(),
         content_type
     );
+
+    // Integrity check BEFORE anything is written to disk or executed. A plugin
+    // is a native executable spawned as a subprocess, so an unverified download
+    // is remote code execution waiting to happen.
+    if let Some(expected) = expected_sha256 {
+        verify_checksum(plugin_id, &bytes, expected)?;
+        log::info!("Plugin '{}' checksum verified (sha256)", plugin_id);
+    }
 
     // Extract to temp dir
     fs::create_dir_all(&tmp_dir).map_err(|e| format!("Failed to create temp directory: {}", e))?;

@@ -213,6 +213,37 @@ export function buildStructuredFilterClause(
 }
 
 /**
+ * Returns true when the given SQL data type is textual (char/varchar/text/…).
+ */
+export function isTextColumn(dataType: string): boolean {
+  const lower = (dataType || "").toLowerCase();
+  return STRING_TYPES.some((t) => lower.includes(t));
+}
+
+/**
+ * Builds a WHERE clause that searches `term` (case-insensitive substring) across
+ * every textual column, joined by OR — e.g.
+ *   (`name` LIKE '%foo%' OR `email` LIKE '%foo%')
+ * Single quotes in the term are escaped. Returns "" when the term is blank or
+ * the table has no textual columns.
+ */
+export function buildGlobalSearchClause(
+  columns: TableColumn[],
+  term: string,
+  driver?: string | null
+): string {
+  const trimmed = term.trim();
+  if (!trimmed) return "";
+  const textCols = (columns || []).filter((c) => isTextColumn(c.data_type));
+  if (textCols.length === 0) return "";
+  const escaped = trimmed.replace(/'/g, "''");
+  const parts = textCols.map(
+    (c) => `${formatSqlIdentifier(c.name, driver)} LIKE '%${escaped}%'`
+  );
+  return parts.length === 1 ? parts[0] : `(${parts.join(" OR ")})`;
+}
+
+/**
  * Creates a new empty StructuredFilter with the first available column.
  */
 export function createEmptyFilter(columns: TableColumn[]): StructuredFilter {

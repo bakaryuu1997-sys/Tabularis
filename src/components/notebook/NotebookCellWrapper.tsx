@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import type { NotebookCell } from "../../types/notebook";
 import type { CellChartConfig } from "../../types/notebook";
 import { restoreFromHistory, getHistorySize } from "../../utils/notebookHistory";
 import { NotebookCellHeader } from "./NotebookCellHeader";
 import { SqlCell } from "./SqlCell";
-import { MarkdownCell } from "./MarkdownCell";
+// Code-split the markdown renderer (pulls in react-markdown) — only loads when
+// a markdown cell is actually rendered.
+const MarkdownCell = lazy(() =>
+  import("./MarkdownCell").then((m) => ({ default: m.MarkdownCell })),
+);
 import { CellHistoryPanel } from "./CellHistoryPanel";
 
 interface NotebookCellWrapperProps {
@@ -132,11 +136,13 @@ export function NotebookCellWrapper({
           schema={activeSchema}
         />
       ) : !cell.isCollapsed ? (
-        <MarkdownCell
-          cell={cell}
-          onContentChange={(content) => onUpdate({ content })}
-          onTogglePreview={() => onUpdate({ isPreview: !cell.isPreview })}
-        />
+        <Suspense fallback={<div className="h-16" />}>
+          <MarkdownCell
+            cell={cell}
+            onContentChange={(content) => onUpdate({ content })}
+            onTogglePreview={() => onUpdate({ isPreview: !cell.isPreview })}
+          />
+        </Suspense>
       ) : null}
     </div>
   );

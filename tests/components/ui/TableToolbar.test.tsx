@@ -90,7 +90,9 @@ describe('TableToolbar', () => {
     fireEvent.change(filterInput, { target: { value: 'id > 10' } });
     fireEvent.keyDown(filterInput, { key: 'Enter' });
 
-    expect(mockOnUpdate).toHaveBeenCalledWith('id > 10', '', undefined);
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: 'id > 10', sort: '', limit: undefined }),
+    );
   });
 
   it('calls onUpdate when pressing Enter in sort input', () => {
@@ -100,7 +102,9 @@ describe('TableToolbar', () => {
     fireEvent.change(sortInput, { target: { value: 'name DESC' } });
     fireEvent.keyDown(sortInput, { key: 'Enter' });
 
-    expect(mockOnUpdate).toHaveBeenCalledWith('', 'name DESC', undefined);
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: '', sort: 'name DESC', limit: undefined }),
+    );
   });
 
   it('quotes sort column on commit for postgres driver', () => {
@@ -114,7 +118,9 @@ describe('TableToolbar', () => {
     fireEvent.change(sortInput, { target: { value: 'Status DESC' } });
     fireEvent.keyDown(sortInput, { key: 'Enter' });
 
-    expect(mockOnUpdate).toHaveBeenCalledWith('', '"Status" DESC', undefined);
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: '', sort: '"Status" DESC', limit: undefined }),
+    );
   });
 
   it('calls onUpdate when pressing Enter in limit input', () => {
@@ -124,17 +130,44 @@ describe('TableToolbar', () => {
     fireEvent.change(limitInput, { target: { value: '25' } });
     fireEvent.keyDown(limitInput, { key: 'Enter' });
 
-    expect(mockOnUpdate).toHaveBeenCalledWith('', '', 25);
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: '', sort: '', limit: 25 }),
+    );
   });
 
-  it('calls onUpdate on blur', () => {
+  it('does NOT call onUpdate on blur (avoids clearing the table with a half-typed clause)', () => {
     render(<TableToolbar {...defaultProps} />);
 
     const filterInput = screen.getByPlaceholderText('id > 5 AND status = \'active\'');
     fireEvent.change(filterInput, { target: { value: 'status = 1' } });
     fireEvent.blur(filterInput);
 
-    expect(mockOnUpdate).toHaveBeenCalledWith('status = 1', '', undefined);
+    expect(mockOnUpdate).not.toHaveBeenCalled();
+  });
+
+  it('commits via the Apply button, not on blur', () => {
+    render(<TableToolbar {...defaultProps} />);
+
+    const filterInput = screen.getByPlaceholderText('id > 5 AND status = \'active\'');
+    fireEvent.change(filterInput, { target: { value: 'status = 1' } });
+    fireEvent.blur(filterInput);
+    expect(mockOnUpdate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTitle('toolbar.applyHint'));
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: 'status = 1', sort: '', limit: undefined }),
+    );
+  });
+
+  it('disables the Apply button until there are unapplied changes', () => {
+    render(<TableToolbar {...defaultProps} initialFilter="id > 5" />);
+
+    const applyBtn = screen.getByTitle('toolbar.applyHint');
+    expect(applyBtn).toBeDisabled();
+
+    const filterInput = screen.getByDisplayValue('id > 5');
+    fireEvent.change(filterInput, { target: { value: 'id > 9' } });
+    expect(applyBtn).toBeEnabled();
   });
 
   it('does not call onUpdate when values have not changed', () => {
@@ -210,7 +243,9 @@ describe('TableToolbar', () => {
     fireEvent.keyDown(limitInput, { key: 'Enter' });
 
     // When cleared, onUpdate should be called with undefined
-    expect(mockOnUpdate).toHaveBeenCalledWith('', '', undefined);
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: '', sort: '', limit: undefined }),
+    );
   });
 
   it('has correct CSS classes on container', () => {
@@ -252,6 +287,85 @@ describe('TableToolbar', () => {
     expect(limitInput).toHaveValue(null); // Empty number input has null value
   });
 
+  const textColumns = [
+    { name: 'id', data_type: 'INTEGER', is_pk: true, is_nullable: false, is_auto_increment: true },
+    { name: 'name', data_type: 'VARCHAR', is_pk: false, is_nullable: true, is_auto_increment: false },
+    { name: 'email', data_type: 'TEXT', is_pk: false, is_nullable: true, is_auto_increment: false },
+  ];
+
+  it('reveals the advanced row and runs a global search across text columns', () => {
+    render(<TableToolbar {...defaultProps} columnMetadata={textColumns} />);
+
+    // Advanced row hidden initially
+    expect(screen.queryByText('SEARCH')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTitle('toolbar.advanced'));
+    expect(screen.getByText('SEARCH')).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText('toolbar.searchAllColumns');
+    fireEvent.change(searchInput, { target: { value: 'foo' } });
+    fireEvent.keyDown(searchInput, { key: 'Enter' });
+
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: "(name LIKE '%foo%' OR email LIKE '%foo%')",
+        sort: '',
+        limit: undefined,
+      }),
+    );
+  });
+
+  it('disables global search when there are no text columns', () => {
+    const numericOnly = [
+      { name: 'id', data_type: 'INTEGER', is_pk: true, is_nullable: false, is_auto_increment: true },
+    ];
+    render(<TableToolbar {...defaultProps} columnMetadata={numericOnly} />);
+
+    fireEvent.click(screen.getByTitle('toolbar.advanced'));
+    const searchInput = screen.getByPlaceholderText('toolbar.noTextColumns');
+    expect(searchInput).toBeDisabled();
+  });
+
+  it('applies DISTINCT immediately when toggled', () => {
+    render(<TableToolbar {...defaultProps} columnMetadata={textColumns} />);
+
+    fireEvent.click(screen.getByTitle('toolbar.advanced'));
+    fireEvent.click(screen.getByTitle('toolbar.distinctHint'));
+
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ distinct: true }),
+    );
+  });
+
+  it('applies OFFSET together with the current LIMIT on Enter', () => {
+    render(
+      <TableToolbar {...defaultProps} columnMetadata={textColumns} initialLimit={50} />,
+    );
+
+    fireEvent.click(screen.getByTitle('toolbar.advanced'));
+    const offsetInput = screen.getByTitle('toolbar.offsetHint');
+    fireEvent.change(offsetInput, { target: { value: '20' } });
+    fireEvent.keyDown(offsetInput, { key: 'Enter' });
+
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 50, offset: 20 }),
+    );
+  });
+
+  it('marks the toolbar dirty when only DISTINCT/OFFSET change', () => {
+    render(
+      <TableToolbar {...defaultProps} columnMetadata={textColumns} initialLimit={50} />,
+    );
+
+    const applyBtn = screen.getByTitle('toolbar.applyHint');
+    expect(applyBtn).toBeDisabled();
+
+    fireEvent.click(screen.getByTitle('toolbar.advanced'));
+    const offsetInput = screen.getByTitle('toolbar.offsetHint');
+    fireEvent.change(offsetInput, { target: { value: '5' } });
+    expect(applyBtn).toBeEnabled();
+  });
+
   it('updates all fields and commits on Enter in any field', () => {
     render(<TableToolbar {...defaultProps} />);
 
@@ -265,6 +379,8 @@ describe('TableToolbar', () => {
     
     fireEvent.keyDown(filterInput, { key: 'Enter' });
 
-    expect(mockOnUpdate).toHaveBeenCalledWith('id = 1', 'id ASC', 10);
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: 'id = 1', sort: 'id ASC', limit: 10 }),
+    );
   });
 });

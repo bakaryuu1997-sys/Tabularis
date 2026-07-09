@@ -27,6 +27,12 @@ pub struct PluginRelease {
     pub version: String,
     pub min_tabularis_version: Option<String>,
     pub assets: HashMap<String, String>,
+    /// Optional SHA-256 hex digests keyed by the same keys as `assets`
+    /// (platform id, or "universal"). When present for the resolved asset, the
+    /// downloaded archive is verified before install. Absent = legacy release
+    /// with no integrity metadata (install proceeds with a warning).
+    #[serde(default)]
+    pub checksums: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
