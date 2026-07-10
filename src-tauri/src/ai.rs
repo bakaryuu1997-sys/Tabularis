@@ -368,6 +368,21 @@ pub async fn get_ai_models(
                     }
                 }
 
+                // Always refresh nine-router as it depends on user configuration
+                if let (Some(base_url), Ok(api_key)) = (
+                    app_config.ai_nine_router_url.clone(),
+                    config::get_ai_api_key(&app, "nine-router"),
+                ) {
+                    if !base_url.is_empty() && !api_key.is_empty() {
+                        let custom_models = fetch_custom_openai_models(&base_url, &api_key).await;
+                        if !custom_models.is_empty() {
+                            cached_models.insert("nine-router".to_string(), custom_models);
+                        } else {
+                            cached_models.insert("nine-router".to_string(), vec![]);
+                        }
+                    }
+                }
+
                 // Always refresh Anthropic if API key is present
                 if let Ok(key) = config::get_ai_api_key(&app, "anthropic") {
                     let anthropic_models = fetch_anthropic_models(&key).await;
@@ -471,6 +486,25 @@ pub async fn get_ai_models(
         models.insert("custom-openai".to_string(), vec![]);
     }
 
+    // 7. Nine Router (Dynamic if configured)
+    if let (Some(base_url), Ok(api_key)) = (
+        app_config.ai_nine_router_url,
+        config::get_ai_api_key(&app, "nine-router"),
+    ) {
+        if !base_url.is_empty() && !api_key.is_empty() {
+            let custom_models = fetch_custom_openai_models(&base_url, &api_key).await;
+            if !custom_models.is_empty() {
+                models.insert("nine-router".to_string(), custom_models);
+            } else {
+                models.insert("nine-router".to_string(), vec![]);
+            }
+        } else {
+            models.insert("nine-router".to_string(), vec![]);
+        }
+    } else {
+        models.insert("nine-router".to_string(), vec![]);
+    }
+
     // Save to Cache
     save_cache(&app, &models);
 
@@ -525,6 +559,12 @@ async fn resolve_model(
             .filter(|m| !m.is_empty())
             .cloned()
             .ok_or_else(|| "No model specified for custom OpenAI provider.".to_string()),
+        "nine-router" => app_config
+            .ai_nine_router_model
+            .as_ref()
+            .filter(|m| !m.is_empty())
+            .cloned()
+            .ok_or_else(|| "No model specified for 9Router provider.".to_string()),
         _ => {
             let models = load_default_models();
             models
@@ -561,6 +601,14 @@ async fn dispatch_provider(
                 .as_ref()
                 .filter(|u| !u.is_empty())
                 .ok_or("Custom OpenAI URL not configured.")?;
+            generate_custom_openai(&client, &api_key, gen_req, system_prompt, base_url).await
+        }
+        "nine-router" => {
+            let base_url = app_config
+                .ai_nine_router_url
+                .as_ref()
+                .filter(|u| !u.is_empty())
+                .ok_or("9Router URL not configured.")?;
             generate_custom_openai(&client, &api_key, gen_req, system_prompt, base_url).await
         }
         "minimax" => generate_minimax(&client, &api_key, gen_req, system_prompt).await,

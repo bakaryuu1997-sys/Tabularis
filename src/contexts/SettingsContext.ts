@@ -9,7 +9,8 @@ export type AiProvider =
   | "openrouter"
   | "ollama"
   | "custom-openai"
-  | "minimax";
+  | "minimax"
+  | "nine-router";
 export type ERDiagramLayout = "LR" | "TB";
 
 export interface PluginConfig {
@@ -35,6 +36,8 @@ export interface Settings {
   aiOllamaPort?: number;
   aiCustomOpenaiUrl?: string;
   aiCustomOpenaiModel?: string;
+  aiNineRouterUrl?: string;
+  aiNineRouterModel?: string;
   autoCheckUpdatesOnStartup?: boolean;
   loggingEnabled?: boolean;
   maxLogEntries?: number;
@@ -103,6 +106,8 @@ export const DEFAULT_SETTINGS: Settings = {
   aiOllamaPort: 11434,
   aiCustomOpenaiUrl: "",
   aiCustomOpenaiModel: "",
+  aiNineRouterUrl: "http://localhost:20128/v1",
+  aiNineRouterModel: "",
   loggingEnabled: true,
   maxLogEntries: 1000,
   copyFormat: "csv",

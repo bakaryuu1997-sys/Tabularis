@@ -39,6 +39,8 @@ pub struct AppConfig {
     pub ai_ollama_port: Option<u16>,
     pub ai_custom_openai_url: Option<String>,
     pub ai_custom_openai_model: Option<String>,
+    pub ai_nine_router_url: Option<String>,
+    pub ai_nine_router_model: Option<String>,
     pub check_for_updates: Option<bool>,
     pub auto_check_updates_on_startup: Option<bool>,
     pub last_dismissed_version: Option<String>,
@@ -261,6 +263,12 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
         }
         if config.ai_custom_openai_model.is_some() {
             existing_config.ai_custom_openai_model = config.ai_custom_openai_model;
+        }
+        if config.ai_nine_router_url.is_some() {
+            existing_config.ai_nine_router_url = config.ai_nine_router_url;
+        }
+        if config.ai_nine_router_model.is_some() {
+            existing_config.ai_nine_router_model = config.ai_nine_router_model;
         }
         if config.check_for_updates.is_some() {
             existing_config.check_for_updates = config.check_for_updates;
@@ -560,6 +568,7 @@ pub fn get_ai_api_key(app: &AppHandle, provider: &str) -> Result<String, String>
         "anthropic" => "ANTHROPIC_API_KEY",
         "openrouter" => "OPENROUTER_API_KEY",
         "custom-openai" => "CUSTOM_OPENAI_API_KEY",
+        "nine-router" => "NINE_ROUTER_API_KEY",
         "minimax" => "MINIMAX_API_KEY",
         _ => "",
     };
@@ -596,6 +605,7 @@ pub fn get_ai_api_key_status(app: &AppHandle, provider: &str) -> AiKeyStatus {
         "anthropic" => "ANTHROPIC_API_KEY",
         "openrouter" => "OPENROUTER_API_KEY",
         "custom-openai" => "CUSTOM_OPENAI_API_KEY",
+        "nine-router" => "NINE_ROUTER_API_KEY",
         "minimax" => "MINIMAX_API_KEY",
         _ => "",
     };

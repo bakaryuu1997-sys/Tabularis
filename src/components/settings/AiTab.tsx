@@ -26,6 +26,7 @@ import {
   MiniMaxIcon,
   OpenRouterIcon,
   OllamaIcon,
+  NineRouterIcon,
 } from "../icons/ClientIcons";
 
 interface AiKeyStatus {
@@ -67,6 +68,11 @@ const PROVIDERS: Array<{
     id: "custom-openai",
     label: "OpenAI Compatible",
     icon: <OpenAIIcon size={18} className="text-muted" />,
+  },
+  {
+    id: "nine-router",
+    label: "9Router",
+    icon: <NineRouterIcon size={18} className="text-[#3b82f6]" />,
   },
 ];
 
@@ -132,12 +138,16 @@ export function AiTab() {
       const customOpenai = await invoke<AiKeyStatus>("check_ai_key_status", {
         provider: "custom-openai",
       });
+      const nineRouter = await invoke<AiKeyStatus>("check_ai_key_status", {
+        provider: "nine-router",
+      });
       const ollama = { configured: true, fromEnv: false };
       setAiKeyStatus({
         openai,
         anthropic,
         openrouter,
         "custom-openai": customOpenai,
+        "nine-router": nineRouter,
         ollama,
       });
     } catch (e) {
@@ -447,6 +457,27 @@ export function AiTab() {
               </div>
             )}
 
+            {/* 9Router URL */}
+            {settings.aiProvider === "nine-router" && (
+              <div className="space-y-1 py-3">
+                <label className="block text-sm font-medium text-secondary">
+                  {t("settings.ai.endpointUrl")}
+                </label>
+                <input
+                  type="text"
+                  value={settings.aiNineRouterUrl || ""}
+                  onChange={(e) =>
+                    updateSetting("aiNineRouterUrl", e.target.value)
+                  }
+                  placeholder="http://localhost:20128/v1"
+                  className="w-full bg-base border border-strong rounded-lg px-3 py-2 text-primary text-sm focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                <p className="text-xs text-muted">
+                  {t("settings.ai.endpointUrlDesc")}
+                </p>
+              </div>
+            )}
+
             {/* Ollama */}
             {settings.aiProvider === "ollama" && (
               <div className="space-y-4 py-3">
@@ -578,7 +609,7 @@ export function AiTab() {
                       </div>
                     )}
                     <p className="text-xs text-muted">
-                      {settings.aiProvider === "custom-openai"
+                      {settings.aiProvider === "custom-openai" || settings.aiProvider === "nine-router"
                         ? t("settings.ai.customOpenaiModelHelp")
                         : t("settings.ai.modelDesc")}
                     </p>

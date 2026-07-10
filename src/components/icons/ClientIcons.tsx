@@ -163,3 +163,22 @@ export const AntigravityIcon = ({ size = 20, className }: IconProps) => (
     </defs>
   </svg>
 );
+
+export const NineRouterIcon = ({ size = 20, className }: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    width={size}
+    height={size}
+    className={className}
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M15 10c0-1.657-1.343-3-3-3s-3 1.343-3 3 1.343 3 3 3h3v4c0 1.657-1.343 3-3 3" />
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 2v5M12 17v5M2 12h5M17 12h5" />
+  </svg>
+);
