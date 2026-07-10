@@ -888,7 +888,14 @@ async fn generate_custom_openai(
         return Err(format!("Custom OpenAI Error: {}", error_text));
     }
 
-    let json: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+    let text = res.text().await.map_err(|e| e.to_string())?;
+    let mut clean_text = text.trim().to_string();
+    if let Some(idx) = clean_text.find("data:") {
+        clean_text = clean_text[..idx].trim().to_string();
+    }
+    let json: serde_json::Value = serde_json::from_str(&clean_text).map_err(|e| {
+        format!("Failed to parse response JSON: {}. Original response: {}", e, text)
+    })?;
     let content = json["choices"][0]["message"]["content"]
         .as_str()
         .ok_or("Invalid response format from custom OpenAI-compatible provider")?;
