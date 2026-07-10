@@ -1,4 +1,5 @@
 use crate::config;
+use futures::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -559,6 +560,19 @@ pub async fn generate_cell_name(app: AppHandle, req: AiCellNameRequest) -> Resul
 #[tauri::command]
 pub async fn chat_ai(app: AppHandle, req: AiChatRequest) -> Result<String, String> {
     generate_chat(app, req).await
+}
+
+/// Streaming variant of [`chat_ai`]. Text deltas are pushed through `on_event`
+/// as they arrive; the full assembled reply is also returned so callers can
+/// verify/store it. Falls back to a single non-streamed reply if the provider
+/// does not actually stream.
+#[tauri::command]
+pub async fn chat_ai_stream(
+    app: AppHandle,
+    req: AiChatRequest,
+    on_event: tauri::ipc::Channel<String>,
+) -> Result<String, String> {
+    generate_chat_stream(app, req, on_event).await
 }
 
 // --- Shared helpers ---
@@ -1349,6 +1363,353 @@ async fn chat_ollama(
         .as_str()
         .ok_or("Invalid response format from Ollama")?;
     Ok(content.trim().to_string())
+}
+
+// --- Streaming chat ---
+
+/// Which transport a provider uses for streaming.
+enum ChatBackend {
+    /// OpenAI-compatible SSE at the given full chat-completions URL.
+    OpenAi(String),
+    Anthropic,
+    Ollama,
+}
+
+async fn generate_chat_stream(
+    app: AppHandle,
+    mut req: AiChatRequest,
+    on_event: tauri::ipc::Channel<String>,
+) -> Result<String, String> {
+    log::info!("AI chat (stream) using provider: {}", req.provider);
+
+    if req.messages.is_empty() {
+        return Err("No messages provided.".to_string());
+    }
+
+    let app_config = config::load_config_internal(&app);
+    let ollama_port = app_config.ai_ollama_port.unwrap_or(11434);
+    req.model = resolve_model(&req.provider, &req.model, &app_config, ollama_port).await?;
+
+    let mut system_prompt = String::from(CHAT_SYSTEM_PROMPT);
+    if !req.schema.trim().is_empty() {
+        system_prompt.push_str(
+            "\n\nThe user is currently connected to a database. Use this schema when relevant:\n",
+        );
+        system_prompt.push_str(req.schema.trim());
+    }
+
+    let api_key = if req.provider != "ollama" {
+        config::get_ai_api_key(&app, &req.provider)?
+    } else {
+        String::new()
+    };
+
+    let backend = match req.provider.as_str() {
+        "anthropic" => ChatBackend::Anthropic,
+        "ollama" => ChatBackend::Ollama,
+        "custom-openai" => {
+            let base_url = app_config
+                .ai_custom_openai_url
+                .as_ref()
+                .filter(|u| !u.is_empty())
+                .ok_or("Custom OpenAI URL not configured.")?;
+            ChatBackend::OpenAi(build_api_url(base_url, "/chat/completions"))
+        }
+        "nine-router" => {
+            let base_url = app_config
+                .ai_nine_router_url
+                .as_ref()
+                .filter(|u| !u.is_empty())
+                .ok_or("9Router URL not configured.")?;
+            ChatBackend::OpenAi(build_api_url(base_url, "/chat/completions"))
+        }
+        "openai" => ChatBackend::OpenAi("https://api.openai.com/v1/chat/completions".to_string()),
+        "openrouter" => {
+            ChatBackend::OpenAi("https://openrouter.ai/api/v1/chat/completions".to_string())
+        }
+        "minimax" => ChatBackend::OpenAi("https://api.minimax.io/v1/chat/completions".to_string()),
+        other => return Err(format!("Unsupported provider: {}", other)),
+    };
+
+    let client = ai_http_client();
+
+    // Try streaming first.
+    let streamed = match &backend {
+        ChatBackend::OpenAi(url) => {
+            chat_openai_compatible_stream(
+                &client,
+                &api_key,
+                url,
+                &req.model,
+                &system_prompt,
+                &req.messages,
+                &on_event,
+            )
+            .await
+        }
+        ChatBackend::Anthropic => {
+            chat_anthropic_stream(
+                &client,
+                &api_key,
+                &req.model,
+                &system_prompt,
+                &req.messages,
+                &on_event,
+            )
+            .await
+        }
+        ChatBackend::Ollama => {
+            chat_ollama_stream(
+                &client,
+                &req.model,
+                &system_prompt,
+                &req.messages,
+                &on_event,
+                ollama_port,
+            )
+            .await
+        }
+    }?;
+
+    // Some gateways ignore `stream: true` and reply once. If nothing streamed,
+    // fall back to a single non-streamed request and emit it as one chunk.
+    if streamed.trim().is_empty() {
+        let full = match &backend {
+            ChatBackend::OpenAi(url) => {
+                chat_openai_compatible(
+                    &client,
+                    &api_key,
+                    url,
+                    &req.model,
+                    &system_prompt,
+                    &req.messages,
+                )
+                .await
+            }
+            ChatBackend::Anthropic => {
+                chat_anthropic(&client, &api_key, &req.model, &system_prompt, &req.messages).await
+            }
+            ChatBackend::Ollama => {
+                chat_ollama(&client, &req.model, &system_prompt, &req.messages, ollama_port).await
+            }
+        }?;
+        let _ = on_event.send(full.clone());
+        return Ok(full);
+    }
+
+    Ok(streamed)
+}
+
+/// Consume an SSE `data:`-framed response, emitting each extracted text delta
+/// through `on_event`. Lines are decoded only once complete (newline reached),
+/// so multibyte UTF-8 (e.g. Vietnamese) is never split mid-character.
+async fn stream_sse<F>(
+    res: reqwest::Response,
+    on_event: &tauri::ipc::Channel<String>,
+    extract: F,
+) -> Result<String, String>
+where
+    F: Fn(&serde_json::Value) -> Option<String>,
+{
+    let mut stream = res.bytes_stream();
+    let mut full = String::new();
+    let mut buf: Vec<u8> = Vec::new();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| e.to_string())?;
+        buf.extend_from_slice(&chunk);
+
+        while let Some(pos) = buf.iter().position(|&b| b == b'\n') {
+            let line_bytes: Vec<u8> = buf.drain(..=pos).collect();
+            let line = String::from_utf8_lossy(&line_bytes);
+            let line = line.trim();
+            let Some(data) = line.strip_prefix("data:") else {
+                continue;
+            };
+            let data = data.trim();
+            if data.is_empty() || data == "[DONE]" {
+                continue;
+            }
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(data) {
+                if let Some(delta) = extract(&json) {
+                    if !delta.is_empty() {
+                        full.push_str(&delta);
+                        let _ = on_event.send(delta);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(full)
+}
+
+/// Consume a newline-delimited JSON (ndjson) stream, e.g. Ollama.
+async fn stream_ndjson<F>(
+    res: reqwest::Response,
+    on_event: &tauri::ipc::Channel<String>,
+    extract: F,
+) -> Result<String, String>
+where
+    F: Fn(&serde_json::Value) -> Option<String>,
+{
+    let mut stream = res.bytes_stream();
+    let mut full = String::new();
+    let mut buf: Vec<u8> = Vec::new();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| e.to_string())?;
+        buf.extend_from_slice(&chunk);
+
+        while let Some(pos) = buf.iter().position(|&b| b == b'\n') {
+            let line_bytes: Vec<u8> = buf.drain(..=pos).collect();
+            let line = String::from_utf8_lossy(&line_bytes);
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(delta) = extract(&json) {
+                    if !delta.is_empty() {
+                        full.push_str(&delta);
+                        let _ = on_event.send(delta);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(full)
+}
+
+async fn chat_openai_compatible_stream(
+    client: &Client,
+    api_key: &str,
+    url: &str,
+    model: &str,
+    system_prompt: &str,
+    messages: &[ChatMessage],
+    on_event: &tauri::ipc::Channel<String>,
+) -> Result<String, String> {
+    let body = json!({
+        "model": model,
+        "messages": build_chat_messages(system_prompt, messages),
+        "temperature": 0.7,
+        "stream": true
+    });
+
+    let mut request = client
+        .post(url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json");
+
+    if url.contains("openrouter.ai") {
+        request = request
+            .header("HTTP-Referer", "https://github.com/TabularisDB/tabularis")
+            .header("X-Title", "Tabularis");
+    }
+
+    let res = request
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        let error_text = res.text().await.unwrap_or_default();
+        return Err(format!("AI provider error: {}", error_text));
+    }
+
+    stream_sse(res, on_event, |j| {
+        j["choices"][0]["delta"]["content"]
+            .as_str()
+            .map(|s| s.to_string())
+    })
+    .await
+}
+
+async fn chat_anthropic_stream(
+    client: &Client,
+    api_key: &str,
+    model: &str,
+    system_prompt: &str,
+    messages: &[ChatMessage],
+    on_event: &tauri::ipc::Channel<String>,
+) -> Result<String, String> {
+    let msgs: Vec<serde_json::Value> = messages
+        .iter()
+        .map(|m| {
+            let role = if m.role == "assistant" {
+                "assistant"
+            } else {
+                "user"
+            };
+            json!({"role": role, "content": m.content})
+        })
+        .collect();
+
+    let body = json!({
+        "model": model,
+        "system": system_prompt,
+        "messages": msgs,
+        "max_tokens": 2048,
+        "temperature": 0.7,
+        "stream": true
+    });
+
+    let res = client
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        let error_text = res.text().await.unwrap_or_default();
+        return Err(format!("Anthropic Error: {}", error_text));
+    }
+
+    stream_sse(res, on_event, |j| {
+        j["delta"]["text"].as_str().map(|s| s.to_string())
+    })
+    .await
+}
+
+async fn chat_ollama_stream(
+    client: &Client,
+    model: &str,
+    system_prompt: &str,
+    messages: &[ChatMessage],
+    on_event: &tauri::ipc::Channel<String>,
+    port: u16,
+) -> Result<String, String> {
+    let body = json!({
+        "model": model,
+        "messages": build_chat_messages(system_prompt, messages),
+        "stream": true,
+        "options": { "temperature": 0.7 }
+    });
+
+    let url = format!("http://localhost:{}/api/chat", port);
+    let res = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to connect to Ollama on port {}: {}", port, e))?;
+
+    if !res.status().is_success() {
+        let error_text = res.text().await.unwrap_or_default();
+        return Err(format!("Ollama Error: {}", error_text));
+    }
+
+    stream_ndjson(res, on_event, |j| {
+        j["message"]["content"].as_str().map(|s| s.to_string())
+    })
+    .await
 }
 
 fn clean_response(text: &str) -> String {

@@ -402,6 +402,7 @@ pub fn run() {
             ai::analyze_ai_explain_plan,
             ai::generate_cell_name,
             ai::chat_ai,
+            ai::chat_ai_stream,
             ai::generate_tab_rename,
             ai::suggest_table_name,
             ai::get_ai_models,

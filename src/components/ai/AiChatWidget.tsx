@@ -5,7 +5,7 @@ import {
   useCallback,
   type KeyboardEvent,
 } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, Channel } from "@tauri-apps/api/core";
 import { useNavigate } from "react-router-dom";
 import Markdown from "react-markdown";
 import {
@@ -16,16 +16,41 @@ import {
   Trash2,
   RefreshCw,
   Bot,
+  Database,
   Settings as SettingsIcon,
 } from "lucide-react";
 import clsx from "clsx";
 import { useSettings } from "../../hooks/useSettings";
+import { useDatabase } from "../../hooks/useDatabase";
 import { getProviderLabel } from "../../utils/settingsUI";
 import { Select } from "../ui/Select";
+import type { TableSchema } from "../../types/editor";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+/// Build a compact schema string to give the assistant DB context.
+/// Capped to keep the prompt small.
+function buildSchemaContext(tables: TableSchema[]): string {
+  const MAX_TABLES = 40;
+  const MAX_COLS = 30;
+  const lines = tables.slice(0, MAX_TABLES).map((tbl) => {
+    const cols = tbl.columns
+      .slice(0, MAX_COLS)
+      .map((c) => `${c.name} ${c.data_type}${c.is_pk ? " PK" : ""}`)
+      .join(", ");
+    const more =
+      tbl.columns.length > MAX_COLS
+        ? `, …+${tbl.columns.length - MAX_COLS} cols`
+        : "";
+    return `${tbl.name}(${cols}${more})`;
+  });
+  if (tables.length > MAX_TABLES) {
+    lines.push(`… and ${tables.length - MAX_TABLES} more tables`);
+  }
+  return lines.join("\n");
 }
 
 const PROSE_CLASSES =
@@ -48,9 +73,12 @@ const PROSE_CLASSES =
 
 export function AiChatWidget() {
   const { settings, updateSetting } = useSettings();
+  const { activeConnectionId } = useDatabase();
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
+  const [useSchema, setUseSchema] = useState(true);
+  const schemaCacheRef = useRef<Record<string, string>>({});
   const [models, setModels] = useState<string[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -98,6 +126,24 @@ export function AiChatWidget() {
     }
   }, [input]);
 
+  // Fetch (and cache) a compact schema string for the active connection.
+  const getSchemaContext = useCallback(async (): Promise<string> => {
+    if (!useSchema || !activeConnectionId) return "";
+    const cached = schemaCacheRef.current[activeConnectionId];
+    if (cached !== undefined) return cached;
+    try {
+      const tables = await invoke<TableSchema[]>("get_schema_snapshot", {
+        connectionId: activeConnectionId,
+      });
+      const ctx = buildSchemaContext(tables);
+      schemaCacheRef.current[activeConnectionId] = ctx;
+      return ctx;
+    } catch (e) {
+      console.error("Failed to load schema for AI chat", e);
+      return "";
+    }
+  }, [useSchema, activeConnectionId]);
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -113,17 +159,55 @@ export function AiChatWidget() {
     setError(null);
     setLoading(true);
 
-    try {
-      const reply = await invoke<string>("chat_ai", {
-        req: {
-          provider,
-          model: settings.aiModel || "",
-          messages: history,
-          schema: "",
-        },
+    const schema = await getSchemaContext();
+
+    // Append an empty assistant bubble that streaming deltas fill in.
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    let acc = "";
+    const channel = new Channel<string>();
+    channel.onmessage = (delta) => {
+      acc += delta;
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { role: "assistant", content: acc };
+        return copy;
       });
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    };
+
+    const req = {
+      provider,
+      model: settings.aiModel || "",
+      messages: history,
+      schema,
+    };
+
+    try {
+      await invoke<string>("chat_ai_stream", { req, onEvent: channel });
+      // If the provider streamed nothing and backend fallback also came back
+      // empty, surface a hint instead of a blank bubble.
+      if (!acc.trim()) {
+        setMessages((prev) => {
+          const copy = [...prev];
+          copy[copy.length - 1] = {
+            role: "assistant",
+            content: "_(không có nội dung trả về)_",
+          };
+          return copy;
+        });
+      }
     } catch (e) {
+      // Drop the empty placeholder and show the error.
+      setMessages((prev) => {
+        const copy = [...prev];
+        if (
+          copy.length > 0 &&
+          copy[copy.length - 1].role === "assistant" &&
+          !copy[copy.length - 1].content
+        ) {
+          copy.pop();
+        }
+        return copy;
+      });
       setError(String(e));
     } finally {
       setLoading(false);
@@ -210,6 +294,25 @@ export function AiChatWidget() {
             </div>
           )}
 
+          {/* DB schema context toggle */}
+          {activeConnectionId && (
+            <button
+              onClick={() => setUseSchema((v) => !v)}
+              title="Cho AI biết schema của kết nối đang mở"
+              className={clsx(
+                "flex items-center gap-1.5 px-3 py-1.5 text-[11px] border-b border-default transition-colors",
+                useSchema
+                  ? "text-blue-400 hover:text-blue-300"
+                  : "text-muted hover:text-secondary",
+              )}
+            >
+              <Database size={12} />
+              {useSchema
+                ? "Đang gửi schema DB cho AI"
+                : "Không gửi schema DB"}
+            </button>
+          )}
+
           {/* Messages */}
           <div
             ref={scrollRef}
@@ -253,16 +356,21 @@ export function AiChatWidget() {
                     <p className="text-sm whitespace-pre-wrap break-words">
                       {m.content}
                     </p>
-                  ) : (
+                  ) : m.content ? (
                     <div className={PROSE_CLASSES}>
                       <Markdown>{m.content}</Markdown>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-muted text-sm py-0.5">
+                      <Loader2 size={14} className="animate-spin" />
+                      Đang trả lời…
                     </div>
                   )}
                 </div>
               </div>
             ))}
 
-            {loading && (
+            {loading && messages[messages.length - 1]?.role === "user" && (
               <div className="flex justify-start">
                 <div className="bg-surface-secondary border border-default rounded-xl px-3 py-2 flex items-center gap-2 text-muted text-sm">
                   <Loader2 size={14} className="animate-spin" />
