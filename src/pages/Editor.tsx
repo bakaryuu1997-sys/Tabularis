@@ -490,6 +490,9 @@ export const Editor = () => {
 
   const tabsRef = useRef<Tab[]>([]);
   const activeTabIdRef = useRef<string | null>(null);
+  // Last executed SQL per tab — used to preserve the loaded row count across
+  // pagination of the SAME query while resetting it when the query changes.
+  const lastRunQueryRef = useRef<Record<string, string>>({});
   // Stable refs for functions used inside Monaco actions (which capture closures at mount time)
   const runQueryRef = useRef<typeof runQuery>(null!);
   const runMultipleQueriesRef = useRef<typeof runMultipleQueries>(null!);
@@ -836,10 +839,15 @@ export const Editor = () => {
           }
         }
 
+        // Only carry the previous count forward when re-running / paginating the
+        // SAME query; a different query resets it so a stale count isn't shown.
+        const isSameQuery = lastRunQueryRef.current[targetTabId] === textToRun;
+        lastRunQueryRef.current[targetTabId] = textToRun;
         const resultWithCount =
           res.pagination &&
           res.pagination.total_rows === null &&
-          previousTotalRows !== null
+          previousTotalRows !== null &&
+          isSameQuery
             ? {
                 ...res,
                 pagination: {
@@ -1175,6 +1183,20 @@ export const Editor = () => {
         ? tabsRef.current.find((t) => t.id === tabIdArg)
         : activeTab;
       if (!tab?.result?.pagination || !activeConnectionId) return;
+      // Count the reconstructed filtered query, not tab.query (which omits the
+      // filter box's WHERE); LIMIT is dropped so it can't cap the count.
+      const countTarget =
+        tab.type === "table" && tab.activeTable
+          ? reconstructTableQuery(
+              {
+                ...tab,
+                schema:
+                  activeCapabilities?.schemas === true ? tab.schema : undefined,
+              },
+              activeDriver ?? undefined,
+              { sortOverride: null, limitOverride: null },
+            )
+          : tab.query;
       // setIsCountLoading drives the spinner in the main window only; skip it for
       // a count triggered from a detached window (its own window owns its spinner).
       const isDetached = detachedTabIdsRef.current.has(tab.id);
@@ -1182,7 +1204,7 @@ export const Editor = () => {
       try {
         const total = await invoke<number>("count_query", {
           connectionId: activeConnectionId,
-          query: tab.query,
+          query: countTarget,
           schema: tab.schema ?? activeSchema,
         });
         const latest = tabsRef.current.find((t) => t.id === tab.id) ?? tab;
@@ -1197,7 +1219,14 @@ export const Editor = () => {
         if (!isDetached) setIsCountLoading(false);
       }
     },
-    [activeTab, activeConnectionId, activeSchema, updateTab],
+    [
+      activeTab,
+      activeConnectionId,
+      activeSchema,
+      activeDriver,
+      activeCapabilities?.schemas,
+      updateTab,
+    ],
   );
 
   // --- Detached results windows (one per detached tab) ---
@@ -3707,8 +3736,8 @@ export const Editor = () => {
                           )}
                         </div>
 
-                        {/* Count load button or spinner */}
-                        {activeTab.result.pagination.total_rows === null && (
+                        {/* Count load button, or the loaded total row count */}
+                        {activeTab.result.pagination.total_rows === null ? (
                           <button
                             disabled={isCountLoading || activeTab.isLoading}
                             onClick={() => loadCount()}
@@ -3721,6 +3750,13 @@ export const Editor = () => {
                               <Hash size={14} />
                             )}
                           </button>
+                        ) : (
+                          <span className="px-2 py-1 text-secondary text-xs font-medium border-l border-strong whitespace-nowrap">
+                            {t("editor.rowCount", {
+                              total:
+                                activeTab.result.pagination.total_rows.toLocaleString(),
+                            })}
+                          </span>
                         )}
 
                         <button
@@ -4125,7 +4161,7 @@ export const Editor = () => {
         sql={dangerousQuery?.sql}
         confirmLabel={t("editor.dangerousQueryConfirm")}
         variant="danger"
-        confirmDelaySeconds={5}
+        confirmDelaySeconds={3}
       />
       <TabSwitcherModal
         isOpen={isTabSwitcherOpen}

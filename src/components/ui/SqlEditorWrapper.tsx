@@ -129,7 +129,7 @@ const SqlEditorInternal = ({
         run: tauriPaste,
       });
 
-      // Format the SQL in the editor (Shift+Alt+F, the standard "format" chord).
+      // Format the SQL in the editor (Ctrl+Alt+F).
       // Formats the current selection when there is one, otherwise the whole
       // document. Uses the shared sql-formatter util with the connection's
       // dialect; on a parse error it returns the original text unchanged, so
@@ -139,7 +139,7 @@ const SqlEditorInternal = ({
         label: 'Format SQL',
         contextMenuGroupId: '1_modification',
         contextMenuOrder: 1,
-        keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
         run: (ed) => {
           const model = ed.getModel();
           if (!model) return;

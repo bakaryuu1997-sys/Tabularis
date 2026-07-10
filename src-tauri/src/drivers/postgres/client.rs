@@ -2,24 +2,59 @@ use deadpool_postgres::{Object as PgObject, Pool as PgPool};
 use tokio_postgres::Row as PgRow;
 
 pub(super) fn format_pg_error(e: &tokio_postgres::Error) -> String {
-    if let Some(db) = e.as_db_error() {
-        let brief = format!("{}: {}", db.severity(), db.message());
-        let detail = format!("{:#?}", e);
-        format!("{}\n\n{}", brief, detail)
-    } else {
-        e.to_string()
+    let Some(db) = e.as_db_error() else {
+        return e.to_string();
+    };
+
+    // Headline shown in the UI (everything before the first blank line).
+    let brief = format!("{}: {}", db.severity(), db.message());
+
+    // Readable, labelled details instead of a raw Rust `{:#?}` dump. Only the
+    // fields PostgreSQL actually returned are included, so the panel stays short.
+    let mut details: Vec<String> = Vec::new();
+    if let Some(detail) = db.detail() {
+        details.push(format!("Detail: {}", detail));
     }
+    if let Some(hint) = db.hint() {
+        details.push(format!("Hint: {}", hint));
+    }
+    if let Some(pos) = db.position() {
+        match pos {
+            tokio_postgres::error::ErrorPosition::Original(p) => {
+                details.push(format!("Position: character {}", p));
+            }
+            tokio_postgres::error::ErrorPosition::Internal { position, query } => {
+                details.push(format!(
+                    "Position: character {} in internal query: {}",
+                    position, query
+                ));
+            }
+        }
+    }
+    // Object context — useful for constraint / not-null / FK violations.
+    let mut ctx: Vec<String> = Vec::new();
+    if let Some(t) = db.table() {
+        ctx.push(format!("table \"{}\"", t));
+    }
+    if let Some(c) = db.column() {
+        ctx.push(format!("column \"{}\"", c));
+    }
+    if let Some(c) = db.constraint() {
+        ctx.push(format!("constraint \"{}\"", c));
+    }
+    if !ctx.is_empty() {
+        details.push(format!("At: {}", ctx.join(", ")));
+    }
+    details.push(format!("SQLSTATE: {}", db.code().code()));
+
+    format!("{}\n\n{}", brief, details.join("\n"))
 }
 
 #[inline(always)]
-fn map_pg_err<E: std::fmt::Debug + std::fmt::Display>(e: E) -> String {
-    let brief = e.to_string();
-    let detail = format!("{:#?}", e);
-    if detail.len() > brief.len() + 20 {
-        format!("{}\n\n{}", brief, detail)
-    } else {
-        brief
-    }
+fn map_pg_err<E: std::fmt::Display>(e: E) -> String {
+    // Connection/pool errors have no structured DB fields; their Display message
+    // (e.g. "connection closed", "timed out") is the clearest thing to show.
+    e.to_string()
 }
 
 #[inline(always)]

@@ -469,6 +469,41 @@ pub async fn get_connection_by_id<R: Runtime>(
     find_connection_by_id(&app, &id)
 }
 
+/// A local database server discovered by a quick TCP probe.
+#[derive(serde::Serialize)]
+pub struct LocalDbProbe {
+    pub driver: String,
+    pub host: String,
+    pub port: u16,
+}
+
+/// Probe common local database ports (MySQL 3306, PostgreSQL 5432) on
+/// 127.0.0.1 with a short timeout, so the connection form can offer a "scan
+/// localhost" shortcut. Only reports ports that accept a TCP connection — it
+/// never sends credentials or a protocol handshake.
+#[tauri::command]
+pub async fn probe_local_databases() -> Vec<LocalDbProbe> {
+    let candidates: [(u16, &str); 2] = [(3306, "mysql"), (5432, "postgres")];
+    let mut hits = Vec::new();
+    for (port, driver) in candidates {
+        let open = tokio::time::timeout(
+            std::time::Duration::from_millis(400),
+            tokio::net::TcpStream::connect(("127.0.0.1", port)),
+        )
+        .await
+        .map(|r| r.is_ok())
+        .unwrap_or(false);
+        if open {
+            hits.push(LocalDbProbe {
+                driver: driver.to_string(),
+                host: "localhost".to_string(),
+                port,
+            });
+        }
+    }
+    hits
+}
+
 #[tauri::command]
 pub async fn get_schemas<R: Runtime>(
     app: AppHandle<R>,

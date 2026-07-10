@@ -194,6 +194,37 @@ export const NewConnectionModal = ({
   const [connectionStringError, setConnectionStringError] = useState<
     string | null
   >(null);
+  const [scanningLocal, setScanningLocal] = useState(false);
+  const [scanHint, setScanHint] = useState<string | null>(null);
+  // Live local-server status per driver id → open port (e.g. { mysql: 3306 }).
+  // Drives the green/red dot next to each database type and the click-to-connect
+  // prefill. SQLite is file-based, so it never appears here.
+  const [localServers, setLocalServers] = useState<Record<string, number>>({});
+
+  // Probe localhost for running MySQL/PostgreSQL when the modal opens, and
+  // re-probe every 5s so the dots reflect a server being started/stopped.
+  useEffect(() => {
+    let cancelled = false;
+    const probe = () => {
+      invoke<Array<{ driver: string; host: string; port: number }>>(
+        "probe_local_databases",
+      )
+        .then((hits) => {
+          if (!cancelled) {
+            setLocalServers(
+              Object.fromEntries((hits ?? []).map((h) => [h.driver, h.port])),
+            );
+          }
+        })
+        .catch(() => {});
+    };
+    probe();
+    const id = setInterval(probe, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
 
   // ── tab ──
   const [activeTab, setActiveTab] = useState<
@@ -666,10 +697,16 @@ export const NewConnectionModal = ({
 
   const handleDriverChange = (newDriver: string) => {
     setDriver(newDriver);
+    // If a local server of this type is already running, prefill host+port so
+    // the user only needs to type credentials — "click to connect fast".
+    const runningPort = localServers[newDriver];
     setFormData({
       driver: newDriver,
-      host: "",
-      port: drivers.find((d) => d.id === newDriver)?.default_port ?? undefined,
+      host: runningPort ? "localhost" : "",
+      port:
+        runningPort ??
+        drivers.find((d) => d.id === newDriver)?.default_port ??
+        undefined,
       username: "",
       password: "",
       database: "",
@@ -902,6 +939,48 @@ export const NewConnectionModal = ({
     }
   };
 
+  // Probe localhost for a running MySQL/PostgreSQL server and pre-fill the
+  // driver + host + port. Never touches credentials — the user still enters
+  // username/password. Prefers a hit matching the currently selected driver.
+  const handleScanLocalhost = async () => {
+    setScanningLocal(true);
+    setScanHint(null);
+    try {
+      const hits = await invoke<
+        Array<{ driver: string; host: string; port: number }>
+      >("probe_local_databases");
+      if (!hits || hits.length === 0) {
+        setScanHint(
+          t("newConnection.scanNotFound", {
+            defaultValue:
+              "Không tìm thấy MySQL/PostgreSQL đang chạy trên localhost.",
+          }),
+        );
+        return;
+      }
+      const hit = hits.find((h) => h.driver === driver) ?? hits[0];
+      if (hit.driver !== driver) setDriver(hit.driver);
+      setFormData((prev) => ({
+        ...prev,
+        driver: hit.driver,
+        host: hit.host,
+        port: hit.port,
+      }));
+      setScanHint(
+        t("newConnection.scanFound", {
+          defaultValue: "Đã tìm thấy {{driver}} trên {{host}}:{{port}}",
+          driver: hit.driver,
+          host: hit.host,
+          port: hit.port,
+        }),
+      );
+    } catch (e) {
+      setScanHint(String(e));
+    } finally {
+      setScanningLocal(false);
+    }
+  };
+
   const handleClearConnectionString = () => {
     setConnectionString("");
     setConnectionStringError(null);
@@ -1018,6 +1097,27 @@ export const NewConnectionModal = ({
                 <div className="flex items-center gap-1 text-xs text-red-400 mt-0.5">
                   <AlertCircle size={11} /> {connectionStringError}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Scan localhost for a running MySQL/PostgreSQL server */}
+          {(driver === "mysql" || driver === "postgres") && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={handleScanLocalhost}
+                disabled={scanningLocal}
+                className="text-xs px-2.5 py-1.5 border border-strong rounded-md text-secondary hover:text-primary hover:border-blue-500 transition-colors disabled:opacity-50"
+              >
+                {scanningLocal
+                  ? t("newConnection.scanning", { defaultValue: "Đang quét…" })
+                  : t("newConnection.scanLocalhost", {
+                      defaultValue: "🔍 Quét localhost",
+                    })}
+              </button>
+              {scanHint && (
+                <span className="text-xs text-secondary">{scanHint}</span>
               )}
             </div>
           )}
@@ -2157,6 +2257,30 @@ export const NewConnectionModal = ({
                           {getDriverIcon(d)}
                         </span>
                         <span className="truncate capitalize">{d.name}</span>
+                        {/* Live local-server status: green = running, red = off.
+                            Only for networked engines we probe (MySQL/Postgres);
+                            SQLite is file-based so it has no server dot. */}
+                        {(d.id === "mysql" || d.id === "postgres") && (
+                          <span
+                            className={clsx(
+                              "ml-auto flex-shrink-0 w-2 h-2 rounded-full",
+                              localServers[d.id]
+                                ? "bg-green-500 shadow-[0_0_5px] shadow-green-500/70"
+                                : "bg-red-500/70",
+                            )}
+                            title={
+                              localServers[d.id]
+                                ? t("newConnection.serverRunning", {
+                                    defaultValue: "Đang chạy trên cổng {{port}}",
+                                    port: localServers[d.id],
+                                  })
+                                : t("newConnection.serverOff", {
+                                    defaultValue:
+                                      "Không phát hiện server cục bộ",
+                                  })
+                            }
+                          />
+                        )}
                       </button>
                     </div>
                   ))}

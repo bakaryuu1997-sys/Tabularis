@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   clearAutocompleteCache,
   registerSqlAutocomplete,
+  detectSqlClauseContext,
 } from '../../src/utils/autocomplete';
 import type { TableInfo } from '../../src/contexts/DatabaseContext';
 
@@ -531,5 +532,47 @@ describe('autocomplete', () => {
       );
       expect(tableSuggestions.length).toBe(100);
     });
+  });
+});
+
+describe('detectSqlClauseContext', () => {
+  it('returns "column" right after SELECT', () => {
+    expect(detectSqlClauseContext('SELECT ')).toBe('column');
+    expect(detectSqlClauseContext('SELECT na')).toBe('column');
+  });
+
+  it('returns "column" after SELECT even when FROM follows in the statement', () => {
+    // cursor is between SELECT and FROM
+    expect(detectSqlClauseContext('SELECT ')).toBe('column');
+  });
+
+  it('returns "table" right after FROM / JOIN', () => {
+    expect(detectSqlClauseContext('SELECT * FROM ')).toBe('table');
+    expect(detectSqlClauseContext('SELECT * FROM a JOIN ')).toBe('table');
+  });
+
+  it('flips back to "column" after WHERE / ON', () => {
+    expect(detectSqlClauseContext('SELECT * FROM users WHERE ')).toBe('column');
+    expect(detectSqlClauseContext('SELECT * FROM a JOIN b ON ')).toBe('column');
+  });
+
+  it('treats GROUP BY / ORDER BY as column context', () => {
+    expect(detectSqlClauseContext('SELECT * FROM t GROUP BY ')).toBe('column');
+    expect(detectSqlClauseContext('SELECT * FROM t ORDER BY ')).toBe('column');
+  });
+
+  it('returns "table" after UPDATE / INTO', () => {
+    expect(detectSqlClauseContext('UPDATE ')).toBe('table');
+    expect(detectSqlClauseContext('INSERT INTO ')).toBe('table');
+  });
+
+  it('returns "any" at the very start', () => {
+    expect(detectSqlClauseContext('')).toBe('any');
+    expect(detectSqlClauseContext('SEL')).toBe('any');
+  });
+
+  it('ignores the partial word being typed', () => {
+    // "FROM" here is a partial word, not a clause keyword yet
+    expect(detectSqlClauseContext('SELECT * FRO')).toBe('column');
   });
 });

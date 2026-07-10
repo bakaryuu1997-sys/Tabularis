@@ -276,6 +276,7 @@ pub fn run() {
             commands::get_keybindings,
             commands::save_keybindings,
             commands::test_connection,
+            commands::probe_local_databases,
             commands::list_databases,
             commands::save_connection,
             commands::delete_connection,

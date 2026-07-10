@@ -26,6 +26,45 @@ const SQL_KEYWORDS = [
   "TABLE", "DROP", "ALTER", "INDEX", "PRIMARY KEY", "FOREIGN KEY", "REFERENCES"
 ] as const;
 
+// Decide which identifier kind fits the cursor's SQL clause, so the completion
+// list leads with the right category: columns right after SELECT/WHERE/ON/…,
+// tables right after FROM/JOIN/…. Returns "any" at statement start / unknown.
+// Based on the *last* clause keyword before the cursor, so it follows clause
+// transitions (e.g. "... FROM t WHERE " flips back to column context).
+export function detectSqlClauseContext(
+  textUntilPosition: string,
+): "table" | "column" | "any" {
+  // Drop the partial word currently being typed, then scan the preceding text.
+  const upper = textUntilPosition.replace(/[\w$]*$/, "").toUpperCase();
+
+  const lastKeywordIndex = (kw: string): number => {
+    const re = new RegExp(`\\b${kw.replace(/ /g, "\\s+")}\\b`, "g");
+    let idx = -1;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(upper)) !== null) idx = m.index;
+    return idx;
+  };
+
+  const lastOf = (kws: string[]): number =>
+    kws.reduce((acc, kw) => Math.max(acc, lastKeywordIndex(kw)), -1);
+
+  const tablePos = lastOf(["FROM", "JOIN", "INTO", "UPDATE", "TABLE"]);
+  const columnPos = lastOf([
+    "SELECT",
+    "WHERE",
+    "ON",
+    "HAVING",
+    "SET",
+    "GROUP BY",
+    "ORDER BY",
+    "AND",
+    "OR",
+  ]);
+
+  if (tablePos < 0 && columnPos < 0) return "any";
+  return tablePos > columnPos ? "table" : "column";
+}
+
 // Cache cleanup to prevent unbounded growth
 const cleanupCache = () => {
   if (columnsCache.size <= MAX_CACHE_ENTRIES) return;
@@ -239,12 +278,14 @@ export const registerSqlAutocomplete = (
             endColumn: position.column,
           };
           return {
-            suggestions: columns.map(c => ({
+            // Keep the table's own column order (id, name, …) instead of
+            // sorting alphabetically, so the list matches the table/result view.
+            suggestions: columns.map((c, i) => ({
               label: c.label,
               kind: monaco.languages.CompletionItemKind.Field,
               detail: c.detail,
               ...buildIdentifierInsert(c.label, columnRange),
-              sortText: `0_${c.label}`,
+              sortText: `0_${String(i).padStart(4, "0")}`,
             })),
           };
         }
@@ -319,7 +360,9 @@ export const registerSqlAutocomplete = (
                 kind: monaco.languages.CompletionItemKind.Field,
                 detail: `${col.detail} — ${table.name}${aliasHint}`,
                 ...buildIdentifierInsert(col.label, range),
-                sortText: `0_${col.label}`,
+                // Preserve the table's column order (push order) rather than
+                // sorting alphabetically, so the list mirrors the table view.
+                sortText: `0_${String(contextColumnSuggestions.length).padStart(4, "0")}`,
               });
             }
           });
@@ -350,6 +393,25 @@ export const registerSqlAutocomplete = (
         ...buildIdentifierInsert(t.name, range),
         sortText: `1_${t.name}`
       }));
+
+      // ============================================
+      // 5. ORDER BY CLAUSE CONTEXT
+      // ============================================
+      // In a column position (right after SELECT / WHERE / ON / GROUP BY / …)
+      // the full table list is just noise — lead with columns, then keywords,
+      // and push tables to the bottom. This is what fixes "typing after SELECT
+      // suggests tables instead of columns". `sortText` controls the order;
+      // nothing is dropped, so a table name is still reachable if actually typed.
+      // FROM / JOIN and statement-start contexts keep the original ordering.
+      if (detectSqlClauseContext(textUntilPosition) === "column") {
+        return {
+          suggestions: [
+            ...contextColumnSuggestions, // sortText already "0_…"
+            ...keywordSuggestions.map((s) => ({ ...s, sortText: `1_${s.label}` })),
+            ...tableSuggestions.map((s) => ({ ...s, sortText: `3_${s.label}` })),
+          ],
+        };
+      }
 
       return {
         suggestions: [
