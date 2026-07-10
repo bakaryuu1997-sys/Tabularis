@@ -61,6 +61,28 @@ pub struct AiSuggestTableNameRequest {
     pub sample_rows: Vec<Vec<String>>,
 }
 
+/// A single message in a multi-turn chat conversation.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ChatMessage {
+    /// "user" or "assistant".
+    pub role: String,
+    pub content: String,
+}
+
+/// Request for the free-form chat assistant (the floating chat widget).
+///
+/// Unlike the SQL-generation commands, this carries the full conversation
+/// history and does NOT strip Markdown/code fences from the reply.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AiChatRequest {
+    pub provider: String,
+    pub model: String,
+    pub messages: Vec<ChatMessage>,
+    /// Optional database schema to give the assistant context. May be empty.
+    #[serde(default)]
+    pub schema: String,
+}
+
 #[derive(Deserialize, Debug)]
 struct OllamaTagsResponse {
     models: Vec<OllamaModel>,
@@ -532,6 +554,11 @@ pub async fn analyze_ai_explain_plan(
 #[tauri::command]
 pub async fn generate_cell_name(app: AppHandle, req: AiCellNameRequest) -> Result<String, String> {
     generate_cellname(app, req).await
+}
+
+#[tauri::command]
+pub async fn chat_ai(app: AppHandle, req: AiChatRequest) -> Result<String, String> {
+    generate_chat(app, req).await
 }
 
 // --- Shared helpers ---
@@ -1054,6 +1081,274 @@ async fn generate_minimax(
         .ok_or("Invalid response format from MiniMax")?;
 
     Ok(clean_response(content))
+}
+
+// --- Chat assistant (floating widget) ---
+
+/// Default persona for the chat widget. Kept general so the assistant is useful
+/// for any question, while still being aware it lives inside a database tool.
+const CHAT_SYSTEM_PROMPT: &str = "You are Tabularis AI, a helpful assistant built into the Tabularis database GUI client. \
+Be concise, accurate and friendly. Format answers in Markdown; put SQL and code inside fenced ```sql (or appropriate language) blocks. \
+Always reply in the same language the user writes in.";
+
+async fn generate_chat(app: AppHandle, mut req: AiChatRequest) -> Result<String, String> {
+    log::info!("AI chat using provider: {}", req.provider);
+
+    if req.messages.is_empty() {
+        return Err("No messages provided.".to_string());
+    }
+
+    let app_config = config::load_config_internal(&app);
+    let ollama_port = app_config.ai_ollama_port.unwrap_or(11434);
+    req.model = resolve_model(&req.provider, &req.model, &app_config, ollama_port).await?;
+
+    // Build the system prompt, optionally enriched with the current DB schema.
+    let mut system_prompt = String::from(CHAT_SYSTEM_PROMPT);
+    if !req.schema.trim().is_empty() {
+        system_prompt.push_str(
+            "\n\nThe user is currently connected to a database. Use this schema when relevant:\n",
+        );
+        system_prompt.push_str(req.schema.trim());
+    }
+
+    let api_key = if req.provider != "ollama" {
+        config::get_ai_api_key(&app, &req.provider)?
+    } else {
+        String::new()
+    };
+
+    let client = ai_http_client();
+
+    let result = match req.provider.as_str() {
+        "anthropic" => {
+            chat_anthropic(&client, &api_key, &req.model, &system_prompt, &req.messages).await
+        }
+        "ollama" => {
+            chat_ollama(&client, &req.model, &system_prompt, &req.messages, ollama_port).await
+        }
+        "custom-openai" => {
+            let base_url = app_config
+                .ai_custom_openai_url
+                .as_ref()
+                .filter(|u| !u.is_empty())
+                .ok_or("Custom OpenAI URL not configured.")?;
+            let url = build_api_url(base_url, "/chat/completions");
+            chat_openai_compatible(&client, &api_key, &url, &req.model, &system_prompt, &req.messages)
+                .await
+        }
+        "nine-router" => {
+            let base_url = app_config
+                .ai_nine_router_url
+                .as_ref()
+                .filter(|u| !u.is_empty())
+                .ok_or("9Router URL not configured.")?;
+            let url = build_api_url(base_url, "/chat/completions");
+            chat_openai_compatible(&client, &api_key, &url, &req.model, &system_prompt, &req.messages)
+                .await
+        }
+        "openai" => {
+            chat_openai_compatible(
+                &client,
+                &api_key,
+                "https://api.openai.com/v1/chat/completions",
+                &req.model,
+                &system_prompt,
+                &req.messages,
+            )
+            .await
+        }
+        "openrouter" => {
+            chat_openai_compatible(
+                &client,
+                &api_key,
+                "https://openrouter.ai/api/v1/chat/completions",
+                &req.model,
+                &system_prompt,
+                &req.messages,
+            )
+            .await
+        }
+        "minimax" => {
+            chat_openai_compatible(
+                &client,
+                &api_key,
+                "https://api.minimax.io/v1/chat/completions",
+                &req.model,
+                &system_prompt,
+                &req.messages,
+            )
+            .await
+        }
+        other => Err(format!("Unsupported provider: {}", other)),
+    };
+
+    match &result {
+        Ok(_) => log::info!("AI chat reply generated using {}", req.model),
+        Err(e) => log::error!("AI chat failed: {}", e),
+    }
+
+    result
+}
+
+/// Build the OpenAI-style messages array: a leading system prompt followed by
+/// the conversation history.
+fn build_chat_messages(system_prompt: &str, messages: &[ChatMessage]) -> Vec<serde_json::Value> {
+    let mut arr = Vec::with_capacity(messages.len() + 1);
+    arr.push(json!({"role": "system", "content": system_prompt}));
+    for m in messages {
+        let role = if m.role == "assistant" {
+            "assistant"
+        } else {
+            "user"
+        };
+        arr.push(json!({"role": role, "content": m.content}));
+    }
+    arr
+}
+
+/// Parse the assistant text out of an OpenAI-compatible chat response body.
+/// Some gateways (e.g. 9Router) append trailing SSE `data:` markers even for
+/// non-streamed requests, so we defensively cut at the first one if the raw
+/// body does not parse as JSON.
+fn parse_openai_chat_content(text: &str) -> Result<String, String> {
+    let trimmed = text.trim();
+    let json: serde_json::Value = serde_json::from_str(trimmed)
+        .or_else(|_| {
+            let cut = trimmed
+                .find("data:")
+                .map(|idx| trimmed[..idx].trim())
+                .unwrap_or(trimmed);
+            serde_json::from_str(cut)
+        })
+        .map_err(|e| format!("Failed to parse response JSON: {}. Original response: {}", e, text))?;
+    let content = json["choices"][0]["message"]["content"]
+        .as_str()
+        .ok_or("Invalid response format from provider")?;
+    Ok(content.trim().to_string())
+}
+
+async fn chat_openai_compatible(
+    client: &Client,
+    api_key: &str,
+    url: &str,
+    model: &str,
+    system_prompt: &str,
+    messages: &[ChatMessage],
+) -> Result<String, String> {
+    let body = json!({
+        "model": model,
+        "messages": build_chat_messages(system_prompt, messages),
+        "temperature": 0.7
+    });
+
+    let mut request = client
+        .post(url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json");
+
+    // OpenRouter appreciates attribution headers.
+    if url.contains("openrouter.ai") {
+        request = request
+            .header("HTTP-Referer", "https://github.com/TabularisDB/tabularis")
+            .header("X-Title", "Tabularis");
+    }
+
+    let res = request
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        let error_text = res.text().await.unwrap_or_default();
+        return Err(format!("AI provider error: {}", error_text));
+    }
+
+    let text = res.text().await.map_err(|e| e.to_string())?;
+    parse_openai_chat_content(&text)
+}
+
+async fn chat_anthropic(
+    client: &Client,
+    api_key: &str,
+    model: &str,
+    system_prompt: &str,
+    messages: &[ChatMessage],
+) -> Result<String, String> {
+    let msgs: Vec<serde_json::Value> = messages
+        .iter()
+        .map(|m| {
+            let role = if m.role == "assistant" {
+                "assistant"
+            } else {
+                "user"
+            };
+            json!({"role": role, "content": m.content})
+        })
+        .collect();
+
+    let body = json!({
+        "model": model,
+        "system": system_prompt,
+        "messages": msgs,
+        "max_tokens": 2048,
+        "temperature": 0.7
+    });
+
+    let res = client
+        .post("https://api.anthropic.com/v1/messages")
+        .header("x-api-key", api_key)
+        .header("anthropic-version", "2023-06-01")
+        .header("content-type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if !res.status().is_success() {
+        let error_text = res.text().await.unwrap_or_default();
+        return Err(format!("Anthropic Error: {}", error_text));
+    }
+
+    let json: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+    let content = json["content"][0]["text"]
+        .as_str()
+        .ok_or("Invalid response format from Anthropic")?;
+    Ok(content.trim().to_string())
+}
+
+async fn chat_ollama(
+    client: &Client,
+    model: &str,
+    system_prompt: &str,
+    messages: &[ChatMessage],
+    port: u16,
+) -> Result<String, String> {
+    let body = json!({
+        "model": model,
+        "messages": build_chat_messages(system_prompt, messages),
+        "stream": false,
+        "options": { "temperature": 0.7 }
+    });
+
+    let url = format!("http://localhost:{}/api/chat", port);
+    let res = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to connect to Ollama on port {}: {}", port, e))?;
+
+    if !res.status().is_success() {
+        let error_text = res.text().await.unwrap_or_default();
+        return Err(format!("Ollama Error: {}", error_text));
+    }
+
+    let json: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+    let content = json["message"]["content"]
+        .as_str()
+        .ok_or("Invalid response format from Ollama")?;
+    Ok(content.trim().to_string())
 }
 
 fn clean_response(text: &str) -> String {

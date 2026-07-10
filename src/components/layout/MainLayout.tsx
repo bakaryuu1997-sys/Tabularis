@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { SplitPaneLayout } from './SplitPaneLayout';
 import { useConnectionLayoutContext } from '../../hooks/useConnectionLayoutContext';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
+import { AiChatWidget } from '../ai/AiChatWidget';
 
 export const MainLayout = () => {
   const { splitView, isSplitVisible } = useConnectionLayoutContext();
@@ -21,6 +22,7 @@ export const MainLayout = () => {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {showSplit ? <SplitPaneLayout {...splitView} /> : <Outlet />}
       </main>
+      <AiChatWidget />
     </div>
   );
 };
