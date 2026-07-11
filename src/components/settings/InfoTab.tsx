@@ -79,7 +79,7 @@ export function InfoTab() {
               {t("settings.version")}
             </span>
             <span className="font-mono font-bold">
-              {APP_VERSION} (Beta)
+              {APP_VERSION} · Personal
             </span>
           </div>
           <button
