@@ -3,7 +3,10 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
   type KeyboardEvent,
+  type ReactNode,
+  type ReactElement,
 } from "react";
 import { invoke, Channel } from "@tauri-apps/api/core";
 import { useNavigate } from "react-router-dom";
@@ -18,10 +21,15 @@ import {
   Bot,
   Database,
   Settings as SettingsIcon,
+  Copy,
+  Check,
+  FilePlus,
+  Square,
 } from "lucide-react";
 import clsx from "clsx";
 import { useSettings } from "../../hooks/useSettings";
 import { useDatabase } from "../../hooks/useDatabase";
+import { useEditor } from "../../hooks/useEditor";
 import { getProviderLabel } from "../../utils/settingsUI";
 import { Select } from "../ui/Select";
 import type { TableSchema } from "../../types/editor";
@@ -30,6 +38,18 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
+
+const HISTORY_KEY = "tabularis.aiChat.history";
+const SCHEMA_KEY = "tabularis.aiChat.useSchema";
+const MAX_STORED = 100;
+
+/// Starter prompts shown when the conversation is empty.
+const SUGGESTIONS = [
+  "Viết câu SQL lấy 10 bản ghi mới nhất từ bảng ",
+  "Tối ưu và giải thích câu query sau:\n",
+  "Giải thích cấu trúc và ý nghĩa các cột của bảng ",
+  "Chuyển câu SQL sau sang PostgreSQL:\n",
+];
 
 /// Build a compact schema string to give the assistant DB context.
 /// Capped to keep the prompt small.
@@ -53,6 +73,91 @@ function buildSchemaContext(tables: TableSchema[]): string {
   return lines.join("\n");
 }
 
+/// Recursively flatten a React node tree to its plain text (used to recover the
+/// raw source of a fenced code block rendered by react-markdown).
+function nodeText(node: ReactNode): string {
+  if (node == null || node === false || node === true) return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).join("");
+  if (typeof node === "object" && "props" in node) {
+    return nodeText((node as ReactElement<{ children?: ReactNode }>).props.children);
+  }
+  return "";
+}
+
+const SQL_LANGS =
+  /^(sql|pgsql|plpgsql|mysql|tsql|sqlite|postgres|postgresql|mariadb|mssql)$/;
+
+/// A fenced code block with a Copy button and (for SQL) an "insert into editor"
+/// action. Rendered in place of the default markdown `<pre>`.
+function CodeBlock({
+  children,
+  onInsert,
+  canInsert,
+}: {
+  children?: ReactNode;
+  onInsert: (sql: string) => void;
+  canInsert: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  // react-markdown passes the inner <code> element as `children`.
+  const codeEl = children as
+    | ReactElement<{ className?: string; children?: ReactNode }>
+    | undefined;
+  const className = codeEl?.props?.className ?? "";
+  const lang = /language-(\w+)/.exec(className)?.[1]?.toLowerCase() ?? "";
+  const raw = nodeText(codeEl?.props?.children).replace(/\n$/, "");
+  const sqlish = lang === "" || SQL_LANGS.test(lang);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(raw);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  return (
+    <div className="my-2 rounded-lg overflow-hidden border border-default bg-black/40">
+      <div className="flex items-center justify-between px-2 py-1 border-b border-default/60">
+        <span className="text-[10px] uppercase tracking-wide text-muted">
+          {lang || "code"}
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={copy}
+            title="Copy"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-secondary hover:text-primary hover:bg-surface-tertiary transition-colors"
+          >
+            {copied ? <Check size={11} /> : <Copy size={11} />}
+            {copied ? "Đã copy" : "Copy"}
+          </button>
+          {sqlish && (
+            <button
+              onClick={() => onInsert(raw)}
+              disabled={!canInsert}
+              title={
+                canInsert
+                  ? "Chèn xuống cuối console (giữ nguyên SQL đang có)"
+                  : "Mở một kết nối để chèn SQL"
+              }
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            >
+              <FilePlus size={11} /> Chèn vào editor
+            </button>
+          )}
+        </div>
+      </div>
+      <pre className="!m-0 !bg-transparent p-3 overflow-x-auto text-xs leading-relaxed">
+        <code className={className}>{codeEl?.props?.children}</code>
+      </pre>
+    </div>
+  );
+}
+
 const PROSE_CLASSES =
   "prose-notebook text-sm leading-relaxed break-words " +
   "[&_h1]:text-base [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:text-primary " +
@@ -60,7 +165,6 @@ const PROSE_CLASSES =
   "[&_h3]:text-sm [&_h3]:font-medium [&_h3]:mb-1 [&_h3]:text-primary " +
   "[&_p]:mb-2 last:[&_p]:mb-0 " +
   "[&_code]:bg-black/30 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono " +
-  "[&_pre]:bg-black/40 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:mb-2 [&_pre_code]:bg-transparent [&_pre_code]:p-0 " +
   "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 " +
   "[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 " +
   "[&_li]:mb-1 " +
@@ -74,17 +178,33 @@ const PROSE_CLASSES =
 export function AiChatWidget() {
   const { settings, updateSetting } = useSettings();
   const { activeConnectionId } = useDatabase();
+  const { activeTab, addTab, updateTab } = useEditor();
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
-  const [useSchema, setUseSchema] = useState(true);
+  const [useSchema, setUseSchema] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(SCHEMA_KEY) !== "0";
+    } catch {
+      return true;
+    }
+  });
   const schemaCacheRef = useRef<Record<string, string>>({});
   const [models, setModels] = useState<string[]>([]);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? (parsed as ChatMessage[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const cancelRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -109,6 +229,28 @@ export function AiChatWidget() {
   useEffect(() => {
     if (open) loadModels(false);
   }, [open, loadModels]);
+
+  // Persist conversation to localStorage (but not on every streaming delta).
+  useEffect(() => {
+    if (loading) return;
+    try {
+      localStorage.setItem(
+        HISTORY_KEY,
+        JSON.stringify(messages.slice(-MAX_STORED)),
+      );
+    } catch {
+      /* storage full / unavailable */
+    }
+  }, [messages, loading]);
+
+  // Persist the schema-context toggle.
+  useEffect(() => {
+    try {
+      localStorage.setItem(SCHEMA_KEY, useSchema ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [useSchema]);
 
   // Auto-scroll to the latest message.
   useEffect(() => {
@@ -144,14 +286,51 @@ export function AiChatWidget() {
     }
   }, [useSchema, activeConnectionId]);
 
-  const handleSend = async () => {
-    const text = input.trim();
+  // Append a SQL snippet to the current console tab (preserving what's already
+  // there), or open a fresh console tab if none is active. Then jump to the
+  // editor so the result is visible.
+  const handleInsertSql = useCallback(
+    (sql: string) => {
+      const code = sql.trim();
+      if (!code) return;
+      if (!activeConnectionId) {
+        setError("Cần mở một kết nối trước khi chèn SQL vào editor.");
+        return;
+      }
+      if (activeTab && activeTab.type === "console") {
+        const existing = (activeTab.query ?? "").replace(/\s+$/, "");
+        const next = existing ? `${existing}\n\n${code}` : code;
+        updateTab(activeTab.id, { query: next });
+      } else {
+        addTab({ type: "console", query: code, title: "AI SQL" });
+      }
+      navigate("/editor");
+    },
+    [activeConnectionId, activeTab, updateTab, addTab, navigate],
+  );
+
+  const mdComponents = useMemo(
+    () => ({
+      pre: (props: { children?: ReactNode }) => (
+        <CodeBlock
+          onInsert={handleInsertSql}
+          canInsert={!!activeConnectionId}
+          {...props}
+        />
+      ),
+    }),
+    [handleInsertSql, activeConnectionId],
+  );
+
+  const handleSend = async (override?: string) => {
+    const text = (override ?? input).trim();
     if (!text || loading) return;
     if (!provider) {
       setError("Chưa cấu hình AI provider. Mở Settings › AI.");
       return;
     }
 
+    cancelRef.current = false;
     const userMsg: ChatMessage = { role: "user", content: text };
     const history = [...messages, userMsg];
     setMessages(history);
@@ -166,6 +345,7 @@ export function AiChatWidget() {
     let acc = "";
     const channel = new Channel<string>();
     channel.onmessage = (delta) => {
+      if (cancelRef.current) return;
       acc += delta;
       setMessages((prev) => {
         const copy = [...prev];
@@ -183,6 +363,7 @@ export function AiChatWidget() {
 
     try {
       await invoke<string>("chat_ai_stream", { req, onEvent: channel });
+      if (cancelRef.current) return;
       // If the provider streamed nothing and backend fallback also came back
       // empty, surface a hint instead of a blank bubble.
       if (!acc.trim()) {
@@ -196,6 +377,7 @@ export function AiChatWidget() {
         });
       }
     } catch (e) {
+      if (cancelRef.current) return;
       // Drop the empty placeholder and show the error.
       setMessages((prev) => {
         const copy = [...prev];
@@ -210,9 +392,38 @@ export function AiChatWidget() {
       });
       setError(String(e));
     } finally {
-      setLoading(false);
-      inputRef.current?.focus();
+      if (!cancelRef.current) {
+        setLoading(false);
+        inputRef.current?.focus();
+      }
     }
+  };
+
+  // Client-side stop: ignore further deltas and finalize the current bubble.
+  // (The backend request may run a moment longer, but its output is discarded.)
+  const handleStop = () => {
+    cancelRef.current = true;
+    setLoading(false);
+    setMessages((prev) => {
+      const copy = [...prev];
+      const last = copy[copy.length - 1];
+      if (last && last.role === "assistant" && !last.content) {
+        copy[copy.length - 1] = { role: "assistant", content: "_(đã dừng)_" };
+      }
+      return copy;
+    });
+    inputRef.current?.focus();
+  };
+
+  const handleClear = () => {
+    if (loading) handleStop();
+    setMessages([]);
+    setError(null);
+  };
+
+  const applySuggestion = (s: string) => {
+    setInput(s);
+    inputRef.current?.focus();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -253,7 +464,7 @@ export function AiChatWidget() {
             </div>
             <div className="ml-auto flex items-center gap-1">
               <button
-                onClick={() => setMessages([])}
+                onClick={handleClear}
                 title="Xóa hội thoại"
                 disabled={messages.length === 0}
                 className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-surface-tertiary disabled:opacity-40 transition-colors"
@@ -307,9 +518,7 @@ export function AiChatWidget() {
               )}
             >
               <Database size={12} />
-              {useSchema
-                ? "Đang gửi schema DB cho AI"
-                : "Không gửi schema DB"}
+              {useSchema ? "Đang gửi schema DB cho AI" : "Không gửi schema DB"}
             </button>
           )}
 
@@ -319,10 +528,10 @@ export function AiChatWidget() {
             className="flex-1 overflow-y-auto px-3 py-3 space-y-3"
           >
             {messages.length === 0 && !error && (
-              <div className="h-full flex flex-col items-center justify-center text-center gap-2 text-muted px-4">
+              <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-muted px-3">
                 <Bot size={32} className="opacity-40" />
                 <p className="text-sm">Hỏi AI bất cứ điều gì.</p>
-                {!provider && (
+                {!provider ? (
                   <button
                     onClick={() => {
                       setOpen(false);
@@ -332,6 +541,18 @@ export function AiChatWidget() {
                   >
                     <SettingsIcon size={12} /> Cấu hình AI trong Settings
                   </button>
+                ) : (
+                  <div className="flex flex-col gap-1.5 w-full mt-1">
+                    {SUGGESTIONS.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => applySuggestion(s)}
+                        className="text-left text-xs text-secondary hover:text-primary bg-surface-secondary hover:bg-surface-tertiary border border-default rounded-lg px-3 py-2 transition-colors truncate"
+                      >
+                        {s.trim()}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
@@ -358,7 +579,7 @@ export function AiChatWidget() {
                     </p>
                   ) : m.content ? (
                     <div className={PROSE_CLASSES}>
-                      <Markdown>{m.content}</Markdown>
+                      <Markdown components={mdComponents}>{m.content}</Markdown>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 text-muted text-sm py-0.5">
@@ -398,18 +619,24 @@ export function AiChatWidget() {
                 placeholder="Nhập tin nhắn… (Enter để gửi, Shift+Enter xuống dòng)"
                 className="flex-1 bg-transparent text-sm text-primary resize-none outline-none max-h-[140px] py-1"
               />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || loading}
-                className="shrink-0 p-1.5 rounded-md bg-blue-600 hover:bg-blue-500 disabled:bg-surface-secondary disabled:text-muted text-white transition-colors"
-                title="Gửi"
-              >
-                {loading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
+              {loading ? (
+                <button
+                  onClick={handleStop}
+                  className="shrink-0 p-1.5 rounded-md bg-red-600 hover:bg-red-500 text-white transition-colors"
+                  title="Dừng trả lời"
+                >
+                  <Square size={16} fill="currentColor" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSend()}
+                  disabled={!input.trim()}
+                  className="shrink-0 p-1.5 rounded-md bg-blue-600 hover:bg-blue-500 disabled:bg-surface-secondary disabled:text-muted text-white transition-colors"
+                  title="Gửi"
+                >
                   <Send size={16} />
-                )}
-              </button>
+                </button>
+              )}
             </div>
           </div>
         </div>
