@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { reconstructTableQuery } from "../utils/editor";
+import { onRunSql } from "../utils/aiRunBus";
 import { serializePkKey, buildPkMap } from "../utils/dataGrid";
 import { isMultiDatabaseCapable } from "../utils/database";
 import { isReadonly } from "../utils/driverCapabilities";
@@ -1538,6 +1539,30 @@ export const Editor = () => {
   runMultipleQueriesRef.current = runMultipleQueries;
   openExplainForQueryRef.current = openExplainForQuery;
   activeDialectRef.current = activeDialect;
+
+  // Latest activeTab for the AI chat "insert & run" bridge (avoids a stale
+  // closure inside the long-lived subscription below).
+  const aiRunActiveTabRef = useRef(activeTab);
+  aiRunActiveTabRef.current = activeTab;
+
+  // Bridge for the floating AI chat widget's "Chạy luôn" action: append the SQL
+  // to the current console tab (preserving what's already there) — or open a new
+  // console tab when none is active — then execute just that snippet.
+  useEffect(() => {
+    return onRunSql((sql) => {
+      if (!activeConnectionId) return;
+      const cur = aiRunActiveTabRef.current;
+      let targetId = "";
+      if (cur && cur.type === "console") {
+        const existing = (cur.query ?? "").replace(/\s+$/, "");
+        updateTab(cur.id, { query: existing ? `${existing}\n\n${sql}` : sql });
+        targetId = cur.id;
+      } else {
+        targetId = addTab({ type: "console", query: sql, title: "AI SQL" });
+      }
+      if (targetId) runQueryRef.current(sql, 1, targetId);
+    });
+  }, [activeConnectionId, addTab, updateTab]);
 
   // Global Ctrl/Command+F5 shortcut for Run
   useEffect(() => {
