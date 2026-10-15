@@ -739,7 +739,6 @@
     "selectTypeFirst": "先にコンテキスト/ネームスペース/タイプを選択してください",
     "useK8s": "Kubernetes ポートフォワードを使用",
     "useK8sConnection": "保存された接続",
-    "advanced": "詳細設定",
     "startupScript": "起動スクリプト",
     "startupScriptDescription": "このデータソースへの新規接続ごとに実行される SQL です。SET / set_config（例: RLS のバイパス）などのセッション設定に使用します。複数のステートメントはセミコロンで区切ってください。",
     "startupScriptPlaceholder": "SELECT set_config('app.bypass_rls', 'on', false);",
@@ -1524,7 +1523,15 @@
     "targetColumn": "対象カラム",
     "targetColumnPlaceholder": "対象を選択...",
     "skipColumn": "スキップ (インポートしない)",
-    "createNewColumn": "新規カラムを作成"
+    "createNewColumn": "新規カラムを作成",
+    "fileReadError": "ファイルを読み込めませんでした",
+    "fileNotFile": "通常のファイルを選択してください。",
+    "fileUnsupported": "CSV、TSV、JSON、Markdown ファイルを選択してください。",
+    "fileTooLarge": "ファイルが 20 MiB を超えています。小さいファイルを選択してください。",
+    "fileHint": "CSV、TSV、JSON 配列、Markdown テーブル。最大ファイルサイズ: 20 MiB。",
+    "fileSource": "ファイルを選択...",
+    "clipboardSource": "クリップボード",
+    "typePlaceholder": "型"
   },
   "aiActivity": {
     "title": "AI アクティビティ",

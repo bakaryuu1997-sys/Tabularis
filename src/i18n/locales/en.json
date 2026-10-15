@@ -765,7 +765,6 @@
     "selectTypeFirst": "Select context/namespace/type first",
     "useK8s": "Use Kubernetes Port-Forward",
     "useK8sConnection": "Saved Connection",
-    "advanced": "Advanced",
     "startupScript": "Startup Script",
     "startupScriptDescription": "SQL run on every new connection to this data source. Use it for session settings such as SET / set_config (e.g. bypassing RLS). Separate statements with semicolons.",
     "startupScriptPlaceholder": "SELECT set_config('app.bypass_rls', 'on', false);",
@@ -1595,7 +1594,15 @@
     "targetColumn": "Target column",
     "targetColumnPlaceholder": "Choose target...",
     "skipColumn": "Skip (do not import)",
-    "createNewColumn": "Create new column"
+    "createNewColumn": "Create new column",
+    "fileReadError": "Could not read the file",
+    "fileNotFile": "Choose a regular file.",
+    "fileUnsupported": "Choose a CSV, TSV, JSON, or Markdown file.",
+    "fileTooLarge": "The file exceeds 20 MiB. Choose a smaller file.",
+    "fileHint": "CSV, TSV, JSON array, or Markdown table. Maximum file size: 20 MiB.",
+    "fileSource": "Choose file...",
+    "clipboardSource": "Clipboard",
+    "typePlaceholder": "Type"
   },
   "aiActivity": {
     "title": "AI Activity",

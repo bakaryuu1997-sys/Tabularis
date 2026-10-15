@@ -1594,7 +1594,15 @@
     "targetColumn": "Cột đích",
     "targetColumnPlaceholder": "Chọn cột đích...",
     "skipColumn": "Bỏ qua (không nhập)",
-    "createNewColumn": "Tạo cột mới"
+    "createNewColumn": "Tạo cột mới",
+    "fileReadError": "Không thể đọc tệp",
+    "fileNotFile": "Vui lòng chọn một tệp thông thường.",
+    "fileUnsupported": "Vui lòng chọn tệp CSV, TSV, JSON hoặc Markdown.",
+    "fileTooLarge": "Tệp vượt quá 20 MiB. Vui lòng chọn tệp nhỏ hơn.",
+    "fileHint": "CSV, TSV, mảng JSON hoặc bảng Markdown. Dung lượng tối đa: 20 MiB.",
+    "fileSource": "Chọn tệp...",
+    "clipboardSource": "Khay nhớ tạm",
+    "typePlaceholder": "Kiểu"
   },
   "aiActivity": {
     "title": "Hoạt động AI",

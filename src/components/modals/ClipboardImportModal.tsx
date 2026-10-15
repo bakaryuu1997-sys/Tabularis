@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useId } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   X,
@@ -14,6 +14,9 @@ import {
   Table2,
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
+import { readDataImportFile, DataImportFileError, DATA_IMPORT_EXTENSIONS } from '../../utils/dataImportFile';
+import { toErrorMessage } from '../../utils/errors';
 import { readText } from '@tauri-apps/plugin-clipboard-manager';
 import { Modal } from '../ui/Modal';
 import { Select } from '../ui/Select';
@@ -26,12 +29,16 @@ import { ParseSummary } from './ClipboardImport/ParseSummary';
 import { ModeToggle } from './ClipboardImport/ModeToggle';
 import { useDataTypes } from '../../hooks/useDataTypes';
 import type { TableColumn } from '../../utils/sqlGenerator';
+import { resolveCreateTableSchema } from '../../utils/createTable';
 import {
   parseClipboardText,
   reParseWithHeaderOption,
   type ParsedClipboardData,
+  type ClipboardFormat,
   type InferredColumn,
 } from '../../utils/clipboardParser';
+
+const FILE_FORMATS: Record<string, ClipboardFormat> = { csv: 'csv', tsv: 'tsv', json: 'json-array', md: 'markdown-table' };
 
 type ImportMode = 'create' | 'append';
 type IfExistsStrategy = 'fail' | 'append' | 'replace';
@@ -40,6 +47,8 @@ interface ClipboardImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  /** Schema to import into; the active schema when omitted. */
+  schema?: string | null;
 }
 
 interface ImportResult {
@@ -47,13 +56,14 @@ interface ImportResult {
   table_created: boolean;
 }
 
-export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardImportModalProps) {
+export function ClipboardImportModal({ isOpen, onClose, onSuccess, schema }: ClipboardImportModalProps) {
   const { t } = useTranslation();
   const titleId = useId();
   const descriptionId = useId();
   const errorId = useId();
   const warningsId = useId();
   const { activeConnectionId, activeDriver, activeSchema } = useDatabase();
+  const targetSchema = resolveCreateTableSchema(schema, activeSchema);
   const { settings } = useSettings();
   const { dataTypes } = useDataTypes(activeDriver ?? undefined);
 
@@ -67,6 +77,10 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
   const [maximizedPane, setMaximizedPane] = useState<'schema' | 'preview' | null>(null);
   const [targetColumns, setTargetColumns] = useState<TableColumn[]>([]);
 
+  const sourceRequest = useRef(0);
+  const invalidateSource = useCallback(() => { sourceRequest.current++; }, []);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [isLoadingFile, setIsLoadingFile] = useState(false);
   const [isLoadingClipboard, setIsLoadingClipboard] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -89,6 +103,7 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
       try {
         const mapped = await invoke<string[]>('map_inferred_column_types', {
           driver: activeDriver,
+          connectionId: activeConnectionId,
           kinds: inferred.map((c) => c.sqlType),
         });
         return base.map((c, i) => ({ ...c, sqlType: mapped[i] ?? c.sqlType }));
@@ -96,35 +111,69 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
         return base;
       }
     },
-    [activeDriver],
+    [activeDriver, activeConnectionId],
   );
 
   const tableExists = existingTables.some(
     (t) => t.toLowerCase() === tableName.toLowerCase() && tableName !== ''
   );
 
-  const readClipboard = useCallback(async () => {
-    setIsLoadingClipboard(true);
+  const applyText = useCallback(async (text: string, id: number, name: string | null) => {
+    if (id !== sourceRequest.current) return;
+    if (!text.trim()) throw new Error(t('clipboardImport.noData'));
+    const result = parseClipboardText(text, name ? FILE_FORMATS[name.split('.').pop()?.toLowerCase() ?? ''] : undefined);
+    if (result.rowCount === 0) throw new Error(t('clipboardImport.noData'));
+    const mapped = await toSchemaColumns(result.inferredColumns);
+    if (id !== sourceRequest.current) return;
+    setRawText(text);
+    setParsed(result);
+    setColumns(mapped);
+    setFileName(name);
     setError(null);
     setSuccess(null);
-    try {
-      const text = await readText();
-      if (!text || !text.trim()) {
-        setError(t('clipboardImport.noData'));
-        setParsed(null);
-        return;
-      }
-      setRawText(text);
-      const result = parseClipboardText(text);
-      setParsed(result);
-      const mapped = await toSchemaColumns(result.inferredColumns);
-      setColumns(mapped);
-    } catch {
-      setError(t('clipboardImport.noData'));
-    } finally {
-      setIsLoadingClipboard(false);
-    }
   }, [t, toSchemaColumns]);
+
+  const readClipboard = useCallback(async () => {
+    const id = ++sourceRequest.current;
+    setIsLoadingClipboard(true);
+    setIsLoadingFile(false);
+    setError(null);
+    try {
+      await applyText((await readText()) ?? '', id, null);
+    } catch {
+      if (id === sourceRequest.current) setError(t('clipboardImport.noData'));
+    } finally {
+      if (id === sourceRequest.current) setIsLoadingClipboard(false);
+    }
+  }, [t, applyText]);
+
+  const readFile = useCallback(async () => {
+    const id = ++sourceRequest.current;
+    setIsLoadingFile(true);
+    setIsLoadingClipboard(false);
+    try {
+      const path = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: t('clipboardImport.fileSource'), extensions: DATA_IMPORT_EXTENSIONS }],
+      });
+      if (id !== sourceRequest.current || typeof path !== 'string') return;
+      const text = await readDataImportFile(path);
+      await applyText(text, id, path.split(/[\\/]/).pop() ?? path);
+    } catch (err) {
+      if (id !== sourceRequest.current) return;
+      setError(err instanceof DataImportFileError
+        ? t({ tooLarge: 'clipboardImport.fileTooLarge', unsupported: 'clipboardImport.fileUnsupported', notFile: 'clipboardImport.fileNotFile' }[err.code])
+        : `${t('clipboardImport.fileReadError')}: ${toErrorMessage(err)}`);
+    } finally {
+      if (id === sourceRequest.current) setIsLoadingFile(false);
+    }
+  }, [t, applyText]);
+
+  const close = useCallback(() => {
+    invalidateSource();
+    onClose();
+  }, [onClose, invalidateSource]);
 
   // Load existing tables for conflict detection
   const loadTables = useCallback(async () => {
@@ -132,13 +181,13 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
     try {
       const tables = await invoke<{ name: string }[]>('get_tables', {
         connectionId: activeConnectionId,
-        ...(activeSchema ? { schema: activeSchema } : {}),
+        ...(targetSchema ? { schema: targetSchema } : {}),
       });
       setExistingTables(tables.map((t) => t.name));
     } catch {
       // Non-critical
     }
-  }, [activeConnectionId, activeSchema]);
+  }, [activeConnectionId, targetSchema]);
 
   useEffect(() => {
     if (isOpen) {
@@ -153,7 +202,8 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
       readClipboard();
       loadTables();
     }
-  }, [isOpen, readClipboard, loadTables]);
+    return invalidateSource;
+  }, [isOpen, readClipboard, loadTables, invalidateSource]);
 
   // Fetch columns of the existing target table when append mode is active.
   useEffect(() => {
@@ -167,7 +217,7 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
         const cols = await invoke<TableColumn[]>('get_columns', {
           connectionId: activeConnectionId,
           tableName: tableName.trim(),
-          schema: activeSchema ?? null,
+          schema: targetSchema ?? null,
         });
         if (!cancelled) setTargetColumns(cols);
       } catch {
@@ -177,7 +227,7 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
     return () => {
       cancelled = true;
     };
-  }, [importMode, tableExists, tableName, activeConnectionId, activeSchema]);
+  }, [importMode, tableExists, tableName, activeConnectionId, targetSchema]);
 
   // Auto-map parsed columns to target columns by name (case-insensitive) when
   // entering append mode or when the target column list changes.
@@ -222,10 +272,11 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
   const handleHeaderToggle = useCallback(
     async (hasHeader: boolean) => {
       if (!parsed || !rawText) return;
+      const id = ++sourceRequest.current;
       const reparsed = reParseWithHeaderOption(rawText, hasHeader, parsed);
       setParsed(reparsed);
       const mapped = await toSchemaColumns(reparsed.inferredColumns);
-      setColumns(mapped);
+      if (id === sourceRequest.current) setColumns(mapped);
     },
     [parsed, rawText, toSchemaColumns]
   );
@@ -306,7 +357,7 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
         req: {
           connection_id: activeConnectionId,
           table_name: tableName.trim(),
-          schema: activeSchema ?? null,
+          schema: targetSchema ?? null,
           columns: colDefs,
           rows,
           create_table: importMode === 'create',
@@ -322,7 +373,7 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
     } finally {
       setIsImporting(false);
     }
-  }, [activeConnectionId, parsed, tableName, columns, importMode, ifExists, tableExists, activeSchema, onSuccess]);
+  }, [activeConnectionId, parsed, tableName, columns, importMode, ifExists, tableExists, targetSchema, onSuccess]);
 
   const mappedColumnsCount =
     importMode === 'append'
@@ -342,12 +393,12 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
     tableName.trim() !== '' &&
     mappedColumnsCount > 0 &&
     !appendModeBlocked &&
-    !isImporting;
+    !isImporting && !isLoadingClipboard && !isLoadingFile;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={close}
       overlayClassName="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] px-4 py-6"
     >
       <div
@@ -355,13 +406,13 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={describedBy || undefined}
-        aria-busy={isLoadingClipboard || isImporting}
+        aria-busy={isLoadingClipboard || isLoadingFile || isImporting}
         className="bg-elevated rounded-xl shadow-2xl w-full max-w-[1040px] border border-strong flex flex-col max-h-[90vh] overflow-hidden"
       >
-        <div className="relative flex items-start justify-between gap-4 px-5 py-4 border-b border-default bg-gradient-to-br from-indigo-900/20 via-base to-base">
+        <div className="relative flex items-start justify-between gap-4 px-5 py-4 border-b border-default bg-gradient-to-br from-accent-primary/10 via-base to-base">
           <div className="flex min-w-0 flex-1 gap-3">
-            <div className="bg-indigo-500/15 p-2.5 rounded-lg ring-1 ring-indigo-400/20 shadow-inner shrink-0">
-              <Clipboard className="text-indigo-300" size={20} />
+            <div className="self-start bg-accent-primary/15 p-2.5 rounded-lg ring-1 ring-accent-primary/20 shadow-inner shrink-0">
+              <Clipboard className="text-accent" size={20} />
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               <div className="min-w-0">
@@ -373,24 +424,24 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/25 bg-indigo-500/10 px-2.5 py-1 text-[11px] text-indigo-200">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-accent-primary/25 bg-accent-primary/10 px-2.5 py-1 text-[11px] text-accent">
                   <Clipboard size={12} className="shrink-0" />
                   <span>{selectedModeHint}</span>
                 </div>
                 {parsed && (
                   <>
                     <div className="inline-flex items-center gap-1.5 rounded-full border border-default bg-base/70 px-2.5 py-1 text-[11px] text-secondary">
-                      <Table2 size={12} className="text-blue-400 shrink-0" />
+                      <Table2 size={12} className="text-accent shrink-0" />
                       <span className="text-primary font-medium">{columns.length}</span>
                       <span>{t('clipboardImport.columnsLabel')}</span>
                     </div>
                     <div className="inline-flex items-center gap-1.5 rounded-full border border-default bg-base/70 px-2.5 py-1 text-[11px] text-secondary">
-                      <Rows size={12} className="text-green-400 shrink-0" />
+                      <Rows size={12} className="text-accent-success shrink-0" />
                       <span className="text-primary font-medium">{parsed.rowCount}</span>
                       <span>{t('clipboardImport.rowsLabel')}</span>
                     </div>
                     {parsed.warnings.length > 0 && (
-                      <div className="inline-flex items-center gap-1.5 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2.5 py-1 text-[11px] text-yellow-300">
+                      <div className="inline-flex items-center gap-1.5 rounded-full border border-accent-warning/30 bg-accent-warning/10 px-2.5 py-1 text-[11px] text-accent-warning">
                         <AlertTriangle size={12} className="shrink-0" />
                         <span>{t('clipboardImport.warningsCount', { count: parsed.warnings.length })}</span>
                       </div>
@@ -402,7 +453,7 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
             aria-label={t('common.close', { defaultValue: 'Close' })}
             className="text-muted hover:text-primary transition-colors p-1.5 rounded-md hover:bg-surface-secondary/50 shrink-0"
           >
@@ -410,26 +461,40 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
           </button>
         </div>
 
-        <div className="flex-1 overflow-hidden flex flex-col p-4 md:p-5 gap-4 min-h-0">
-          {isLoadingClipboard ? (
-            <div className="flex items-center justify-center h-40 gap-3 text-secondary">
+        <div className="flex-1 overflow-y-auto flex flex-col p-4 md:p-5 gap-4 min-h-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button type="button" onClick={readClipboard} disabled={isImporting || isAiLoading}
+              aria-pressed={!fileName}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-default text-sm text-secondary hover:bg-surface-secondary disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              <Clipboard size={14} />{t('clipboardImport.clipboardSource')}
+            </button>
+            <button type="button" onClick={readFile} disabled={isImporting || isAiLoading || isLoadingFile}
+              aria-pressed={!!fileName}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-default text-sm text-secondary hover:bg-surface-secondary disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              <Upload size={14} />{t('clipboardImport.fileSource')}
+            </button>
+            {fileName && <span className="text-xs text-secondary truncate max-w-64" title={fileName}>{fileName}</span>}
+            <p className="w-full text-xs text-muted">{t('clipboardImport.fileHint')}</p>
+          </div>
+          {isLoadingClipboard || isLoadingFile ? (
+            <div role="status" className="flex items-center justify-center h-40 gap-3 text-secondary">
               <Loader2 size={20} className="animate-spin" />
               <span className="text-sm">{t('common.loading')}</span>
             </div>
           ) : error && !parsed ? (
             <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
-              <AlertTriangle size={32} className="text-yellow-400" />
+              <AlertTriangle size={32} className="text-accent-warning" />
               <p className="text-sm text-secondary">{error}</p>
               <button
                 type="button"
-                onClick={readClipboard}
-                className="text-xs text-blue-400 hover:underline"
+                onClick={fileName ? readFile : readClipboard}
+                className="text-xs text-accent hover:underline"
               >
                 {t('clipboardImport.retry')}
               </button>
             </div>
           ) : success ? (
-            <SuccessState result={success} tableName={tableName} onClose={onClose} />
+            <SuccessState result={success} tableName={tableName} onClose={close} />
           ) : parsed ? (
             <>
               <ParseSummary
@@ -441,7 +506,7 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
                 onToggleHeader={handleHeaderToggle}
               />
 
-              <section className="flex flex-col gap-3 rounded-xl border border-default bg-base/40 p-3 md:p-4">
+              <section className="flex flex-col gap-3 shrink-0 rounded-xl border border-default bg-base/40 p-3 md:p-4">
                 <StepHeader number={1} label={t('clipboardImport.stepConfigure')} />
                 <div className="grid gap-3 lg:grid-cols-12">
                   <div className="lg:col-span-5 rounded-lg border border-default bg-base/60 p-3">
@@ -480,18 +545,18 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
                       )}
                     </div>
 
-                    <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-3 py-2 text-xs text-secondary">
+                    <div className="rounded-lg border border-accent-primary/20 bg-accent-primary/5 px-3 py-2 text-xs text-secondary">
                       <span className="text-primary font-medium">{selectedModeHint}</span>
                     </div>
 
                     {tableExists && importMode === 'create' && (
-                      <div className="flex flex-col gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-3">
-                        <div className="flex items-center gap-2 text-yellow-300">
+                      <div className="flex flex-col gap-2 rounded-lg border border-accent-warning/30 bg-accent-warning/10 px-3 py-3">
+                        <div className="flex items-center gap-2 text-accent-warning">
                           <AlertTriangle size={14} className="shrink-0" />
                           <span className="text-xs font-medium">{t('clipboardImport.tableExists')}</span>
                         </div>
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <span className="text-[11px] text-yellow-200/90 shrink-0">
+                          <span className="text-[11px] text-accent-warning/90 shrink-0">
                             {t('clipboardImport.onConflict')}:
                           </span>
                           <div className="min-w-0 flex-1">
@@ -515,7 +580,7 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
                 </div>
               </section>
 
-              <section className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden rounded-xl border border-default bg-base/40 p-3 md:p-4">
+              <section className={`flex flex-col gap-3 flex-1 shrink-0 overflow-hidden rounded-xl border border-default bg-base/40 p-3 md:p-4 ${maximizedPane ? 'min-h-[320px]' : 'min-h-[600px] xl:min-h-[320px]'}`}>
                 <StepHeader number={2} label={t('clipboardImport.stepReview')} />
                 <div className="flex flex-col xl:flex-row gap-3 flex-1 min-h-0 overflow-hidden">
                   {maximizedPane !== 'preview' && (
@@ -557,14 +622,14 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
               {parsed.warnings.length > 0 && (
                 <div
                   id={warningsId}
-                  className="border border-yellow-500/30 bg-yellow-500/5 rounded-lg overflow-hidden shrink-0"
+                  className="border border-accent-warning/30 bg-accent-warning/5 rounded-lg overflow-hidden shrink-0"
                 >
                   <button
                     type="button"
                     onClick={() => setWarningsExpanded((v) => !v)}
                     aria-expanded={warningsExpanded}
                     aria-controls={`${warningsId}-panel`}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs text-accent-warning hover:bg-accent-warning/10 transition-colors"
                   >
                     {warningsExpanded ? (
                       <ChevronDown size={14} className="shrink-0" />
@@ -579,11 +644,11 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
                   {warningsExpanded && (
                     <div
                       id={`${warningsId}-panel`}
-                      className="max-h-32 overflow-y-auto px-3 pb-2 pt-1 flex flex-col gap-1 border-t border-yellow-500/20"
+                      className="max-h-32 overflow-y-auto px-3 pb-2 pt-1 flex flex-col gap-1 border-t border-accent-warning/20"
                     >
                       {parsed.warnings.map((w, i) => (
-                        <div key={i} className="flex items-start gap-2 text-xs text-yellow-400/90">
-                          <span className="text-yellow-500/60 mt-0.5">•</span>
+                        <div key={i} className="flex items-start gap-2 text-xs text-accent-warning/90">
+                          <span className="text-accent-warning/60 mt-0.5">•</span>
                           <span>{w}</span>
                         </div>
                       ))}
@@ -615,13 +680,13 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
                   : t('clipboardImport.noData')}
               </span>
               {appendModeBlocked && (
-                <span className="text-[11px] text-yellow-300">{t('clipboardImport.selectTablePlaceholder')}</span>
+                <span className="text-[11px] text-accent-warning">{t('clipboardImport.selectTablePlaceholder')}</span>
               )}
             </div>
             <div className="flex gap-2 self-end sm:self-auto">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={close}
                 className="px-4 py-2 text-secondary hover:text-primary hover:bg-surface-secondary/50 rounded-lg transition-colors text-sm"
               >
                 {t('common.cancel')}
@@ -630,7 +695,7 @@ export function ClipboardImportModal({ isOpen, onClose, onSuccess }: ClipboardIm
                 type="button"
                 onClick={handleImport}
                 disabled={!canImport}
-                className="bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 disabled:from-indigo-800/50 disabled:to-indigo-900/50 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-indigo-900/30 transition-all"
+                className="bg-gradient-to-br from-accent-primary to-accent-primary hover:from-accent-primary hover:to-accent-primary disabled:from-accent-primary/25 disabled:to-accent-primary/25 disabled:opacity-60 disabled:cursor-not-allowed text-inverse px-5 py-2 rounded-lg font-medium text-sm flex items-center gap-2 shadow-lg shadow-accent-primary/15 transition-all"
               >
                 {isImporting ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -657,7 +722,7 @@ interface StepHeaderProps {
 function StepHeader({ number, label }: StepHeaderProps) {
   return (
     <div className="flex items-center gap-2 min-w-0">
-      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500/30 to-indigo-800/40 border border-indigo-500/40 text-[11px] font-bold text-indigo-200 shadow-inner shrink-0">
+      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-accent-primary/30 to-accent-primary/20 border border-accent-primary/40 text-[11px] font-bold text-accent shadow-inner shrink-0">
         {number}
       </span>
       <span className="text-xs font-semibold text-primary uppercase tracking-wider truncate">{label}</span>
@@ -676,7 +741,7 @@ function SuccessState({ result, tableName, onClose }: SuccessStateProps) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-48 gap-4 text-center" role="status" aria-live="polite">
-      <CheckCircle2 size={40} className="text-green-400" />
+      <CheckCircle2 size={40} className="text-accent-success" />
       <div>
         <p className="text-sm font-medium text-primary">
           {t('clipboardImport.success', { count: result.rows_inserted, table: tableName })}
@@ -688,7 +753,7 @@ function SuccessState({ result, tableName, onClose }: SuccessStateProps) {
       <button
         type="button"
         onClick={onClose}
-        className="flex items-center gap-2 px-4 py-2 bg-green-900/30 hover:bg-green-900/50 border border-green-800/40 text-green-300 rounded-lg text-sm transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-accent-success/15 hover:bg-accent-success/25 border border-accent-success/20 text-accent-success rounded-lg text-sm transition-colors"
       >
         <ExternalLink size={14} />
         {t('clipboardImport.openTable')}
