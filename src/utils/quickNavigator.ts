@@ -3,10 +3,12 @@ import { fuzzyFilter } from './fuzzy';
 
 export interface NavigatorItem {
   name: string;
-  type: "table" | "view" | "routine" | "trigger";
+  type: "table" | "view" | "routine" | "trigger" | "command";
   schema?: string;
   detail?: string;
-  item: TableInfo | ViewInfo | RoutineInfo | TriggerInfo;
+  shortcut?: string;
+  action?: () => void;
+  item?: TableInfo | ViewInfo | RoutineInfo | TriggerInfo;
 }
 
 export interface NavigatorItemParams {
@@ -159,7 +161,11 @@ export function getNavigatorItems(params: NavigatorItemParams): NavigatorItem[] 
 }
 
 export function filterNavigatorItems(items: NavigatorItem[], search: string): NavigatorItem[] {
-  return fuzzyFilter(items, search, (item) =>
-    item.schema ? `${item.name} ${item.schema}` : item.name,
-  );
+  return fuzzyFilter(items, search, (item) => {
+    const parts = [item.name];
+    if (item.schema) parts.push(item.schema);
+    if (item.detail) parts.push(item.detail);
+    if (item.shortcut) parts.push(item.shortcut);
+    return parts.join(" ");
+  });
 }

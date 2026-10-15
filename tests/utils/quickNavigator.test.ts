@@ -130,10 +130,24 @@ describe("quickNavigator utility", () => {
       expect(result[1].name).toBe("active_sessions");
     });
 
-    it("should filter items by schema name case-insensitively", () => {
-      const result = filterNavigatorItems(mockItems, "auth");
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("user_sessions");
+    it("should filter items by shortcut and command detail", () => {
+      const itemsWithCommand = [
+        ...mockItems,
+        {
+          name: "Show SQL Snippets",
+          type: "command" as const,
+          detail: "SQL Editor",
+          shortcut: "Ctrl+J",
+        },
+      ];
+      const resultShortcut = filterNavigatorItems(itemsWithCommand, "Ctrl+J");
+      expect(resultShortcut).toHaveLength(1);
+      expect(resultShortcut[0].name).toBe("Show SQL Snippets");
+
+      const resultDetail = filterNavigatorItems(itemsWithCommand, "snippets");
+      expect(resultDetail).toHaveLength(1);
+      expect(resultDetail[0].shortcut).toBe("Ctrl+J");
     });
   });
 });
+

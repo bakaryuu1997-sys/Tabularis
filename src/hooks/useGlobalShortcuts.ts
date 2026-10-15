@@ -16,7 +16,9 @@ export function useGlobalShortcuts() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't fire when typing in inputs / textareas / contenteditable (except for the quick navigator)
       const target = e.target as HTMLElement;
-      const isQuickNavigator = matchesShortcut(e, "quick_navigator");
+      const isQuickNavigator =
+        matchesShortcut(e, "quick_navigator") ||
+        ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k");
       if (
         (target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
@@ -38,7 +40,10 @@ export function useGlobalShortcuts() {
         return;
       }
 
-      if (matchesShortcut(e, "quick_navigator")) {
+      if (
+        matchesShortcut(e, "quick_navigator") ||
+        ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k")
+      ) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent("tabularis:open-quick-navigator"));
         return;

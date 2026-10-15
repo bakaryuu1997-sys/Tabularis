@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Search, X, Table, Eye, Code2, Zap, Database, Play, Copy, Hash, FileText, FileCode } from "lucide-react";
+import { Search, X, Table, Eye, Code2, Zap, Database, Play, Copy, Hash, FileText, FileCode, Command } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useAlert } from "../../hooks/useAlert";
 import { quoteTableRef } from "../../utils/identifiers";
 import { isMultiDatabaseCapable, getDatabaseList } from "../../utils/database";
-import { getNavigatorItems, filterNavigatorItems } from "../../utils/quickNavigator";
+import { getNavigatorItems, filterNavigatorItems, type NavigatorItem } from "../../utils/quickNavigator";
 import { newConsoleForTable } from "../../utils/newConsole";
 import type { RoutineInfo, TriggerInfo } from "../../contexts/DatabaseContext";
 
@@ -78,9 +78,9 @@ export const QuickNavigatorModal = ({ isOpen, onClose, onGenerateSql, onInspect 
     loadAll();
   }, [isOpen, activeConnectionId, activeCapabilities, schemas, configuredDatabases, loadSchemaData, loadDatabaseData]);
 
-  // Gather all schema items based on database capabilities
+  // Gather all schema items based on database capabilities and command shortcuts
   const items = useMemo(() => {
-    return getNavigatorItems({
+    const dbItems = getNavigatorItems({
       activeConnectionId,
       hasSchemas: !!activeCapabilities?.schemas,
       isMultiDb: isMultiDatabaseCapable(activeCapabilities),
@@ -94,6 +94,99 @@ export const QuickNavigatorModal = ({ isOpen, onClose, onGenerateSql, onInspect 
       triggers,
       activeSchema,
     });
+
+    const commandItems: NavigatorItem[] = [
+      {
+        name: t("editor.quickNavigator.commands.newTab", "New Tab / Query Console"),
+        type: "command" as const,
+        detail: "Editor",
+        shortcut: "Ctrl+T",
+        action: () => {
+          onClose();
+          navigate("/editor", { state: { openNewTab: true } });
+        },
+      },
+      {
+        name: t("editor.quickNavigator.commands.reopenClosedTab", "Reopen Closed Tab"),
+        type: "command" as const,
+        detail: "Editor",
+        shortcut: "Ctrl+Shift+T",
+        action: () => {
+          onClose();
+          window.dispatchEvent(new CustomEvent("tabularis:reopen-closed-tab"));
+        },
+      },
+      {
+        name: t("editor.quickNavigator.commands.showSqlSnippets", "Show SQL Snippets"),
+        type: "command" as const,
+        detail: "SQL Editor",
+        shortcut: "Ctrl+J",
+        action: () => {
+          onClose();
+          window.dispatchEvent(new CustomEvent("tabularis:show-sql-snippets"));
+        },
+      },
+      {
+        name: t("editor.quickNavigator.commands.formatSql", "Format SQL Query"),
+        type: "command" as const,
+        detail: "SQL Editor",
+        shortcut: "Ctrl+Alt+F",
+        action: () => {
+          onClose();
+          window.dispatchEvent(new CustomEvent("tabularis:format-sql"));
+        },
+      },
+      {
+        name: t("editor.quickNavigator.commands.runQuery", "Run Statement / Query"),
+        type: "command" as const,
+        detail: "Query Execution",
+        shortcut: "Ctrl+Enter",
+        action: () => {
+          onClose();
+          window.dispatchEvent(new CustomEvent("tabularis:run-query"));
+        },
+      },
+      {
+        name: t("editor.quickNavigator.commands.toggleSidebar", "Toggle Left Sidebar"),
+        type: "command" as const,
+        detail: "Layout",
+        shortcut: "Ctrl+B",
+        action: () => {
+          onClose();
+          window.dispatchEvent(new CustomEvent("tabularis:toggle-sidebar"));
+        },
+      },
+      {
+        name: t("editor.quickNavigator.commands.pasteImport", "Paste & Import from Clipboard"),
+        type: "command" as const,
+        detail: "Import",
+        shortcut: "Ctrl+Shift+V",
+        action: () => {
+          onClose();
+          window.dispatchEvent(new CustomEvent("tabularis:paste-import"));
+        },
+      },
+      {
+        name: t("editor.quickNavigator.commands.openConnections", "Manage Connections"),
+        type: "command" as const,
+        detail: "Navigation",
+        action: () => {
+          onClose();
+          navigate("/connections");
+        },
+      },
+      {
+        name: t("editor.quickNavigator.commands.openSettings", "Open Settings"),
+        type: "command" as const,
+        detail: "Settings",
+        action: () => {
+          onClose();
+          navigate("/settings");
+        },
+      },
+    ];
+
+    return [...commandItems, ...dbItems];
   }, [
     activeConnectionId,
     activeCapabilities,
@@ -106,6 +199,9 @@ export const QuickNavigatorModal = ({ isOpen, onClose, onGenerateSql, onInspect 
     routines,
     triggers,
     activeSchema,
+    t,
+    navigate,
+    onClose,
   ]);
 
   // Check if we have multiple databases/schemas to show group headers
@@ -134,6 +230,11 @@ export const QuickNavigatorModal = ({ isOpen, onClose, onGenerateSql, onInspect 
   const handleSelect = useCallback(async (item: typeof items[number]) => {
     onClose();
     const { name, type, schema } = item;
+
+    if (type === "command") {
+      item.action?.();
+      return;
+    }
 
     if (type === "table") {
       if (isMultiDatabaseCapable(activeCapabilities)) {
@@ -368,7 +469,10 @@ export const QuickNavigatorModal = ({ isOpen, onClose, onGenerateSql, onInspect 
 
                 let typeColor = "text-blue-400";
                 let typeIcon = <Table size={14} className={typeColor} />;
-                if (item.type === "view") {
+                if (item.type === "command") {
+                  typeColor = "text-amber-400";
+                  typeIcon = <Command size={14} className={typeColor} />;
+                } else if (item.type === "view") {
                   typeColor = "text-purple-400";
                   typeIcon = <Eye size={14} className={typeColor} />;
                 } else if (item.type === "routine") {
@@ -486,8 +590,13 @@ export const QuickNavigatorModal = ({ isOpen, onClose, onGenerateSql, onInspect 
                           </button>
                         </div>
 
+                        {item.shortcut && (
+                          <kbd className="px-1.5 py-0.5 rounded bg-surface-secondary text-primary text-[10px] font-mono border border-strong font-semibold shadow-sm tracking-tight mr-1">
+                            {item.shortcut}
+                          </kbd>
+                        )}
                         <span className="text-[10px] uppercase font-bold text-muted border border-default/50 px-1.5 py-0.5 rounded tracking-wider shrink-0 select-none">
-                          {t(`editor.quickNavigator.type_${item.type}`)}
+                          {item.type === "command" ? "COMMAND" : t(`editor.quickNavigator.type_${item.type}`)}
                         </span>
                       </div>
                     </div>
