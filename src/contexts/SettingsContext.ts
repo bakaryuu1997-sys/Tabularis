@@ -1,5 +1,6 @@
 import { createContext } from "react";
 import type { AppLanguage } from "../i18n/config";
+import type { AutocompleteKeywordCase } from "../utils/autocomplete";
 
 export type { AppLanguage };
 export type CopyFormat = "csv" | "json" | "sql-insert";
@@ -58,6 +59,8 @@ export interface Settings {
   editorHighlightInvisibleCharacters?: boolean;
   editorShowLineNumbers?: boolean;
   editorAcceptSuggestionOnEnter?: boolean;
+  /** Case of SQL keywords inserted by autocomplete. Default: "upper". */
+  autocompleteKeywordCase?: AutocompleteKeywordCase;
   pingInterval?: number;
   queryHistoryMaxEntries?: number;
   showWelcome?: boolean;
@@ -124,6 +127,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorHighlightInvisibleCharacters: true,
   editorShowLineNumbers: true,
   editorAcceptSuggestionOnEnter: true,
+  autocompleteKeywordCase: "upper",
   pingInterval: 30,
   queryHistoryMaxEntries: 500,
   autoConnectLastConnection: true,

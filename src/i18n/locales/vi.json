@@ -368,6 +368,10 @@
     "appearance_editorShowLineNumbersDesc": "Hiển thị số dòng ở lề trình soạn thảo.",
     "appearance_editorAcceptSuggestionOnEnter": "Chấp nhận gợi ý bằng Enter",
     "appearance_editorAcceptSuggestionOnEnterDesc": "Cho phép Enter (ngoài Tab) để chấp nhận gợi ý tự động hoàn thành đang chọn. Khi tắt, Enter luôn chèn dòng mới.",
+    "autocomplete_title": "Gợi ý tự động (Autocomplete)",
+    "autocomplete_keywordCase": "Kiểu chữ từ khóa SQL",
+    "autocomplete_keywordCaseDesc": "Quy định chữ HOA / thường cho các từ khóa SQL khi chèn từ gợi ý tự động",
+    "autocomplete_keywordCaseMatch": "Khớp theo phím gõ",
     "editConfigJson": "Sửa config.json",
     "editConfigJsonDesc": "Sửa trực tiếp file cấu hình gốc. Cần khởi động lại để áp dụng thay đổi.",
     "configJsonModal": {

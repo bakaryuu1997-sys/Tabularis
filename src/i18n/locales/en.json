@@ -368,6 +368,10 @@
     "appearance_editorShowLineNumbersDesc": "Display line numbers in the editor gutter.",
     "appearance_editorAcceptSuggestionOnEnter": "Accept Suggestion with Enter",
     "appearance_editorAcceptSuggestionOnEnterDesc": "Allow Enter (in addition to Tab) to accept the active autocomplete suggestion. When off, Enter always inserts a newline.",
+    "autocomplete_title": "Autocomplete",
+    "autocomplete_keywordCase": "Keyword case",
+    "autocomplete_keywordCaseDesc": "Case of SQL keywords inserted from autocomplete suggestions",
+    "autocomplete_keywordCaseMatch": "Match typed",
     "editConfigJson": "Edit config.json",
     "editConfigJsonDesc": "Directly edit the raw configuration file. A restart is required to apply changes.",
     "configJsonModal": {

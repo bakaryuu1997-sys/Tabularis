@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useContext, useEffect } from "react";
 import type { Monaco } from "@monaco-editor/react";
 import { loader } from "@monaco-editor/react";
 import { useDatabase } from "./useDatabase";
+import { SettingsContext } from "../contexts/SettingsContext";
 import { isMultiDatabaseCapable } from "../utils/database";
 import { registerSqlAutocomplete, disposeSqlAutocomplete } from "../utils/autocomplete";
 
@@ -29,6 +30,9 @@ export function useSqlAutocompleteRegistration(
     databaseDataMap,
     selectedDatabases,
   } = useDatabase();
+  const settingsContext = useContext(SettingsContext);
+  const keywordCase =
+    settingsContext?.settings.autocompleteKeywordCase ?? "upper";
 
   const schema = options?.schema ?? activeSchema;
   const isMultiDb =
@@ -59,6 +63,7 @@ export function useSqlAutocompleteRegistration(
         effectiveTables,
         schema,
         activeDriver ?? null,
+        keywordCase,
       );
     };
 
@@ -86,5 +91,6 @@ export function useSqlAutocompleteRegistration(
     databaseDataMap,
     isMultiDb,
     selectedDatabases,
+    keywordCase,
   ]);
 }

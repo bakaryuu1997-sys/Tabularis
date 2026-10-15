@@ -4,6 +4,46 @@ import type { TableInfo } from "../contexts/DatabaseContext";
 import { formatSqlIdentifier, getQuoteChar, quoteIdentifier } from "./identifiers";
 import { getCurrentStatement, parseTablesFromQuery, type ParsedTableRef } from "./sqlAnalysis";
 
+export type AutocompleteKeywordCase = "match" | "upper" | "lower";
+
+// Decide whether a keyword completion should be upper or lower case.
+export function resolveKeywordCase(
+  mode: AutocompleteKeywordCase | undefined,
+  typedPrefix: string,
+): "upper" | "lower" {
+  if (mode === "upper") return "upper";
+  if (mode === "lower") return "lower";
+
+  const letters = typedPrefix.replace(/[^A-Za-z]/g, "");
+  if (letters.length === 0) return "upper";
+  return letters === letters.toLowerCase() ? "lower" : "upper";
+}
+
+// Apply the keyword-case setting
+export function applyKeywordCase(
+  keyword: string,
+  mode: AutocompleteKeywordCase | undefined,
+  typedPrefix: string,
+): string {
+  return resolveKeywordCase(mode, typedPrefix) === "lower"
+    ? keyword.toLowerCase()
+    : keyword.toUpperCase();
+}
+
+/**
+ * In "match" mode the case is decided by the first typed letters. When the
+ * list is opened with none yet (a trigger character such as " ", or Ctrl+Space
+ * on an empty word), Monaco would only re-filter the items it already has as
+ * the user types, keeping the fallback case. Marking that result incomplete
+ * makes Monaco ask the provider again once there is a letter to match.
+ */
+export function needsKeywordCaseRetrigger(
+  mode: AutocompleteKeywordCase | undefined,
+  typedPrefix: string,
+): boolean {
+  return (mode ?? "match") === "match" && !/[A-Za-z]/.test(typedPrefix);
+}
+
 // Lightweight column cache with TTL and size limits
 interface CachedColumns {
   data: Array<{ label: string; detail: string }>;
@@ -156,13 +196,15 @@ export const registerSqlAutocomplete = (
   tables: TableInfo[],
   schema?: string | null,
   driver?: string | null,
+  keywordCase: AutocompleteKeywordCase = "upper",
 ) => {
   const provider = monaco.languages.registerCompletionItemProvider("sql", {
     triggerCharacters: [".", " "],
-    provideCompletionItems: async (model: { getWordUntilPosition: (position: { lineNumber: number; column: number }) => { startColumn: number; endColumn: number }; getValueInRange: (range: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number }) => string; getValue: () => string; getOffsetAt: (position: { lineNumber: number; column: number }) => number }, position: { lineNumber: number; column: number }) => {
+    provideCompletionItems: async (model: { getWordUntilPosition: (position: { lineNumber: number; column: number }) => { word?: string; startColumn: number; endColumn: number }; getValueInRange: (range: { startLineNumber: number; startColumn: number; endLineNumber: number; endColumn: number }) => string; getValue: () => string; getOffsetAt: (position: { lineNumber: number; column: number }) => number }, position: { lineNumber: number; column: number }) => {
       if (!connectionId) return { suggestions: [] };
 
       const wordUntil = model.getWordUntilPosition(position);
+      const typedPrefix = wordUntil.word ?? "";
 
       const range = {
         startLineNumber: position.lineNumber,
@@ -375,13 +417,16 @@ export const registerSqlAutocomplete = (
       const colLabels = new Set(contextColumnSuggestions.map(s => s.label.toUpperCase()));
       const keywordSuggestions = SQL_KEYWORDS
         .filter(kw => !colLabels.has(kw))
-        .map((kw) => ({
-          label: kw,
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: kw,
-          range,
-          sortText: `2_${kw}`
-        }));
+        .map((kw) => {
+          const text = applyKeywordCase(kw, keywordCase, typedPrefix);
+          return {
+            label: text,
+            kind: monaco.languages.CompletionItemKind.Keyword,
+            insertText: text,
+            range,
+            sortText: `2_${kw}`,
+          };
+        });
 
       // ============================================
       // 4. TABLE SUGGESTIONS
@@ -410,6 +455,10 @@ export const registerSqlAutocomplete = (
             ...keywordSuggestions.map((s) => ({ ...s, sortText: `1_${s.label}` })),
             ...tableSuggestions.map((s) => ({ ...s, sortText: `3_${s.label}` })),
           ],
+          ...(keywordSuggestions.length > 0 &&
+          needsKeywordCaseRetrigger(keywordCase, typedPrefix)
+            ? { incomplete: true }
+            : {}),
         };
       }
 
@@ -419,6 +468,10 @@ export const registerSqlAutocomplete = (
           ...tableSuggestions,
           ...keywordSuggestions,
         ],
+        ...(keywordSuggestions.length > 0 &&
+        needsKeywordCaseRetrigger(keywordCase, typedPrefix)
+          ? { incomplete: true }
+          : {}),
       };
     },
   });

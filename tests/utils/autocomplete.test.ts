@@ -3,6 +3,10 @@ import {
   clearAutocompleteCache,
   registerSqlAutocomplete,
   detectSqlClauseContext,
+  resolveKeywordCase,
+  applyKeywordCase,
+  needsKeywordCaseRetrigger,
+  type AutocompleteKeywordCase,
 } from '../../src/utils/autocomplete';
 import type { TableInfo } from '../../src/contexts/DatabaseContext';
 
@@ -574,5 +578,30 @@ describe('detectSqlClauseContext', () => {
   it('ignores the partial word being typed', () => {
     // "FROM" here is a partial word, not a clause keyword yet
     expect(detectSqlClauseContext('SELECT * FRO')).toBe('column');
+  });
+});
+
+describe('keyword case configuration', () => {
+  it('resolves keyword case correctly', () => {
+    expect(resolveKeywordCase('upper', 'wh')).toBe('upper');
+    expect(resolveKeywordCase('lower', 'WH')).toBe('lower');
+    expect(resolveKeywordCase('match', 'wh')).toBe('lower');
+    expect(resolveKeywordCase('match', 'WH')).toBe('upper');
+    expect(resolveKeywordCase('match', '')).toBe('upper');
+  });
+
+  it('applies keyword case to keywords', () => {
+    expect(applyKeywordCase('SELECT', 'upper', 'sel')).toBe('SELECT');
+    expect(applyKeywordCase('SELECT', 'lower', 'SEL')).toBe('select');
+    expect(applyKeywordCase('SELECT', 'match', 'sel')).toBe('select');
+    expect(applyKeywordCase('SELECT', 'match', 'SEL')).toBe('SELECT');
+  });
+
+  it('detects when keyword case retrigger is needed', () => {
+    expect(needsKeywordCaseRetrigger('match', '')).toBe(true);
+    expect(needsKeywordCaseRetrigger('match', ' ')).toBe(true);
+    expect(needsKeywordCaseRetrigger('match', 's')).toBe(false);
+    expect(needsKeywordCaseRetrigger('upper', '')).toBe(false);
+    expect(needsKeywordCaseRetrigger('lower', '')).toBe(false);
   });
 });

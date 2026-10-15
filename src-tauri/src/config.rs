@@ -69,6 +69,8 @@ pub struct AppConfig {
     /// becomes `"smart"` (the safer variant), `false` becomes `"off"`.
     /// Default: `true` — matches the behaviour users expect from most editors.
     pub editor_accept_suggestion_on_enter: Option<bool>,
+    /// Case of SQL keywords inserted by autocomplete: "upper" | "match" | "lower"
+    pub autocomplete_keyword_case: Option<String>,
     /// Connection health check interval in seconds. 0 = disabled. Default: 30.
     pub ping_interval: Option<u32>,
     /// Maximum number of query history entries per connection. Default: 500.
@@ -336,6 +338,9 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
         if config.editor_accept_suggestion_on_enter.is_some() {
             existing_config.editor_accept_suggestion_on_enter =
                 config.editor_accept_suggestion_on_enter;
+        }
+        if config.autocomplete_keyword_case.is_some() {
+            existing_config.autocomplete_keyword_case = config.autocomplete_keyword_case;
         }
         if config.ping_interval.is_some() {
             let old_interval = existing_config.ping_interval;
