@@ -35,7 +35,12 @@ vi.mock('../../../src/themes/themeUtils', () => ({
 // Mock monaco KeyMod and KeyCode
 vi.mock('monaco-editor', () => ({
   KeyMod: { CtrlCmd: 2048 },
-  KeyCode: { Enter: 3 },
+  KeyCode: { Enter: 3, KeyJ: 40 },
+  languages: {
+    registerCompletionItemProvider: vi.fn(),
+    CompletionItemKind: { Snippet: 27 },
+    CompletionItemInsertTextRule: { InsertAsSnippet: 4 },
+  },
 }));
 
 const settingsValue = {

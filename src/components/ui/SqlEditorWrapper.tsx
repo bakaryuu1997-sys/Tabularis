@@ -11,6 +11,7 @@ import { formatSql } from "../../utils/sqlFormat";
 import { toSqlList } from "../../utils/editor";
 import { getSqlInvisibleCharacterEdits } from "../../utils/sqlInvisibleCharacters";
 import type { SqlDialect } from "../../utils/sql";
+import { registerMonacoSqlSnippets } from "../../utils/sqlSnippets";
 import {
   zoomInFontSize,
   zoomOutFontSize,
@@ -108,6 +109,7 @@ const SqlEditorInternal = ({
     const handleBeforeMount: BeforeMount = (monaco) => {
       // Load Monaco theme before editor is created
       loadMonacoTheme(editorTheme, monaco);
+      registerMonacoSqlSnippets(monaco);
     };
 
     const tauriPaste = async (ed: Monaco.editor.ICodeEditor) => {
@@ -132,6 +134,18 @@ const SqlEditorInternal = ({
     const handleEditorMount: OnMount = (editor, monaco) => {
       editorRef.current = editor;
       monacoRef.current = monaco;
+
+      // Register SQL snippets quick trigger (Ctrl + J)
+      editor.addAction({
+        id: 'tabularis.showSqlSnippets',
+        label: t('editor.showSqlSnippets', 'Show SQL Snippets'),
+        contextMenuGroupId: '1_modification',
+        contextMenuOrder: 1.7,
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyJ],
+        run: (ed) => {
+          ed.trigger('keyboard', 'editor.action.triggerSuggest', {});
+        },
+      });
 
       // Register custom Paste action using Tauri clipboard API
       editor.addAction({

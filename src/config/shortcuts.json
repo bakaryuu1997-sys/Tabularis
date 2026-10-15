@@ -50,6 +50,16 @@
     "overridable": true
   },
   {
+    "id": "show_sql_snippets",
+    "category": "editor",
+    "defaultMac": "⌘+J",
+    "defaultWin": "Ctrl+J",
+    "macMatch": { "metaKey": true, "key": "j" },
+    "winMatch": { "ctrlKey": true, "key": "j" },
+    "i18nKey": "settings.shortcuts.showSqlSnippets",
+    "overridable": true
+  },
+  {
     "id": "next_page",
     "category": "data_grid",
     "defaultMac": "⌘+→",
