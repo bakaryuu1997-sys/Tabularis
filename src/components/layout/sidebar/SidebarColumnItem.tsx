@@ -91,9 +91,10 @@ export const SidebarColumnItem = ({
         )}
         <span
           className={clsx(
-            "truncate flex-1 min-w-0",
+            "truncate flex-1 min-w-0 select-text cursor-text",
             column.is_pk && "font-bold text-yellow-500/80",
           )}
+          onClick={(e) => e.stopPropagation()}
         >
           {column.name}
         </span>

@@ -34,7 +34,10 @@ import {
   PanelBottomOpen,
   EyeOff,
   Eye,
+  Key,
+  Link2,
 } from "lucide-react";
+import { buildColumnTooltip } from "../../utils/columnDetails";
 import {
   getCellValueFilterOperators,
   type CellValueFilterOperator,
@@ -887,33 +890,77 @@ export const DataGrid = React.memo(
               const displaySortState: "none" | "asc" | "desc" =
                 sortState ?? "none";
 
+              const isPk = Boolean(
+                (pkColumns && pkColumns.includes(colName)) ||
+                columnMetadata?.find((c) => c.name === colName)?.is_pk,
+              );
+              const fk = foreignKeys?.find((f) => f.column_name === colName);
+              const meta = columnMetadata?.find((c) => c.name === colName);
+              const colType = meta?.data_type || columnTypeMap?.get(colName);
+
+              const sortPrompt = onSort
+                ? displaySortState === "none"
+                  ? t("dataGrid.sortByAsc", { col: colName })
+                  : displaySortState === "asc"
+                    ? t("dataGrid.sortByDesc", { col: colName })
+                    : t("dataGrid.clearSort")
+                : undefined;
+
+              const tooltipText = buildColumnTooltip(
+                colName,
+                meta,
+                isPk,
+                fk,
+                sortPrompt,
+              );
+
               return (
                 <div
-                  role={onSort ? "button" : undefined}
-                  tabIndex={onSort ? 0 : undefined}
-                  aria-label={onSort ? (
-                    displaySortState === "none"
-                      ? t("dataGrid.sortByAsc", { col: colName })
-                      : displaySortState === "asc"
-                        ? t("dataGrid.sortByDesc", { col: colName })
-                        : t("dataGrid.clearSort")
-                  ) : undefined}
-                  className={`flex items-center gap-2 select-none group/header ${onSort ? "cursor-pointer" : ""}`}
-                  onClick={() => onSort && onSort(colName)}
-                  onKeyDown={(e) => { if (onSort && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onSort(colName); } }}
-                  title={
-                    onSort
-                      ? displaySortState === "none"
-                        ? t("dataGrid.sortByAsc", { col: colName })
-                        : displaySortState === "asc"
-                          ? t("dataGrid.sortByDesc", { col: colName })
-                          : t("dataGrid.clearSort")
-                      : undefined
-                  }
+                  className="flex items-center gap-1.5 select-none group/header min-w-0"
+                  title={tooltipText}
                 >
-                  <span>{colName}</span>
+                  {isPk && (
+                    <Key
+                      size={12}
+                      className="text-amber-400 shrink-0"
+                      title="Khóa chính (Primary Key)"
+                    />
+                  )}
+                  {fk && (
+                    <Link2
+                      size={12}
+                      className="text-cyan-400 shrink-0"
+                      title={`Khóa ngoại ➔ ${fk.ref_table}.${fk.ref_column}`}
+                    />
+                  )}
+                  <span
+                    className="select-text cursor-text font-medium text-primary hover:text-white"
+                    onClick={(e) => {
+                      // Allow selecting text without triggering sort
+                      e.stopPropagation();
+                    }}
+                  >
+                    {colName}
+                  </span>
+                  {colType && (
+                    <span className="text-[10px] text-muted font-mono opacity-65 group-hover/header:opacity-100 select-none">
+                      {colType.length > 12 ? colType.slice(0, 10) + "…" : colType}
+                    </span>
+                  )}
                   {onSort && (
-                    <span className="flex flex-col items-center justify-center">
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={sortPrompt}
+                      onClick={() => onSort(colName)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onSort(colName);
+                        }
+                      }}
+                      className="flex flex-col items-center justify-center p-0.5 rounded hover:bg-surface-secondary transition-colors cursor-pointer ml-auto"
+                    >
                       {displaySortState === "asc" && (
                         <ArrowUp size={14} className="text-blue-400" />
                       )}
@@ -939,6 +986,10 @@ export const DataGrid = React.memo(
         t,
         sortClause,
         onSort,
+        pkColumns,
+        foreignKeys,
+        columnMetadata,
+        columnTypeMap,
       ],
     );
 

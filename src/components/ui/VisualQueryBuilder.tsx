@@ -20,7 +20,7 @@ import { useDatabase } from '../../hooks/useDatabase';
 import { invoke } from '@tauri-apps/api/core';
 import { dragState } from '../../utils/dragState';
 import { useEditor } from '../../hooks/useEditor';
-import { Filter, SortAsc, Group, Hash, X, Plus } from 'lucide-react';
+import { Filter, SortAsc, Group, Hash, X, Plus, Database, Table } from 'lucide-react';
 import { generateVisualQuerySQL, type WhereCondition, type OrderByClause } from '../../utils/visualQuery';
 
 const nodeTypes = {
@@ -39,7 +39,7 @@ interface TableColumn {
 }
 
 const VisualQueryBuilderContent = () => {
-  const { activeConnectionId, activeSchema } = useDatabase();
+  const { activeConnectionId, activeSchema, tables } = useDatabase();
   const { activeTab, activeTabId, updateTab } = useEditor();
   const { screenToFlowPosition } = useReactFlow();
   
@@ -186,6 +186,59 @@ const VisualQueryBuilderContent = () => {
     [setEdges],
   );
 
+  const addTableNode = useCallback(
+    async (tableName: string, position?: { x: number; y: number }) => {
+      if (!tableName || !activeConnectionId) return;
+      const targetPos = position || {
+        x: 80 + (nodes.length % 5) * 60,
+        y: 80 + (nodes.length % 5) * 40,
+      };
+
+      try {
+        const columns = await invoke<TableColumn[]>("get_columns", {
+          connectionId: activeConnectionId,
+          tableName,
+          ...(activeSchema ? { schema: activeSchema } : {}),
+        });
+        const newNodeId = `${tableName}-${Date.now()}`;
+
+        const newNode: Node = {
+          id: newNodeId,
+          type: "table",
+          position: targetPos,
+          data: {
+            label: tableName,
+            columns: columns.map((c) => ({ name: c.name, type: c.data_type })),
+            selectedColumns: {},
+            columnAggregations: {},
+            columnAliases: {},
+            onColumnCheck: (col: string, checked: boolean) =>
+              onColumnCheck(newNodeId, col, checked),
+            onColumnAggregation: (col: string, agg: ColumnAggregation) =>
+              onColumnAggregation(newNodeId, col, agg),
+            onColumnAlias: (col: string, alias: string, order?: number) =>
+              onColumnAlias(newNodeId, col, alias, order),
+            onDelete: () => deleteNode(newNodeId),
+          },
+        };
+
+        setNodes((nds) => nds.concat(newNode));
+      } catch (e) {
+        console.error("Failed to fetch columns", e);
+      }
+    },
+    [
+      activeConnectionId,
+      activeSchema,
+      nodes.length,
+      onColumnCheck,
+      onColumnAggregation,
+      onColumnAlias,
+      deleteNode,
+      setNodes,
+    ],
+  );
+
   const onPointerUp = useCallback(
     async (event: React.PointerEvent) => {
       const tableName = dragState.table;
@@ -196,33 +249,10 @@ const VisualQueryBuilderContent = () => {
         y: event.clientY,
       });
 
-      try {
-        const columns = await invoke<TableColumn[]>("get_columns", { connectionId: activeConnectionId, tableName, ...(activeSchema ? { schema: activeSchema } : {}) });
-        const newNodeId = `${tableName}-${Date.now()}`;
-
-        const newNode: Node = {
-          id: newNodeId,
-          type: 'table',
-          position,
-          data: {
-            label: tableName,
-            columns: columns.map(c => ({ name: c.name, type: c.data_type })),
-            selectedColumns: {},
-            columnAggregations: {},
-            columnAliases: {},
-            onColumnCheck: (col: string, checked: boolean) => onColumnCheck(newNodeId, col, checked),
-            onColumnAggregation: (col: string, agg: ColumnAggregation) => onColumnAggregation(newNodeId, col, agg),
-            onColumnAlias: (col: string, alias: string, order?: number) => onColumnAlias(newNodeId, col, alias, order),
-            onDelete: () => deleteNode(newNodeId),
-          },
-        };
-
-        setNodes((nds) => nds.concat(newNode));
-      } catch (e) {
-        console.error("Failed to fetch columns", e);
-      }
+      await addTableNode(tableName, position);
+      dragState.clear();
     },
-    [activeConnectionId, screenToFlowPosition, setNodes, onColumnCheck, onColumnAggregation, onColumnAlias, deleteNode, activeSchema],
+    [activeConnectionId, screenToFlowPosition, addTableNode],
   );
 
   // Get all available columns from all nodes
@@ -231,7 +261,7 @@ const VisualQueryBuilderContent = () => {
     nodes.forEach((node, index) => {
       const data = node.data as TableNodeData;
       const alias = `t${index + 1}`;
-      data.columns.forEach(col => {
+      data.columns.forEach((col) => {
         cols.push(`${alias}.${col.name}`);
       });
     });
@@ -239,8 +269,76 @@ const VisualQueryBuilderContent = () => {
   }, [nodes]);
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex' }}>
-      <div style={{ flex: 1, position: 'relative' }} onPointerUp={onPointerUp}>
+    <div style={{ width: "100%", height: "100%", display: "flex" }}>
+      <div style={{ flex: 1, position: "relative" }} onPointerUp={onPointerUp}>
+        {/* Quick Add Table Bar on top-left of canvas */}
+        {tables && tables.length > 0 && (
+          <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-elevated/90 backdrop-blur-md border border-strong px-3 py-1.5 rounded-lg shadow-lg">
+            <Table size={14} className="text-blue-400 shrink-0" />
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  void addTableNode(e.target.value);
+                  e.target.value = "";
+                }
+              }}
+              className="bg-transparent text-xs text-primary font-medium focus:outline-none cursor-pointer pr-2"
+              title="Thêm bảng vào khung thiết kế truy vấn"
+            >
+              <option value="" disabled className="bg-elevated text-secondary">
+                + Thêm bảng vào Visual Query...
+              </option>
+              {tables.map((t) => (
+                <option key={t.name} value={t.name} className="bg-elevated text-primary">
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Empty State Overlay */}
+        {nodes.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 p-6 select-none">
+            <div className="bg-elevated/95 backdrop-blur-md border border-strong rounded-2xl p-8 max-w-md shadow-2xl flex flex-col items-center text-center pointer-events-auto">
+              <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 mb-4 shadow-inner">
+                <Database size={32} />
+              </div>
+              <h3 className="text-base font-semibold text-primary mb-1">
+                Truy vấn Trực quan (Visual Query)
+              </h3>
+              <p className="text-xs text-secondary leading-relaxed mb-6">
+                👈 Kéo bảng từ danh sách bảng bên trái và thả vào đây, hoặc chọn bảng bên dưới để bắt đầu kết nối JOIN và lọc dữ liệu.
+              </p>
+
+              {tables && tables.length > 0 && (
+                <div className="w-full flex items-center gap-2">
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        void addTableNode(e.target.value);
+                        e.target.value = "";
+                      }
+                    }}
+                    className="w-full bg-surface-secondary border border-strong rounded-lg px-3 py-2 text-xs text-primary focus:border-blue-500 focus:outline-none transition-colors cursor-pointer"
+                  >
+                    <option value="" disabled className="bg-elevated text-secondary">
+                      + Chọn bảng để thêm vào canvas...
+                    </option>
+                    {tables.map((t) => (
+                      <option key={t.name} value={t.name} className="bg-elevated text-primary">
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -262,19 +360,19 @@ const VisualQueryBuilderContent = () => {
           preventScrolling={true}
           defaultEdgeOptions={{
             animated: true,
-            style: { stroke: '#3b82f6', strokeWidth: 2 },
+            style: { stroke: "#3b82f6", strokeWidth: 2 },
           }}
         >
-          <Controls 
+          <Controls
             className="!bg-surface-secondary !border-strong !shadow-xl"
             showInteractive={false}
           />
-          <MiniMap 
-            nodeColor={() => '#3b82f6'}
+          <MiniMap
+            nodeColor={() => "#3b82f6"}
             maskColor="rgba(15, 23, 42, 0.85)"
             className="!bg-elevated !border !border-strong !shadow-xl"
             style={{
-              backgroundColor: '#0f172a',
+              backgroundColor: "#0f172a",
               width: 150,
               height: 100,
             }}

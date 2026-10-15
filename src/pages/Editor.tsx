@@ -3157,7 +3157,7 @@ export const Editor = () => {
                       : undefined
                   }
                 >
-                  <span className="truncate">{tab.title}</span>
+                  <span className="truncate select-text cursor-text">{tab.title}</span>
                   {tab.type === "console" && isMultiDb && (
                     <span className="text-muted shrink-0">
                       ({tab.schema || selectedDatabases[0]})
@@ -4363,6 +4363,9 @@ export const Editor = () => {
       <AiQueryModal
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}
+        connectionId={activeConnectionId ?? undefined}
+        schema={activeTab?.schema ?? activeSchema ?? undefined}
+        database={activeTab?.database}
         onInsert={(q) => {
           updateActiveTab({ query: q });
           runQuery(q, 1);

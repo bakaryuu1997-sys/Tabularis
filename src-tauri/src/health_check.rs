@@ -167,19 +167,18 @@ async fn handle_connection_failure(app: &tauri::AppHandle, connection_id: &str, 
     // Unregister first to prevent further pings.
     unregister_connection(connection_id).await;
 
-    // Close the pool (best-effort — if params can't be resolved the pool stays orphaned
-    // but will be reclaimed on next connect or app shutdown).
+    // Close all pools for the connection before resolving SSH params. Pool
+    // keys depend only on connection_id (plus driver/database/TLS), not the
+    // tunnel's local port, so `close_pools_for_connection_id` matches by
+    // connection_id prefix — it subsumes the single-key close and closes
+    // per-database override pools too (#1063). A dead bastion / unreachable
+    // cluster must not prevent pool cleanup (#1065).
     if let Ok(saved_conn) = crate::commands::find_connection_by_id(app, connection_id) {
-        if let Ok(expanded) =
-            crate::commands::expand_ssh_connection_params(app, &saved_conn.params).await
-        {
-            let expanded = crate::commands::expand_k8s_connection_params(app, &expanded).await;
-            if let Ok(params) = expanded.and_then(|params| {
-                crate::commands::resolve_connection_params_with_id(&params, connection_id)
-            }) {
-                crate::pool_manager::close_pool_with_id(&params, Some(connection_id)).await;
-            }
-        }
+        crate::pool_manager::close_pools_for_connection_id(
+            &saved_conn.params.driver,
+            connection_id,
+        )
+        .await;
     }
 
     // Notify frontend.

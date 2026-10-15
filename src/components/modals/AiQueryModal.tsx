@@ -9,16 +9,25 @@ interface AiQueryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onInsert: (sql: string) => void;
+  connectionId?: string;
+  schema?: string;
+  database?: string;
 }
 
-interface TableColumn {
-  name: string;
-  data_type: string;
-}
-
-export const AiQueryModal = ({ isOpen, onClose, onInsert }: AiQueryModalProps) => {
-  const { activeConnectionId, tables, activeSchema } = useDatabase();
+export const AiQueryModal = ({
+  isOpen,
+  onClose,
+  onInsert,
+  connectionId,
+  schema,
+  database,
+}: AiQueryModalProps) => {
+  const { activeConnectionId, activeSchema, activeDatabaseName } = useDatabase();
   const { settings } = useSettings();
+  const resolvedConnectionId = connectionId ?? activeConnectionId;
+  const resolvedSchema = schema ?? activeSchema ?? undefined;
+  const resolvedDatabase = database ?? activeDatabaseName ?? undefined;
+  const schemaKey = `${resolvedConnectionId ?? ""}:${resolvedDatabase ?? ""}:${resolvedSchema ?? ""}`;
   
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -27,30 +36,15 @@ export const AiQueryModal = ({ isOpen, onClose, onInsert }: AiQueryModalProps) =
   const [isSchemaLoading, setIsSchemaLoading] = useState(false);
 
   const loadSchema = useCallback(async () => {
+    if (!resolvedConnectionId) return;
     setIsSchemaLoading(true);
     setError(null);
     try {
-      // Parallel fetch of columns for all tables
-      // Limit to first 20 tables to prevent massive overhead for now
-      // TODO: Implement smart schema selection or backend-side schema dump
-      const tablesToFetch = tables.slice(0, 20); 
-      
-      const promises = tablesToFetch.map(async (table) => {
-        const cols = await invoke<TableColumn[]>("get_columns", {
-          connectionId: activeConnectionId,
-          tableName: table.name,
-          ...(activeSchema ? { schema: activeSchema } : {}),
-        });
-        return `Table: ${table.name} (${cols.map(c => `${c.name} ${c.data_type}`).join(", ")})`;
+      const context = await invoke<string>("get_ai_schema_context", {
+        connectionId: resolvedConnectionId,
+        ...(resolvedSchema ? { schema: resolvedSchema } : {}),
+        ...(resolvedDatabase ? { database: resolvedDatabase } : {}),
       });
-
-      const schemas = await Promise.all(promises);
-      let context = schemas.join("\n");
-      
-      if (tables.length > 20) {
-          context += `\n... and ${tables.length - 20} more tables (names: ${tables.slice(20).map(t => t.name).join(", ")})`;
-      }
-      
       setSchemaContext(context);
     } catch (err) {
       console.error("Failed to load schema:", err);
@@ -58,13 +52,13 @@ export const AiQueryModal = ({ isOpen, onClose, onInsert }: AiQueryModalProps) =
     } finally {
       setIsSchemaLoading(false);
     }
-  }, [activeConnectionId, tables, activeSchema]);
+  }, [resolvedConnectionId, resolvedSchema, resolvedDatabase]);
 
   useEffect(() => {
-    if (isOpen && activeConnectionId && tables.length > 0) {
-      loadSchema();
+    if (isOpen && resolvedConnectionId) {
+      void loadSchema();
     }
-  }, [isOpen, activeConnectionId, tables, loadSchema]);
+  }, [isOpen, resolvedConnectionId, schemaKey, loadSchema]);
 
   const handleGenerate = async () => {
     if (!prompt.trim() || !settings.aiProvider) {

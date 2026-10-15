@@ -417,6 +417,7 @@ pub fn run() {
             // Clipboard Import
             clipboard_import::execute_clipboard_import,
             commands::get_schema_snapshot,
+            commands::get_ai_schema_context,
             // DDL generation
             commands::get_create_table_sql,
             commands::get_add_column_sql,

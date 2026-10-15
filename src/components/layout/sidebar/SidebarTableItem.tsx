@@ -156,7 +156,7 @@ const SidebarTableItemImpl = ({
           };
           const up = () => {
             ghost.remove();
-            dragState.clear();
+            setTimeout(() => dragState.clear(), 150);
             document.removeEventListener('pointermove', move);
             document.removeEventListener('pointerup', up);
           };
@@ -189,7 +189,7 @@ const SidebarTableItemImpl = ({
               : "text-muted group-hover:text-accent"
           }
         />
-        <span className="truncate flex-1">{table.name}</span>
+        <span className="truncate flex-1 select-text cursor-text" onClick={(e) => e.stopPropagation()}>{table.name}</span>
       </div>
       {isExpanded && (
         <div className="ml-[22px] border-l border-default">
