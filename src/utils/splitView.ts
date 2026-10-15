@@ -25,6 +25,28 @@ export function splitRatioFromClientX(
   return clampSplitRatio((clientX - containerLeft) / containerWidth);
 }
 
+/**
+ * Convert an absolute pointer Y position during a divider drag into a clamped
+ * top-pane height fraction, given the workspace container's geometry.
+ */
+export function splitRatioFromClientY(
+  clientY: number,
+  containerTop: number,
+  containerHeight: number,
+): number {
+  if (containerHeight <= 0) return DEFAULT_SPLIT_RATIO;
+  return clampSplitRatio((clientY - containerTop) / containerHeight);
+}
+
+export type SplitOrientation = "horizontal" | "vertical";
+
+/** Toggle split orientation between horizontal (side-by-side) and vertical (stacked). */
+export function toggleSplitOrientation(
+  current: SplitOrientation,
+): SplitOrientation {
+  return current === "horizontal" ? "vertical" : "horizontal";
+}
+
 /** Resolve the tab pinned into the split pane, or null if it no longer exists. */
 export function resolveSplitTab(
   tabs: Tab[],
@@ -79,15 +101,17 @@ export interface SplitState {
   splitTabIds: string[];
   activeSplitTabId: string | null;
   splitRatio: number;
+  splitOrientation?: SplitOrientation;
 }
 
 const EMPTY_SPLIT_STATE: SplitState = {
   splitTabIds: [],
   activeSplitTabId: null,
   splitRatio: DEFAULT_SPLIT_RATIO,
+  splitOrientation: "horizontal",
 };
 
-/** Load the persisted split layout (pinned tab ids + active pin + divider ratio).
+/** Load the persisted split layout (pinned tab ids + active pin + divider ratio + orientation).
  * Tolerates the older single-`splitTabId` shape. Stale ids are validated against
  * the live tab list separately via {@link resolvePinnedTabs}, so they are safe. */
 export function loadSplitState(): SplitState {
@@ -98,6 +122,8 @@ export function loadSplitState(): SplitState {
       splitTabId?: string | null;
     };
     const splitRatio = clampSplitRatio(Number(parsed.splitRatio));
+    const splitOrientation: SplitOrientation =
+      parsed.splitOrientation === "vertical" ? "vertical" : "horizontal";
 
     // New (array) shape.
     if (Array.isArray(parsed.splitTabIds)) {
@@ -109,7 +135,12 @@ export function loadSplitState(): SplitState {
         ids.includes(parsed.activeSplitTabId)
           ? parsed.activeSplitTabId
           : (ids[ids.length - 1] ?? null);
-      return { splitTabIds: ids, activeSplitTabId: active, splitRatio };
+      return {
+        splitTabIds: ids,
+        activeSplitTabId: active,
+        splitRatio,
+        splitOrientation,
+      };
     }
 
     // Legacy single-id shape.
@@ -118,10 +149,16 @@ export function loadSplitState(): SplitState {
         splitTabIds: [parsed.splitTabId],
         activeSplitTabId: parsed.splitTabId,
         splitRatio,
+        splitOrientation,
       };
     }
 
-    return { splitTabIds: [], activeSplitTabId: null, splitRatio };
+    return {
+      splitTabIds: [],
+      activeSplitTabId: null,
+      splitRatio,
+      splitOrientation,
+    };
   } catch {
     return { ...EMPTY_SPLIT_STATE };
   }

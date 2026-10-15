@@ -3,6 +3,8 @@ import { beforeEach } from "vitest";
 import {
   clampSplitRatio,
   splitRatioFromClientX,
+  splitRatioFromClientY,
+  toggleSplitOrientation,
   resolveSplitTab,
   resolvePinnedTabs,
   togglePinnedTab,
@@ -52,6 +54,27 @@ describe("splitView utils", () => {
     });
     it("guards against zero width", () => {
       expect(splitRatioFromClientX(10, 0, 0)).toBe(DEFAULT_SPLIT_RATIO);
+    });
+  });
+
+  describe("splitRatioFromClientY", () => {
+    it("computes the fraction of the container height", () => {
+      expect(splitRatioFromClientY(500, 0, 1000)).toBe(0.5);
+      expect(splitRatioFromClientY(300, 100, 400)).toBe(0.5);
+    });
+    it("clamps extremes", () => {
+      expect(splitRatioFromClientY(0, 0, 1000)).toBe(MIN_SPLIT_RATIO);
+      expect(splitRatioFromClientY(1000, 0, 1000)).toBe(MAX_SPLIT_RATIO);
+    });
+    it("guards against zero height", () => {
+      expect(splitRatioFromClientY(10, 0, 0)).toBe(DEFAULT_SPLIT_RATIO);
+    });
+  });
+
+  describe("toggleSplitOrientation", () => {
+    it("toggles between horizontal and vertical", () => {
+      expect(toggleSplitOrientation("horizontal")).toBe("vertical");
+      expect(toggleSplitOrientation("vertical")).toBe("horizontal");
     });
   });
 
@@ -105,6 +128,7 @@ describe("splitView utils", () => {
         splitTabIds: [],
         activeSplitTabId: null,
         splitRatio: DEFAULT_SPLIT_RATIO,
+        splitOrientation: "horizontal",
       });
     });
 
@@ -113,11 +137,13 @@ describe("splitView utils", () => {
         splitTabIds: ["a", "b"],
         activeSplitTabId: "b",
         splitRatio: 0.4,
+        splitOrientation: "vertical",
       });
       expect(loadSplitState()).toEqual({
         splitTabIds: ["a", "b"],
         activeSplitTabId: "b",
         splitRatio: 0.4,
+        splitOrientation: "vertical",
       });
     });
 
@@ -130,11 +156,16 @@ describe("splitView utils", () => {
         splitTabIds: ["x"],
         activeSplitTabId: "x",
         splitRatio: 0.4,
+        splitOrientation: "horizontal",
       });
     });
 
     it("clamps a persisted out-of-range ratio", () => {
-      saveSplitState({ splitTabIds: [], activeSplitTabId: null, splitRatio: 0.95 });
+      saveSplitState({
+        splitTabIds: [],
+        activeSplitTabId: null,
+        splitRatio: 0.95,
+      });
       expect(loadSplitState().splitRatio).toBe(MAX_SPLIT_RATIO);
     });
 
@@ -144,6 +175,7 @@ describe("splitView utils", () => {
         splitTabIds: [],
         activeSplitTabId: null,
         splitRatio: DEFAULT_SPLIT_RATIO,
+        splitOrientation: "horizontal",
       });
     });
   });

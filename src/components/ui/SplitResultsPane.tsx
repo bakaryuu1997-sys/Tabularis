@@ -1,6 +1,16 @@
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { X, Table2, ArrowLeftRight, ChevronLeft, ChevronRight, Save } from "lucide-react";
+import {
+  X,
+  Table2,
+  Terminal,
+  ArrowLeftRight,
+  ChevronLeft,
+  ChevronRight,
+  Save,
+  Columns2,
+  Rows2,
+} from "lucide-react";
 import type { Tab } from "../../types/editor";
 import type { QueryResultEntry } from "../../types/editor";
 import { ResultEntryContent } from "./ResultEntryContent";
@@ -11,6 +21,7 @@ import {
   singleResultToEntry,
   type CopyFormat,
 } from "../../utils/resultsWindowSync";
+import type { SplitOrientation } from "../../utils/splitView";
 
 /** DataGrid props (minus the data itself) prepared by the parent with the split
  * tab's metadata and edit handlers already bound to the split tab's id. */
@@ -45,6 +56,12 @@ interface SplitResultsPaneProps {
   editGridProps?: SplitEditGridProps;
   /** Commit the split tab's pending changes directly (without swapping). */
   onSave?: () => void;
+  /** Current split orientation. */
+  orientation?: SplitOrientation;
+  /** Toggle between side-by-side and stacked layout. */
+  onToggleOrientation?: () => void;
+  /** Render SQL editor when pinned tab is a console tab. */
+  renderEditor?: (tab: Tab) => ReactNode;
 }
 
 function countPending(tab: Tab): number {
@@ -78,8 +95,12 @@ export function SplitResultsPane({
   onSwap,
   editGridProps,
   onSave,
+  orientation = "horizontal",
+  onToggleOrientation,
+  renderEditor,
 }: SplitResultsPaneProps) {
   const { t } = useTranslation();
+  const [consoleViewMode, setConsoleViewMode] = useState<"sql" | "results">("sql");
 
   const payload = buildSyncPayload(tab, {
     connectionId,
@@ -107,10 +128,18 @@ export function SplitResultsPane({
   const pendingCount = countPending(tab);
 
   return (
-    <div className="flex flex-col h-full min-w-0 bg-base border-l border-default">
+    <div
+      className={`flex flex-col h-full min-w-0 bg-base ${
+        orientation === "vertical" ? "border-t border-default" : "border-l border-default"
+      }`}
+    >
       {/* Header */}
       <div className="h-9 shrink-0 flex items-center gap-2 px-2 bg-elevated border-b border-default">
-        <Table2 size={13} className="text-muted shrink-0" />
+        {tab.type === "console" ? (
+          <Terminal size={13} className="text-muted shrink-0" />
+        ) : (
+          <Table2 size={13} className="text-muted shrink-0" />
+        )}
         <button
           onClick={onFocusTab}
           title={t("editor.split.focusTab")}
@@ -119,6 +148,30 @@ export function SplitResultsPane({
           {tab.title}
         </button>
         <div className="flex-1" />
+        {tab.type === "console" && renderEditor && (
+          <div className="flex items-center rounded bg-surface-secondary p-0.5 text-[10px] font-medium mr-1 shrink-0">
+            <button
+              onClick={() => setConsoleViewMode("sql")}
+              className={`px-1.5 py-0.5 rounded transition-colors ${
+                consoleViewMode === "sql"
+                  ? "bg-elevated text-primary shadow-xs font-semibold"
+                  : "text-muted hover:text-secondary"
+              }`}
+            >
+              SQL
+            </button>
+            <button
+              onClick={() => setConsoleViewMode("results")}
+              className={`px-1.5 py-0.5 rounded transition-colors ${
+                consoleViewMode === "results"
+                  ? "bg-elevated text-primary shadow-xs font-semibold"
+                  : "text-muted hover:text-secondary"
+              }`}
+            >
+              {t("editor.results", "Results")}
+            </button>
+          </div>
+        )}
         {pendingCount > 0 && (
           <button
             onClick={onSave ?? onSwap}
@@ -127,6 +180,19 @@ export function SplitResultsPane({
           >
             {onSave && <Save size={11} />}
             {t("editor.split.unsaved", { count: pendingCount })}
+          </button>
+        )}
+        {onToggleOrientation && (
+          <button
+            onClick={onToggleOrientation}
+            title={
+              orientation === "vertical"
+                ? t("editor.split.switchToHorizontal", "Switch to horizontal split (side-by-side)")
+                : t("editor.split.switchToVertical", "Switch to vertical split (stacked)")
+            }
+            className="text-muted hover:text-secondary transition-colors p-1 hover:bg-surface-secondary rounded shrink-0"
+          >
+            {orientation === "vertical" ? <Columns2 size={14} /> : <Rows2 size={14} />}
           </button>
         )}
         <button
@@ -179,7 +245,11 @@ export function SplitResultsPane({
 
       {/* Body */}
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-        {editable ? (
+        {tab.type === "console" && renderEditor && consoleViewMode === "sql" ? (
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            {renderEditor(tab)}
+          </div>
+        ) : editable ? (
           <>
             <div className="flex-1 min-h-0">
               <DataGrid

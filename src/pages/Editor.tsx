@@ -52,6 +52,8 @@ import {
   ExternalLink,
   PanelRight,
   CheckCircle2,
+  Columns2,
+  Rows2,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
@@ -64,8 +66,11 @@ import {
   resolvePinnedTabs,
   togglePinnedTab,
   splitRatioFromClientX,
+  splitRatioFromClientY,
+  toggleSplitOrientation,
   loadSplitState,
   saveSplitState,
+  type SplitOrientation,
 } from "../utils/splitView";
 import { ErrorDisplay } from "../components/ui/ErrorDisplay";
 import { NewRowModal } from "../components/modals/NewRowModal";
@@ -352,11 +357,19 @@ export const Editor = () => {
   const [splitRatio, setSplitRatio] = useState(
     () => loadSplitState().splitRatio,
   );
+  const [splitOrientation, setSplitOrientation] = useState<SplitOrientation>(
+    () => loadSplitState().splitOrientation ?? "horizontal",
+  );
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    saveSplitState({ splitTabIds, activeSplitTabId, splitRatio });
-  }, [splitTabIds, activeSplitTabId, splitRatio]);
+    saveSplitState({
+      splitTabIds,
+      activeSplitTabId,
+      splitRatio,
+      splitOrientation,
+    });
+  }, [splitTabIds, activeSplitTabId, splitRatio, splitOrientation]);
 
   // Pin/unpin a tab into the split pane (toggles), updating the active pin.
   const togglePin = useCallback(
@@ -2767,20 +2780,25 @@ export const Editor = () => {
     document.addEventListener("mouseup", stopResize);
   };
 
-  // Horizontal drag on the split divider — resizes the main/right pane widths.
+  // Drag on the split divider — resizes the pane widths (horizontal) or heights (vertical).
   const startSplitResize = () => {
     const container = workspaceRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    document.body.style.cursor = "col-resize";
+    const isVertical = splitOrientation === "vertical";
+    const cursorType = isVertical ? "row-resize" : "col-resize";
+    document.body.style.cursor = cursorType;
     document.body.style.userSelect = "none";
     const overlay = document.createElement("div");
-    overlay.style.cssText =
-      "position:fixed;inset:0;z-index:9999;cursor:col-resize";
+    overlay.style.cssText = `position:fixed;inset:0;z-index:9999;cursor:${cursorType}`;
     document.body.appendChild(overlay);
 
     const onMove = (e: MouseEvent) => {
-      setSplitRatio(splitRatioFromClientX(e.clientX, rect.left, rect.width));
+      if (isVertical) {
+        setSplitRatio(splitRatioFromClientY(e.clientY, rect.top, rect.height));
+      } else {
+        setSplitRatio(splitRatioFromClientX(e.clientX, rect.left, rect.width));
+      }
     };
     const onUp = () => {
       document.body.style.cursor = "";
@@ -2946,9 +2964,23 @@ export const Editor = () => {
 
   return (
     <div className="flex flex-col h-full bg-base">
-      <div ref={workspaceRef} className="flex flex-row flex-1 min-h-0">
+      <div
+        ref={workspaceRef}
+        className={clsx(
+          "flex flex-1 min-h-0 min-w-0",
+          splitTab && splitOrientation === "vertical" ? "flex-col" : "flex-row",
+        )}
+      >
         <div
-          className="flex flex-col h-full min-w-0 flex-1"
+          className="flex flex-col min-w-0 min-h-0"
+          style={
+            splitTab
+              ? {
+                  [splitOrientation === "vertical" ? "height" : "width"]: `${splitRatio * 100}%`,
+                  flexShrink: 0,
+                }
+              : { width: "100%", height: "100%", flex: 1 }
+          }
         >
       {/* Tab Bar — tinted with the active connection's accent color */}
       <div
@@ -4050,16 +4082,45 @@ export const Editor = () => {
           <>
             <div
               onMouseDown={startSplitResize}
-              className="w-1 shrink-0 cursor-col-resize bg-default/40 hover:bg-blue-500/60 transition-colors"
+              className={clsx(
+                "shrink-0 transition-colors bg-default/40 hover:bg-blue-500/60",
+                splitOrientation === "vertical"
+                  ? "h-1 w-full cursor-row-resize"
+                  : "w-1 h-full cursor-col-resize",
+              )}
             />
             <div
-              className="h-full shrink-0 flex"
-              style={{ width: `${(1 - splitRatio) * 100}%` }}
+              className={clsx(
+                "shrink-0 flex min-w-0 min-h-0",
+                splitOrientation === "vertical" ? "w-full" : "h-full",
+              )}
+              style={
+                splitOrientation === "vertical"
+                  ? { height: `${(1 - splitRatio) * 100}%`, flex: 1 }
+                  : { width: `${(1 - splitRatio) * 100}%`, flex: 1 }
+              }
             >
               <SplitResultsPane
                 tab={splitTab}
                 pinnedTabs={pinnedTabs}
                 activeSplitTabId={splitTab.id}
+                orientation={splitOrientation}
+                onToggleOrientation={() =>
+                  setSplitOrientation((o) => toggleSplitOrientation(o))
+                }
+                renderEditor={(t) => (
+                  <div className="flex-1 min-h-0 min-w-0">
+                    <SqlEditorWrapper
+                      editorKey={`split-${t.id}`}
+                      initialValue={t.query}
+                      onChange={(newQuery) =>
+                        updateTab(t.id, { query: newQuery })
+                      }
+                      onRun={() => runQuery(t.query, 1, t.id)}
+                      dialect={activeDriver?.kind}
+                    />
+                  </div>
+                )}
                 onSelectPinned={(id) => setActiveSplitTabId(id)}
                 onUnpin={(id) => togglePin(id)}
                 connectionId={activeConnectionId}
@@ -4251,13 +4312,32 @@ export const Editor = () => {
           y={tabContextMenu.y}
           onClose={() => setTabContextMenu(null)}
           items={[
-            {
-              label: splitTabIds.includes(tabContextMenu.tabId)
-                ? t("editor.split.unpin")
-                : t("editor.split.pin"),
-              icon: PanelRight,
-              action: () => togglePin(tabContextMenu.tabId),
-            },
+            ...(splitTabIds.includes(tabContextMenu.tabId)
+              ? [
+                  {
+                    label: t("editor.split.unpin", "Close Split"),
+                    icon: PanelRight,
+                    action: () => togglePin(tabContextMenu.tabId),
+                  },
+                ]
+              : [
+                  {
+                    label: t("editor.split.splitRight", "Split Right"),
+                    icon: Columns2,
+                    action: () => {
+                      setSplitOrientation("horizontal");
+                      togglePin(tabContextMenu.tabId);
+                    },
+                  },
+                  {
+                    label: t("editor.split.splitDown", "Split Down"),
+                    icon: Rows2,
+                    action: () => {
+                      setSplitOrientation("vertical");
+                      togglePin(tabContextMenu.tabId);
+                    },
+                  },
+                ]),
             ...(canRenameTab(
               tabs.find((t) => t.id === tabContextMenu.tabId)?.type ?? "",
             )
