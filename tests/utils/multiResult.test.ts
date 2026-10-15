@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   createResultEntries,
+  extractResultLabel,
   updateResultEntry,
   findActiveEntry,
   countSucceeded,
@@ -32,6 +33,36 @@ function makeEntry(overrides: Partial<QueryResultEntry> = {}): QueryResultEntry 
 }
 
 describe("multiResult", () => {
+  describe("extractResultLabel", () => {
+    it.each([
+      ["-- monthly totals\nSELECT 1", "monthly totals"],
+      [" \t\n--  monthly totals  \r\nSELECT 1", "monthly totals"],
+      ["/* top customers */ SELECT 1", "top customers"],
+      ["\n /* top\n  customers\tby sales */ SELECT 1", "top customers by sales"],
+      ["-- first\n-- second\nSELECT 1", "first"],
+      ["/* first */ /* second */ SELECT 1", "first"],
+      ["-- name; with punctuation\nSELECT 1", "name; with punctuation"],
+      ["-- résumé 月次集計\nSELECT 1", "résumé 月次集計"],
+    ])("extracts the first leading comment from %j", (query, label) => {
+      expect(extractResultLabel(query)).toBe(label);
+    });
+
+    it.each([
+      "", " \n\t", "SELECT 1", "SELECT 1 -- trailing",
+      "SELECT /* inline */ 1", "SELECT '-- not a label'",
+      "SELECT '/* not a label */'", "/* unterminated",
+      "-- \nSELECT 1", "/**/ SELECT 1", "/* \n\t */ SELECT 1",
+    ])("keeps the fallback for %j", (query) => {
+      expect(extractResultLabel(query)).toBeUndefined();
+    });
+
+    it("caps labels at 80 characters without splitting a Unicode character", () => {
+      const label = "a".repeat(79) + "😀";
+      expect(extractResultLabel(`-- ${label}extra\nSELECT 1`)).toBe(label);
+      expect(extractResultLabel(`/* ${"b".repeat(100)} */ SELECT 1`)).toBe("b".repeat(80));
+    });
+  });
+
   describe("createResultEntries", () => {
     it("should create entries from queries with correct ids", () => {
       const entries = createResultEntries("tab-1", [
