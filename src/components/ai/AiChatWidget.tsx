@@ -464,15 +464,21 @@ export function AiChatWidget() {
     // Append an empty assistant bubble that streaming deltas fill in.
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     let acc = "";
+    let rafId: number | null = null;
     const channel = new Channel<string>();
     channel.onmessage = (delta) => {
       if (cancelRef.current) return;
       acc += delta;
-      setMessages((prev) => {
-        const copy = [...prev];
-        copy[copy.length - 1] = { role: "assistant", content: acc };
-        return copy;
-      });
+      if (rafId === null) {
+        rafId = requestAnimationFrame(() => {
+          rafId = null;
+          setMessages((prev) => {
+            const copy = [...prev];
+            copy[copy.length - 1] = { role: "assistant", content: acc };
+            return copy;
+          });
+        });
+      }
     };
 
     const req = {
@@ -484,20 +490,26 @@ export function AiChatWidget() {
 
     try {
       await invoke<string>("chat_ai_stream", { req, onEvent: channel });
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       if (cancelRef.current) return;
       // If the provider streamed nothing and backend fallback also came back
       // empty, surface a hint instead of a blank bubble.
-      if (!acc.trim()) {
-        setMessages((prev) => {
-          const copy = [...prev];
-          copy[copy.length - 1] = {
-            role: "assistant",
-            content: "_(không có nội dung trả về)_",
-          };
-          return copy;
-        });
-      }
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = {
+          role: "assistant",
+          content: acc.trim() ? acc : "_(không có nội dung trả về)_",
+        };
+        return copy;
+      });
     } catch (e) {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       if (cancelRef.current) return;
       // Drop the empty placeholder and show the error.
       setMessages((prev) => {

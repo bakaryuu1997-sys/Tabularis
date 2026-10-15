@@ -94,19 +94,40 @@ pub(super) fn try_parse_pg_array(s: &str) -> Option<Result<String, String>> {
     None
 }
 
-/// Checks if a string value is a raw SQL function call (e.g., ST_GeomFromText(...))
-/// This is used to detect when user has entered a complete SQL function that should
-/// be inserted directly into the query without parameter binding
+/// Checks if a string value is a safe, single raw SQL spatial function call (e.g., ST_GeomFromText(...)).
+/// Rejects statement terminators, comments, and unclosed parentheses to prevent SQL injection.
 pub(super) fn is_raw_sql_function(s: &str) -> bool {
-    let trimmed = s.trim().to_uppercase();
-    // Check for common SQL spatial function patterns
-    // Functions starting with ST_ followed by parenthesis
-    if trimmed.starts_with("ST_") {
-        return trimmed.contains('(');
+    let trimmed = s.trim();
+    // Reject stacked queries, comments, and dangerous tokens
+    if trimmed.contains(';') || trimmed.contains("--") || trimmed.contains("/*") {
+        return false;
     }
-    // Legacy function names
-    trimmed.starts_with("GEOMFROMTEXT(")
-        || trimmed.starts_with("GEOMFROMWKB(")
-        || trimmed.starts_with("POINTFROMTEXT(")
-        || trimmed.starts_with("POINTFROMWKB(")
+    if !trimmed.ends_with(')') {
+        return false;
+    }
+    let upper = trimmed.to_uppercase();
+    // Check for common SQL spatial function patterns
+    let is_spatial_call = upper.starts_with("ST_")
+        || upper.starts_with("GEOMFROMTEXT(")
+        || upper.starts_with("GEOMFROMWKB(")
+        || upper.starts_with("POINTFROMTEXT(")
+        || upper.starts_with("POINTFROMWKB(");
+
+    if !is_spatial_call || !upper.contains('(') {
+        return false;
+    }
+
+    // Ensure balanced parentheses
+    let mut depth = 0i32;
+    for ch in trimmed.chars() {
+        if ch == '(' {
+            depth += 1;
+        } else if ch == ')' {
+            depth -= 1;
+            if depth < 0 {
+                return false;
+            }
+        }
+    }
+    depth == 0
 }

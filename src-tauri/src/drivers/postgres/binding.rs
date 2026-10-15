@@ -400,14 +400,37 @@ fn bind_pg_string(
         return binding;
     }
 
-    if is_raw_sql_function(s) {
+    let is_spatial_target = match options.column_type {
+        Some(t) => {
+            let base = extract_base_type(t);
+            matches!(
+                base.as_str(),
+                "GEOMETRY"
+                    | "GEOGRAPHY"
+                    | "POINT"
+                    | "POLYGON"
+                    | "LINESTRING"
+                    | "MULTIPOINT"
+                    | "MULTILINESTRING"
+                    | "MULTIPOLYGON"
+                    | "GEOMETRYCOLLECTION"
+                    | "BOX"
+                    | "PATH"
+                    | "CIRCLE"
+                    | "LSEG"
+            )
+        }
+        None => true,
+    };
+
+    if is_spatial_target && is_raw_sql_function(s) {
         return Ok(BoundValue {
             sql: s.to_string(),
             param: None,
         });
     }
 
-    if is_wkt_geometry(s) {
+    if is_spatial_target && is_wkt_geometry(s) {
         return Ok(BoundValue {
             sql: format!("ST_GeomFromText(${})", placeholder_idx),
             param: Some((Box::new(s.to_string()), Type::TEXT)),

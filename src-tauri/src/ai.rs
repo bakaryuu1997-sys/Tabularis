@@ -930,18 +930,30 @@ async fn generate_custom_openai(
     }
 
     let text = res.text().await.map_err(|e| e.to_string())?;
-    let mut clean_text = text.trim().to_string();
-    if let Some(idx) = clean_text.find("data:") {
-        clean_text = clean_text[..idx].trim().to_string();
-    }
-    let json: serde_json::Value = serde_json::from_str(&clean_text).map_err(|e| {
-        format!("Failed to parse response JSON: {}. Original response: {}", e, text)
-    })?;
+    let json = parse_openai_compatible_response(&text)?;
     let content = json["choices"][0]["message"]["content"]
         .as_str()
         .ok_or("Invalid response format from custom OpenAI-compatible provider")?;
 
     Ok(clean_response(content))
+}
+
+/// Parse an OpenAI-compatible JSON response body.
+/// Some gateways (e.g. 9Router) append trailing SSE `data:` markers (like `data: [DONE]`)
+/// even for non-streamed requests. We first try to parse the entire response as JSON.
+/// If that fails, we defensively trim off any trailing `data:` marker starting from the
+/// last occurrence (`rfind`) rather than cutting in the middle where "data:" could be valid content.
+fn parse_openai_compatible_response(text: &str) -> Result<serde_json::Value, String> {
+    let trimmed = text.trim();
+    serde_json::from_str::<serde_json::Value>(trimmed)
+        .or_else(|_| {
+            let cut = trimmed
+                .rfind("data:")
+                .map(|idx| trimmed[..idx].trim())
+                .unwrap_or(trimmed);
+            serde_json::from_str::<serde_json::Value>(cut)
+        })
+        .map_err(|e| format!("Failed to parse response JSON: {}. Original response: {}", e, text))
 }
 
 async fn generate_openrouter(
@@ -1225,16 +1237,7 @@ fn build_chat_messages(system_prompt: &str, messages: &[ChatMessage]) -> Vec<ser
 /// non-streamed requests, so we defensively cut at the first one if the raw
 /// body does not parse as JSON.
 fn parse_openai_chat_content(text: &str) -> Result<String, String> {
-    let trimmed = text.trim();
-    let json: serde_json::Value = serde_json::from_str(trimmed)
-        .or_else(|_| {
-            let cut = trimmed
-                .find("data:")
-                .map(|idx| trimmed[..idx].trim())
-                .unwrap_or(trimmed);
-            serde_json::from_str(cut)
-        })
-        .map_err(|e| format!("Failed to parse response JSON: {}. Original response: {}", e, text))?;
+    let json = parse_openai_compatible_response(text)?;
     let content = json["choices"][0]["message"]["content"]
         .as_str()
         .ok_or("Invalid response format from provider")?;
@@ -1474,6 +1477,10 @@ async fn generate_chat_stream(
     // Some gateways ignore `stream: true` and reply once. If nothing streamed,
     // fall back to a single non-streamed request and emit it as one chunk.
     if streamed.trim().is_empty() {
+        log::info!(
+            "AI chat stream returned empty text; falling back to non-streamed request for model {}",
+            req.model
+        );
         let full = match &backend {
             ChatBackend::OpenAi(url) => {
                 chat_openai_compatible(
@@ -1492,7 +1499,8 @@ async fn generate_chat_stream(
             ChatBackend::Ollama => {
                 chat_ollama(&client, &req.model, &system_prompt, &req.messages, ollama_port).await
             }
-        }?;
+        }
+        .map_err(|e| format!("AI stream was empty and fallback failed: {}", e))?;
         let _ = on_event.send(full.clone());
         return Ok(full);
     }
