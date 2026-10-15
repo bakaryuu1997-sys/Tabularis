@@ -3648,7 +3648,11 @@ export const Editor = () => {
                 <p className="text-sm">{t("editor.executingQuery")}</p>
               </div>
             ) : activeTab.error ? (
-              <ErrorDisplay error={activeTab.error} t={t} />
+              <ErrorDisplay
+                error={activeTab.error}
+                query={activeTab.query}
+                t={t}
+              />
             ) : activeTab.result &&
               activeTab.result.columns.length === 0 &&
               !(

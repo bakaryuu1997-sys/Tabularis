@@ -34,7 +34,8 @@ import clsx from "clsx";
 import { useSettings } from "../../hooks/useSettings";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useEditor } from "../../hooks/useEditor";
-import { requestRunSql } from "../../utils/aiRunBus";
+import { requestRunSql, onAiPrompt } from "../../utils/aiRunBus";
+import { buildRichSchemaContext } from "../../utils/aiSchemaContext";
 import { getProviderLabel } from "../../utils/settingsUI";
 import { Select } from "../ui/Select";
 import type { TableSchema } from "../../types/editor";
@@ -102,27 +103,7 @@ const SUGGESTIONS = [
   "Chuyển câu SQL sau sang PostgreSQL:\n",
 ];
 
-/// Build a compact schema string to give the assistant DB context.
-/// Capped to keep the prompt small.
-function buildSchemaContext(tables: TableSchema[]): string {
-  const MAX_TABLES = 40;
-  const MAX_COLS = 30;
-  const lines = tables.slice(0, MAX_TABLES).map((tbl) => {
-    const cols = tbl.columns
-      .slice(0, MAX_COLS)
-      .map((c) => `${c.name} ${c.data_type}${c.is_pk ? " PK" : ""}`)
-      .join(", ");
-    const more =
-      tbl.columns.length > MAX_COLS
-        ? `, …+${tbl.columns.length - MAX_COLS} cols`
-        : "";
-    return `${tbl.name}(${cols}${more})`;
-  });
-  if (tables.length > MAX_TABLES) {
-    lines.push(`… and ${tables.length - MAX_TABLES} more tables`);
-  }
-  return lines.join("\n");
-}
+
 
 /// Recursively flatten a React node tree to its plain text (used to recover the
 /// raw source of a fenced code block rendered by react-markdown).
@@ -359,7 +340,7 @@ export function AiChatWidget() {
     }
   }, [input]);
 
-  // Fetch (and cache) a compact schema string for the active connection.
+  // Fetch (and cache) a rich schema string with foreign keys and sample data.
   const getSchemaContext = useCallback(async (): Promise<string> => {
     if (!useSchema || !activeConnectionId) return "";
     const cached = schemaCacheRef.current[activeConnectionId];
@@ -368,14 +349,30 @@ export function AiChatWidget() {
       const tables = await invoke<TableSchema[]>("get_schema_snapshot", {
         connectionId: activeConnectionId,
       });
-      const ctx = buildSchemaContext(tables);
+      const sampleData =
+        activeTab?.activeTable &&
+        activeTab.result?.rows?.length &&
+        activeTab.result.columns
+          ? {
+              [activeTab.activeTable]: activeTab.result.rows
+                .slice(0, 5)
+                .map((row) => {
+                  const obj: Record<string, unknown> = {};
+                  activeTab.result!.columns.forEach((col, idx) => {
+                    obj[col] = row[idx];
+                  });
+                  return obj;
+                }),
+            }
+          : undefined;
+      const ctx = buildRichSchemaContext(tables, { sampleData });
       schemaCacheRef.current[activeConnectionId] = ctx;
       return ctx;
     } catch (e) {
       console.error("Failed to load schema for AI chat", e);
       return "";
     }
-  }, [useSchema, activeConnectionId]);
+  }, [useSchema, activeConnectionId, activeTab]);
 
   // Append a SQL snippet to the current console tab (preserving what's already
   // there), or open a fresh console tab if none is active. Then jump to the
@@ -531,6 +528,14 @@ export function AiChatWidget() {
       }
     }
   };
+
+  // Listen for prompts requested from external components (e.g. "Ask AI to fix error" button).
+  useEffect(() => {
+    return onAiPrompt((prompt) => {
+      setOpen(true);
+      void handleSend(prompt);
+    });
+  }, [handleSend]);
 
   // Client-side stop: ignore further deltas and finalize the current bubble.
   // (The backend request may run a moment longer, but its output is discarded.)
