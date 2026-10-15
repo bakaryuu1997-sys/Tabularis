@@ -22,7 +22,15 @@ export function maskSensitiveValue(
 
 /** Format a single foreign key relationship as `column -> table(target_column)`. */
 export function formatForeignKeyString(fk: ForeignKey): string {
-  return `${fk.column_name} -> ${fk.foreign_table_name}(${fk.foreign_column_name})`;
+  const targetTable =
+    fk.ref_table ||
+    (fk as unknown as { foreign_table_name?: string }).foreign_table_name ||
+    "";
+  const targetCol =
+    fk.ref_column ||
+    (fk as unknown as { foreign_column_name?: string }).foreign_column_name ||
+    "";
+  return `${fk.column_name} -> ${targetTable}(${targetCol})`;
 }
 
 /**

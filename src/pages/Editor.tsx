@@ -4138,7 +4138,7 @@ export const Editor = () => {
                         updateTab(t.id, { query: newQuery })
                       }
                       onRun={() => runQuery(t.query, 1, t.id)}
-                      dialect={activeDriver?.kind}
+                      dialect={activeDialect}
                     />
                   </div>
                 )}
