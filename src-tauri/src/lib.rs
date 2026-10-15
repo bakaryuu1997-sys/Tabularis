@@ -65,6 +65,7 @@ pub mod task_manager;
 pub mod theme_commands;
 pub mod theme_models;
 pub mod updater;
+mod window_placement;
 pub mod drivers {
     pub mod common;
     pub mod driver_trait;
@@ -186,6 +187,7 @@ pub fn run() {
         .manage(json_viewer::JsonViewerStore::default())
         .manage(results_window::ResultsWindowStore::default())
         .manage(query_history::QueryHistoryState::default())
+        .manage(window_placement::WindowPlacementCache::default())
         .setup(move |app| {
             // Allow the SSH tunnel code (which runs without a Tauri context)
             // to bridge askpass prompts to the frontend.
@@ -226,6 +228,12 @@ pub fn run() {
             // when Tabularis is closed and fail fast on approval-gated
             // queries instead of waiting for the full approval timeout.
             heartbeat::spawn();
+
+            // Restore the main window's last normal size and position.
+            // The explicit start_maximized preference below still takes precedence.
+            if let Some(window) = app.get_webview_window("main") {
+                window_placement::restore(&window);
+            }
 
             // Maximize the window on startup if the user enabled it.
             if crate::config::load_config_internal(&app.handle())
@@ -505,6 +513,24 @@ pub fn run() {
             connection_appearance::delete_connection_icon,
             commands::set_connection_appearance,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .on_window_event(|window, event| {
+            if window.label() != "main" { return; }
+            match event {
+                tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
+                    window_placement::remember(window);
+                }
+                tauri::WindowEvent::CloseRequested { .. } => {
+                    window_placement::persist(window);
+                }
+                _ => {}
+            }
+        })
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Cmd+Q and relaunch paths can exit without CloseRequested.
+            if matches!(&event, tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit) {
+                window_placement::persist_cached(app_handle);
+            }
+        });
 }

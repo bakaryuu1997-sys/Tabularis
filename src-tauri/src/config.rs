@@ -61,6 +61,8 @@ pub struct AppConfig {
     pub editor_line_height: Option<f32>,
     pub editor_tab_size: Option<u32>,
     pub editor_word_wrap: Option<bool>,
+    /// Highlight hidden Unicode and look-alike characters in the SQL editor.
+    pub editor_highlight_invisible_characters: Option<bool>,
     pub editor_show_line_numbers: Option<bool>,
     /// Whether the Enter key accepts the active autocomplete suggestion in the
     /// SQL editor. Maps to Monaco's `acceptSuggestionOnEnter` setting: `true`
@@ -323,6 +325,10 @@ pub fn save_config(app: AppHandle, config: AppConfig) -> Result<(), String> {
         }
         if config.editor_word_wrap.is_some() {
             existing_config.editor_word_wrap = config.editor_word_wrap;
+        }
+        if config.editor_highlight_invisible_characters.is_some() {
+            existing_config.editor_highlight_invisible_characters =
+                config.editor_highlight_invisible_characters;
         }
         if config.editor_show_line_numbers.is_some() {
             existing_config.editor_show_line_numbers = config.editor_show_line_numbers;

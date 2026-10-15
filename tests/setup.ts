@@ -189,6 +189,7 @@ vi.mock("lucide-react", () => ({
   ListChecks: () => null,
   ArrowRightToLine: () => null,
   ArrowLeftToLine: () => null,
+  Undo2: () => null,
   Code2: () => null,
   Rows3: () => null,
   WrapText: () => null,

@@ -30,10 +30,15 @@ import {
   Ban,
   FileDigit,
   ExternalLink,
+  Filter,
   PanelBottomOpen,
   EyeOff,
   Eye,
 } from "lucide-react";
+import {
+  getCellValueFilterOperators,
+  type CellValueFilterOperator,
+} from "../../utils/cellValueFilter";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useAlert } from "../../hooks/useAlert";
@@ -96,6 +101,12 @@ interface DataGridProps {
   columnMetadata?: TableColumn[];
   foreignKeys?: ForeignKey[];
   onForeignKeyNavigate?: (fk: ForeignKey, value: unknown) => void;
+  onFilterByValue?: (
+    column: string,
+    operator: CellValueFilterOperator,
+    value: unknown,
+    columnType?: string,
+  ) => void;
   onForeignKeyShowPanel?: (fk: ForeignKey, value: unknown) => void;
   onForeignKeyHidePanel?: () => void;
   connectionId?: string | null;
@@ -130,6 +141,14 @@ interface DataGridProps {
   columnVisibilityKey?: string;
 }
 
+// i18n label per "Filter by this value" operator (issue #853).
+const CELL_VALUE_FILTER_LABEL_KEYS: Record<CellValueFilterOperator, string> = {
+  "=": "dataGrid.filterEquals",
+  "<>": "dataGrid.filterNotEquals",
+  "IS NULL": "dataGrid.filterIsNull",
+  "IS NOT NULL": "dataGrid.filterIsNotNull",
+};
+
 export const DataGrid = React.memo(
   ({
     columns,
@@ -142,6 +161,7 @@ export const DataGrid = React.memo(
     columnMetadata,
     foreignKeys,
     onForeignKeyNavigate,
+    onFilterByValue,
     onForeignKeyShowPanel,
     onForeignKeyHidePanel,
     connectionId,
@@ -1612,6 +1632,42 @@ export const DataGrid = React.memo(
                   });
                 }
                 if (onForeignKeyShowPanel || onForeignKeyNavigate) {
+                  menuItems.push({ separator: true });
+                }
+              }
+
+              // "Filter by this value" (issue #853): hidden for blobs/JSON
+              // (their wire formats don't survive a WHERE comparison) and for
+              // insertion rows, which have no stored value to filter on yet.
+              const colDataType = columnTypeMap?.get(contextMenu.colName) ?? "";
+              const contextCellValue = contextMenu.row[contextMenu.colIndex];
+              if (onFilterByValue && tableName && !isInsertion) {
+                const isBlobCell =
+                  isBlobColumn(colDataType, columnLengthMap?.get(contextMenu.colName)) ||
+                  isBlobWireFormat(contextCellValue);
+                if (
+                  !isBlobCell &&
+                  !isJsonCellTarget(colDataType, contextCellValue)
+                ) {
+                  for (const op of getCellValueFilterOperators(
+                    contextCellValue,
+                  )) {
+                    menuItems.push({
+                      label: t(CELL_VALUE_FILTER_LABEL_KEYS[op], {
+                        column: contextMenu.colName,
+                      }),
+                      icon: Filter,
+                      action: () => {
+                        onFilterByValue(
+                          contextMenu.colName,
+                          op,
+                          contextCellValue,
+                          colDataType || undefined,
+                        );
+                        setContextMenu(null);
+                      },
+                    });
+                  }
                   menuItems.push({ separator: true });
                 }
               }

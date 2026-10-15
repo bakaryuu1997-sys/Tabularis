@@ -28,6 +28,7 @@ import { K8sConnectionsModal } from "./K8sConnectionsModal";
 import { Select } from "../ui/Select";
 import { SlotAnchor } from "../ui/SlotAnchor";
 import { useDrivers } from "../../hooks/useDrivers";
+import { useAlert } from "../../hooks/useAlert";
 import { usePluginSlotRegistry } from "../../hooks/usePluginSlotRegistry";
 import { Modal } from "../ui/Modal";
 import { SqlEditorWrapper } from "../ui/SqlEditorWrapper";
@@ -167,6 +168,7 @@ export const NewConnectionModal = ({
   initialConnection,
 }: NewConnectionModalProps) => {
   const { t } = useTranslation();
+  const { showAlert } = useAlert();
   const { drivers } = useDrivers();
 
   // ── form state ──
@@ -182,6 +184,11 @@ export const NewConnectionModal = ({
     ssh_enabled: false,
     ssh_port: 22,
     k8s_enabled: false,
+    // New connections store secrets in the keychain. An edit starts from the
+    // saved flag so a slow credential load cannot flip an existing connection.
+    save_in_keychain: initialConnection
+      ? (initialConnection.params.save_in_keychain ?? false)
+      : true,
   });
   const [selectedDatabasesState, setSelectedDatabasesState] = useState<
     string[]
@@ -719,7 +726,7 @@ export const NewConnectionModal = ({
       ssh_password: undefined,
       ssh_key_file: undefined,
       ssh_key_passphrase: undefined,
-      save_in_keychain: false,
+      save_in_keychain: true,
       k8s_enabled: false,
       k8s_connection_id: undefined,
       k8s_context: undefined,
@@ -836,25 +843,33 @@ export const NewConnectionModal = ({
       const appearancePayload =
         appearance.icon || appearance.accentColor ? appearance : undefined;
 
+      let persistedInKeychain = params.save_in_keychain;
       if (initialConnection) {
         if (!params.password?.trim()) delete params.password;
         if (!params.ssh_password?.trim()) delete params.ssh_password;
-        await invoke("update_connection", {
+        const updated = await invoke<{
+          params?: { save_in_keychain?: boolean };
+        }>("update_connection", {
           id: initialConnection.id,
           name,
           params,
           detectJsonInTextColumns: detectJsonInTextColumns ? true : null,
         });
+        persistedInKeychain = updated?.params?.save_in_keychain;
         await invoke("set_connection_appearance", {
           id: initialConnection.id,
           appearance: appearancePayload ?? null,
         });
       } else {
-        const saved = await invoke<{ id: string }>("save_connection", {
+        const saved = await invoke<{
+          id: string;
+          params?: { save_in_keychain?: boolean };
+        }>("save_connection", {
           name,
           params,
           detectJsonInTextColumns: detectJsonInTextColumns ? true : null,
         });
+        persistedInKeychain = saved.params?.save_in_keychain;
         if (appearancePayload) {
           await invoke("set_connection_appearance", {
             id: saved.id,
@@ -862,6 +877,13 @@ export const NewConnectionModal = ({
           });
         }
       }
+
+      if (params.save_in_keychain && persistedInKeychain === false) {
+        showAlert(t("newConnection.secretsStoredInPlainText"), {
+          kind: "warning",
+        });
+      }
+
       if (onSave) onSave();
       wasSavedRef.current = true;
 
@@ -1235,19 +1257,34 @@ export const NewConnectionModal = ({
           )}
 
           {/* Keychain */}
-          <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
-            <input
-              type="checkbox"
-              checked={!!formData.save_in_keychain}
-              onChange={(e) => {
-                updateField("save_in_keychain", e.target.checked);
-              }}
-              className="accent-blue-500 w-3.5 h-3.5 rounded"
-            />
-            <span className="text-xs text-secondary">
-              {t("newConnection.saveKeychain")}
-            </span>
-          </label>
+          <div className="flex flex-col gap-1">
+            <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
+              <input
+                type="checkbox"
+                checked={!!formData.save_in_keychain}
+                onChange={(e) => {
+                  updateField("save_in_keychain", e.target.checked);
+                }}
+                aria-describedby={
+                  formData.save_in_keychain
+                    ? undefined
+                    : "connection-secrets-plaintext-warning"
+                }
+                className="accent-blue-500 w-3.5 h-3.5 rounded"
+              />
+              <span className="text-xs text-secondary">
+                {t("newConnection.saveKeychain")}
+              </span>
+            </label>
+            {!formData.save_in_keychain && (
+              <p
+                id="connection-secrets-plaintext-warning"
+                className="text-xs text-amber-500"
+              >
+                {t("newConnection.secretsStoredInPlainText")}
+              </p>
+            )}
+          </div>
         </>
       )}
 

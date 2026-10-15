@@ -28,6 +28,14 @@ vi.mock("emoji-picker-react", () => ({
   SkinTonePickerLocation: { SEARCH: "search", PREVIEW: "preview" },
 }));
 
+vi.mock("./LazyEmojiPicker", () => ({
+  default: ({ onPick }: { onPick: (emoji: string) => void }) => (
+    <div data-testid="emoji-picker" onClick={() => onPick("🐘")}>
+      <input aria-label="emoji search" />
+    </div>
+  ),
+}));
+
 // The section reads the current theme to pick the emoji picker's light/dark mode.
 vi.mock("../../../hooks/useTheme", () => ({
   useTheme: () => ({ currentTheme: { monacoTheme: { base: "vs-dark" } } }),
@@ -187,19 +195,19 @@ describe("AppearanceSection — icon tabs", () => {
 
   // ── emoji-picker-react emoji picker ──
 
-  it("renders emoji picker with search", () => {
+  it("renders emoji picker with search", async () => {
     render(<AppearanceSection value={{}} onChange={() => {}} connectionId="1" />);
     fireEvent.click(screen.getByRole("tab", { name: /emoji/i }));
-    expect(screen.getByTestId("emoji-picker")).toBeInTheDocument();
+    expect(await screen.findByTestId("emoji-picker")).toBeInTheDocument();
     expect(screen.getByLabelText(/emoji search/i)).toBeInTheDocument();
   });
 
-  it("emits emoji icon when picker fires onEmojiClick", () => {
+  it("emits emoji icon when picker fires onEmojiClick", async () => {
     const onChange = vi.fn();
     render(<AppearanceSection value={{}} onChange={onChange} connectionId="1" />);
     fireEvent.click(screen.getByRole("tab", { name: /emoji/i }));
     // Clicking the picker div triggers the mock onEmojiClick({ emoji: "🐘" })
-    fireEvent.click(screen.getByTestId("emoji-picker"));
+    fireEvent.click(await screen.findByTestId("emoji-picker"));
     expect(onChange).toHaveBeenCalledWith({ icon: { type: "emoji", value: "🐘" } });
   });
 

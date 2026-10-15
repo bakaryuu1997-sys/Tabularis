@@ -143,6 +143,11 @@ import type {
   ForeignKey,
 } from "../types/editor";
 import { buildForeignKeyFilterClause } from "../utils/foreignKeys";
+import {
+  buildCellValueFilterClause,
+  combineFilterClauses,
+  type CellValueFilterOperator,
+} from "../utils/cellValueFilter";
 import { formatSqlIdentifier } from "../utils/identifiers";
 import { RelatedRecordsPanel } from "../components/ui/RelatedRecordsPanel";
 import {
@@ -207,6 +212,8 @@ export const Editor = () => {
     closeOtherTabs,
     closeTabsToLeft,
     closeTabsToRight,
+    reopenClosedTab,
+    canReopenClosedTab,
   } = useEditor();
   const location = useLocation();
   const { matchesShortcut, isMac } = useKeybindings();
@@ -1644,6 +1651,12 @@ export const Editor = () => {
         return;
       }
 
+      if (matchesShortcut(e, "reopen_closed_tab")) {
+        e.preventDefault();
+        reopenClosedTab();
+        return;
+      }
+
       if (matchesShortcut(e, "new_tab")) {
         e.preventDefault();
         addTab({ type: "console" });
@@ -1680,6 +1693,7 @@ export const Editor = () => {
     matchesShortcut,
     addTab,
     handleCloseTab,
+    reopenClosedTab,
     runQuery,
   ]);
 
@@ -1813,6 +1827,41 @@ export const Editor = () => {
       updateTab,
       runQuery,
     ],
+  );
+
+  const handleFilterByValue = useCallback(
+    (
+      column: string,
+      operator: CellValueFilterOperator,
+      value: unknown,
+      columnType?: string,
+      tabOverride?: Tab,
+    ) => {
+      const currentTab =
+        tabOverride ??
+        tabsRef.current.find((tb) => tb.id === activeTabIdRef.current);
+      if (!currentTab) return;
+
+      const sourceType =
+        columnType ||
+        currentTab.columnMetadata?.find((c) => c.name === column)?.data_type;
+      const added = buildCellValueFilterClause(
+        column,
+        operator,
+        value,
+        activeCapabilities ?? activeDriver ?? null,
+        sourceType,
+      );
+      handleToolbarUpdate(
+        {
+          filter: combineFilterClauses(currentTab.filterClause, added),
+          sort: currentTab.sortClause || "",
+          limit: currentTab.limitClause,
+        },
+        currentTab.id,
+      );
+    },
+    [activeDriver, activeCapabilities, handleToolbarUpdate],
   );
 
   const handleSort = useCallback(
@@ -4031,6 +4080,11 @@ export const Editor = () => {
                       onForeignKeyNavigate={handleForeignKeyNavigate}
                       onForeignKeyShowPanel={handleForeignKeyShowPanel}
                       onForeignKeyHidePanel={() => setActiveFkQuery(null)}
+                      onFilterByValue={
+                        activeTab.type === "table"
+                          ? handleFilterByValue
+                          : undefined
+                      }
                       connectionId={activeConnectionId}
                       onRefresh={handleRefresh}
                       pendingChanges={activeTab.pendingChanges}
@@ -4205,6 +4259,17 @@ export const Editor = () => {
                           handleSelectionChange(idx, splitTab.id),
                         onForeignKeyNavigate: (fk, value) =>
                           handleForeignKeyNavigate(fk, value, splitTab),
+                        onFilterByValue:
+                          splitTab.type === "table"
+                            ? (col, op, val, colType) =>
+                                handleFilterByValue(
+                                  col,
+                                  op,
+                                  val,
+                                  colType,
+                                  splitTab
+                                )
+                            : undefined,
                         onSort:
                           splitTab.type === "table" &&
                           (splitTab.result?.rows.length ?? 0) > 0
@@ -4396,6 +4461,12 @@ export const Editor = () => {
                   },
                 ]
               : []),
+            {
+              label: t("editor.reopenClosedTab"),
+              icon: Undo2,
+              disabled: !canReopenClosedTab,
+              action: () => reopenClosedTab(),
+            },
             {
               label: t("editor.closeTab"),
               icon: X,
