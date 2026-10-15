@@ -1245,19 +1245,24 @@ export const Editor = () => {
   );
 
   // --- Detached results windows (one per detached tab) ---
-  const handleDetachResults = useCallback(async () => {
-    if (!activeTab) return;
-    const tabId = activeTab.id;
-    try {
-      await invoke("open_results_window", {
-        tabId,
-        title: `${activeTab.title} — Query Results`,
-      });
-      setDetachedTabIds((prev) => new Set(prev).add(tabId));
-    } catch (e) {
-      console.error("Failed to detach results", e);
-    }
-  }, [activeTab]);
+  const handleDetachResults = useCallback(
+    async (targetTabId?: string) => {
+      const targetId = targetTabId ?? activeTab?.id;
+      if (!targetId) return;
+      const target = tabs.find((t) => t.id === targetId) ?? activeTab;
+      if (!target) return;
+      try {
+        await invoke("open_results_window", {
+          tabId: target.id,
+          title: `${target.title} — Tabularis Window`,
+        });
+        setDetachedTabIds((prev) => new Set(prev).add(target.id));
+      } catch (e) {
+        console.error("Failed to detach results", e);
+      }
+    },
+    [activeTab, tabs],
+  );
 
   const handleReattachResults = useCallback(async (tabId: string) => {
     try {
@@ -1281,12 +1286,16 @@ export const Editor = () => {
       if (tab) {
         emit(
           RESULTS_SYNC_EVENT,
-          buildSyncPayload(tab, {
-            connectionId: activeConnectionId,
-            copyFormat,
-            csvDelimiter,
-            csvIncludeHeaders,
-          }),
+          buildSyncPayload(
+            tab,
+            {
+              connectionId: activeConnectionId,
+              copyFormat,
+              csvDelimiter,
+              csvIncludeHeaders,
+            },
+            activeDriver ?? undefined,
+          ),
         );
       }
     }
@@ -1294,6 +1303,7 @@ export const Editor = () => {
     tabs,
     detachedTabIds,
     activeConnectionId,
+    activeDriver,
     copyFormat,
     csvDelimiter,
     csvIncludeHeaders,
@@ -1325,12 +1335,16 @@ export const Editor = () => {
       if (tab) {
         emit(
           RESULTS_SYNC_EVENT,
-          buildSyncPayload(tab, {
-            connectionId: activeConnectionId,
-            copyFormat,
-            csvDelimiter,
-            csvIncludeHeaders,
-          }),
+          buildSyncPayload(
+            tab,
+            {
+              connectionId: activeConnectionId,
+              copyFormat,
+              csvDelimiter,
+              csvIncludeHeaders,
+            },
+            activeDriver ?? undefined,
+          ),
         );
       }
     };
@@ -1342,6 +1356,9 @@ export const Editor = () => {
       };
       return {
         onRunQueryPage: (query, page) => runQuery(query, page, tabId),
+        onRunQuery: (query) => runQuery(query, 1, tabId),
+        onUpdateQuery: (query) => updateTab(tabId, { query }),
+        onReattach: () => handleReattachResults(tabId),
         onPageChange: (entryId, page) => runResultEntryPage(entryId, page, tabId),
         onRerunEntry: (entryId) => runResultEntryPage(entryId, 1, tabId),
         onLoadCount: () => loadCount(tabId),
@@ -4342,6 +4359,21 @@ export const Editor = () => {
                     },
                   },
                 ]),
+            {
+              label: detachedTabIds.has(tabContextMenu.tabId)
+                ? t("editor.results.reattach", "Reattach Window")
+                : t("editor.results.detach", "Detach Window"),
+              icon: detachedTabIds.has(tabContextMenu.tabId)
+                ? Minimize2
+                : ExternalLink,
+              action: () => {
+                if (detachedTabIds.has(tabContextMenu.tabId)) {
+                  handleReattachResults(tabContextMenu.tabId);
+                } else {
+                  handleDetachResults(tabContextMenu.tabId);
+                }
+              },
+            },
             ...(canRenameTab(
               tabs.find((t) => t.id === tabContextMenu.tabId)?.type ?? "",
             )

@@ -50,10 +50,12 @@ describe("buildSyncPayload", () => {
       isLoading: false,
       activeTable: "t",
     });
-    const payload = buildSyncPayload(tab, settings);
+    const payload = buildSyncPayload(tab, settings, "postgres");
 
     expect(payload.tabId).toBe("tab-1");
     expect(payload.tabTitle).toBe("Console 1");
+    expect(payload.tabType).toBe("console");
+    expect(payload.driver).toBe("postgres");
     expect(payload.query).toBe("SELECT * FROM t");
     expect(payload.result).toEqual(baseResult);
     expect(payload.executionTime).toBe(12.5);
@@ -157,8 +159,22 @@ describe("applyAction", () => {
       onCloseAllEntries: vi.fn(),
       onRenameEntry: vi.fn(),
       onLoadCount: vi.fn(),
+      onRunQuery: vi.fn(),
+      onUpdateQuery: vi.fn(),
+      onReattach: vi.fn(),
     };
   }
+
+  it("dispatches run-query, update-query, and reattach actions", () => {
+    const h = makeHandlers();
+    applyAction({ type: "run-query", query: "SELECT 42;" }, h);
+    applyAction({ type: "update-query", query: "SELECT 99;" }, h);
+    applyAction({ type: "reattach" }, h);
+
+    expect(h.onRunQuery).toHaveBeenCalledWith("SELECT 42;");
+    expect(h.onUpdateQuery).toHaveBeenCalledWith("SELECT 99;");
+    expect(h.onReattach).toHaveBeenCalledTimes(1);
+  });
 
   it("dispatches run-query-page with query and page", () => {
     const h = makeHandlers();

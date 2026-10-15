@@ -33,6 +33,8 @@ export interface ResultsDisplaySettings {
 export interface ResultsSyncPayload extends ResultsDisplaySettings {
   tabId: string;
   tabTitle: string;
+  tabType?: string;
+  driver?: string;
   query: string;
   // Legacy single-result path (`Tab.result`).
   result: QueryResult | null;
@@ -59,6 +61,9 @@ export interface ResultsClosedPayload {
 /** Actions the detached window forwards to the main window. */
 export type ResultsWindowAction =
   | { type: "run-query-page"; query: string; page: number }
+  | { type: "run-query"; query: string }
+  | { type: "update-query"; query: string }
+  | { type: "reattach" }
   | { type: "page-change"; entryId: string; page: number }
   | { type: "select-result"; entryId: string }
   | { type: "rerun-entry"; entryId: string }
@@ -80,6 +85,9 @@ export interface ResultsActionEnvelope {
 /** Handlers the main window wires to its existing result operations. */
 export interface ResultsWindowActionHandlers {
   onRunQueryPage: (query: string, page: number) => void;
+  onRunQuery?: (query: string) => void;
+  onUpdateQuery?: (query: string) => void;
+  onReattach?: () => void;
   onPageChange: (entryId: string, page: number) => void;
   onSelectResult: (entryId: string) => void;
   onRerunEntry: (entryId: string) => void;
@@ -96,10 +104,13 @@ export interface ResultsWindowActionHandlers {
 export function buildSyncPayload(
   tab: Tab,
   settings: ResultsDisplaySettings,
+  driver?: string,
 ): ResultsSyncPayload {
   return {
     tabId: tab.id,
     tabTitle: tab.title,
+    tabType: tab.type,
+    driver,
     query: tab.query,
     result: tab.result,
     error: tab.error,
@@ -148,6 +159,15 @@ export function applyAction(
   switch (action.type) {
     case "run-query-page":
       handlers.onRunQueryPage(action.query, action.page);
+      break;
+    case "run-query":
+      handlers.onRunQuery?.(action.query);
+      break;
+    case "update-query":
+      handlers.onUpdateQuery?.(action.query);
+      break;
+    case "reattach":
+      handlers.onReattach?.();
       break;
     case "page-change":
       handlers.onPageChange(action.entryId, action.page);
