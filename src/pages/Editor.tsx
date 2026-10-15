@@ -4166,13 +4166,13 @@ export const Editor = () => {
             />
             <div
               className={clsx(
-                "shrink-0 flex min-w-0 min-h-0",
+                "flex flex-col flex-1 min-w-0 min-h-0",
                 splitOrientation === "vertical" ? "w-full" : "h-full",
               )}
               style={
                 splitOrientation === "vertical"
-                  ? { height: `${(1 - splitRatio) * 100}%`, flex: 1 }
-                  : { width: `${(1 - splitRatio) * 100}%`, flex: 1 }
+                  ? { height: `${(1 - splitRatio) * 100}%` }
+                  : { width: `${(1 - splitRatio) * 100}%` }
               }
             >
               <SplitResultsPane

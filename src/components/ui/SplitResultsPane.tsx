@@ -129,7 +129,7 @@ export function SplitResultsPane({
 
   return (
     <div
-      className={`flex flex-col h-full min-w-0 bg-base ${
+      className={`flex flex-col h-full w-full flex-1 min-w-0 bg-base ${
         orientation === "vertical" ? "border-t border-default" : "border-l border-default"
       }`}
     >
@@ -251,7 +251,7 @@ export function SplitResultsPane({
           </div>
         ) : editable ? (
           <>
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
               <DataGrid
                 columns={tab.result!.columns}
                 data={tab.result!.rows}
@@ -259,7 +259,7 @@ export function SplitResultsPane({
               />
             </div>
             {pagination && (
-              <div className="h-7 shrink-0 flex items-center justify-end gap-1 px-2 bg-elevated border-t border-default text-xs text-muted">
+              <div className="h-7 shrink-0 flex items-center justify-end gap-1 px-2 bg-elevated border-t border-default text-xs text-muted w-full">
                 <span className="mr-auto">
                   {t("editor.rowsRetrieved", { count: tab.result!.rows.length })}
                 </span>
@@ -284,15 +284,16 @@ export function SplitResultsPane({
             )}
           </>
         ) : entry ? (
-          <ResultEntryContent
-            entry={entry}
-            connectionId={connectionId}
-            copyFormat={copyFormat}
-            csvDelimiter={csvDelimiter}
-            csvIncludeHeaders={csvIncludeHeaders}
-            onPageChange={onPageChange}
-            compact
-          />
+          <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
+            <ResultEntryContent
+              entry={entry}
+              connectionId={connectionId}
+              copyFormat={copyFormat}
+              csvDelimiter={csvDelimiter}
+              csvIncludeHeaders={csvIncludeHeaders}
+              onPageChange={onPageChange}
+            />
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full text-surface-tertiary text-sm px-4 text-center">
             {t("editor.split.empty")}

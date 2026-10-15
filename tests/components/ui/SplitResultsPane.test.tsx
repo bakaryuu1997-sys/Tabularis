@@ -173,4 +173,14 @@ describe("SplitResultsPane", () => {
     fireEvent.click(screen.getByTitle("editor.split.save"));
     expect(onSave).toHaveBeenCalled();
   });
+
+  it("renders with full-width classes so it fills the split pane without gaps", () => {
+    const { container } = render(
+      <SplitResultsPane {...defaultProps} tab={baseTab()} />,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain("w-full");
+    expect(root.className).toContain("flex-1");
+    expect(root.className).toContain("h-full");
+  });
 });

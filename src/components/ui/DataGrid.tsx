@@ -1412,7 +1412,7 @@ export const DataGrid = React.memo(
       <>
         <div
           ref={parentRef}
-          className="h-full overflow-auto border border-default rounded bg-elevated relative"
+          className="h-full w-full overflow-auto border border-default rounded bg-elevated relative"
         >
           <div
             style={{
