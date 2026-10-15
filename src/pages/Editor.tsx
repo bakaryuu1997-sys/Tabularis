@@ -113,6 +113,7 @@ import {
   type ResultsClosedPayload,
 } from "../utils/resultsWindowSync";
 import { SqlEditorWrapper } from "../components/ui/SqlEditorWrapper";
+import { canRenameTab } from "../utils/tabRename";
 import { NotebookView } from "../components/notebook/NotebookView";
 import { useSqlAutocompleteRegistration } from "../hooks/useSqlAutocompleteRegistration";
 import { createNotebook, renameNotebook } from "../utils/notebookStore";
@@ -3050,7 +3051,7 @@ export const Editor = () => {
                 <span
                   className="truncate flex-1 flex items-center gap-1"
                   onDoubleClick={
-                    tab.type === "notebook"
+                    canRenameTab(tab.type)
                       ? (e) => {
                           e.stopPropagation();
                           startTabRename(tab.id);
@@ -4257,11 +4258,12 @@ export const Editor = () => {
               icon: PanelRight,
               action: () => togglePin(tabContextMenu.tabId),
             },
-            ...(tabs.find((t) => t.id === tabContextMenu.tabId)?.type ===
-            "notebook"
+            ...(canRenameTab(
+              tabs.find((t) => t.id === tabContextMenu.tabId)?.type ?? "",
+            )
               ? [
                   {
-                    label: t("sidebar.notebooks.rename"),
+                    label: t("sidebar.notebooks.rename", "Rename"),
                     icon: Pencil,
                     action: () => startTabRename(tabContextMenu.tabId),
                   },

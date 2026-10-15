@@ -8,6 +8,12 @@ import { useSettings } from "../../hooks/useSettings";
 import { getFontCSS } from "../../utils/settings";
 import { formatSql } from "../../utils/sqlFormat";
 import type { SqlDialect } from "../../utils/sql";
+import {
+  zoomInFontSize,
+  zoomOutFontSize,
+  resetFontSize,
+  DEFAULT_EDITOR_FONT_SIZE,
+} from "../../utils/editorFontZoom";
 
 interface SqlEditorWrapperProps {
   initialValue: string;
@@ -41,7 +47,11 @@ const SqlEditorInternal = ({
   const dialectRef = useRef(dialect);
   dialectRef.current = dialect;
   const editorTheme = useEditorTheme();
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
+  const updateSettingRef = useRef(updateSetting);
+  updateSettingRef.current = updateSetting;
+  const fontSizeRef = useRef(settings.editorFontSize ?? DEFAULT_EDITOR_FONT_SIZE);
+  fontSizeRef.current = settings.editorFontSize ?? DEFAULT_EDITOR_FONT_SIZE;
 
   // Dispose editor on unmount to prevent "domNode" errors from ResizeObserver
   // firing after the DOM container is removed (e.g., cell deletion/movement)
@@ -176,6 +186,51 @@ const SqlEditorInternal = ({
           onRunRef.current();
         }
       );
+
+      // Zoom In (Ctrl/Cmd + = or Numpad Add)
+      editor.addAction({
+        id: "tabularis.zoomInEditor",
+        label: "Zoom In (Editor Font)",
+        keybindings: [
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.Equal,
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.NumpadAdd,
+        ],
+        run: () => {
+          updateSettingRef.current(
+            "editorFontSize",
+            zoomInFontSize(fontSizeRef.current),
+          );
+        },
+      });
+
+      // Zoom Out (Ctrl/Cmd + - or Numpad Subtract)
+      editor.addAction({
+        id: "tabularis.zoomOutEditor",
+        label: "Zoom Out (Editor Font)",
+        keybindings: [
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.Minus,
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.NumpadSubtract,
+        ],
+        run: () => {
+          updateSettingRef.current(
+            "editorFontSize",
+            zoomOutFontSize(fontSizeRef.current),
+          );
+        },
+      });
+
+      // Reset Zoom (Ctrl/Cmd + 0 or Numpad 0)
+      editor.addAction({
+        id: "tabularis.resetZoomEditor",
+        label: "Reset Zoom (Editor Font)",
+        keybindings: [
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.Digit0,
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.Numpad0,
+        ],
+        run: () => {
+          updateSettingRef.current("editorFontSize", resetFontSize());
+        },
+      });
 
       if (onMount) onMount(editor, monaco);
     };
