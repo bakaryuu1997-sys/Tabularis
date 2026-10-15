@@ -80,4 +80,18 @@ describe("aiSchemaContext", () => {
     expect(context).toContain("Sample rows for statuses:");
     expect(context).toContain("PAID");
   });
+
+  it("includes all tables in database and header list without truncating at 50", () => {
+    const tables: TableSchema[] = Array.from({ length: 80 }, (_, i) => ({
+      name: `tbl_${i}`,
+      columns: [{ name: "id", data_type: "int", is_pk: true, is_nullable: false, is_auto_increment: true }],
+      foreign_keys: [],
+    }));
+
+    const context = buildRichSchemaContext(tables);
+    expect(context).toContain("Database Schema (80 tables total:");
+    expect(context).toContain("tbl_0(id int PK)");
+    expect(context).toContain("tbl_79(id int PK)");
+    expect(context).not.toContain("more tables");
+  });
 });

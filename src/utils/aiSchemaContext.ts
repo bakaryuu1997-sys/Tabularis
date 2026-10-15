@@ -33,8 +33,14 @@ export function buildRichSchemaContext(
   tables: TableSchema[],
   options: FormatSchemaOptions = {},
 ): string {
-  const maxTables = options.maxTables ?? 50;
-  const maxCols = options.maxCols ?? 35;
+  const maxTables = options.maxTables ?? 500;
+  const maxCols = options.maxCols ?? 100;
+
+  const allTableNames = tables.map((t) => t.name);
+  const header =
+    tables.length > 0
+      ? `Database Schema (${tables.length} tables total: ${allTableNames.join(", ")}):\n`
+      : "";
 
   const lines = tables.slice(0, maxTables).map((tbl) => {
     const cols = tbl.columns
@@ -75,5 +81,5 @@ export function buildRichSchemaContext(
     }
   }
 
-  return lines.join("\n");
+  return (header + lines.join("\n")).trim();
 }

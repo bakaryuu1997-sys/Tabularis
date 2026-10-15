@@ -238,6 +238,7 @@ export function AiChatWidget() {
     }
   });
   const schemaCacheRef = useRef<Record<string, string>>({});
+  const [schemaTableCount, setSchemaTableCount] = useState<number | null>(null);
   const [models, setModels] = useState<string[]>([]);
 
   // Multiple conversations ("sessions"). `messages` is the working buffer for
@@ -348,7 +349,9 @@ export function AiChatWidget() {
     try {
       const tables = await invoke<TableSchema[]>("get_schema_snapshot", {
         connectionId: activeConnectionId,
+        schema: activeTab?.schema ?? undefined,
       });
+      setSchemaTableCount(tables.length);
       const sampleData =
         activeTab?.activeTable &&
         activeTab.result?.rows?.length &&
@@ -365,7 +368,7 @@ export function AiChatWidget() {
                 }),
             }
           : undefined;
-      const ctx = buildRichSchemaContext(tables, { sampleData });
+      const ctx = buildRichSchemaContext(tables, { sampleData, maxTables: 500, maxCols: 100 });
       schemaCacheRef.current[activeConnectionId] = ctx;
       return ctx;
     } catch (e) {
@@ -373,6 +376,13 @@ export function AiChatWidget() {
       return "";
     }
   }, [useSchema, activeConnectionId, activeTab]);
+
+  const refreshSchema = useCallback(() => {
+    if (activeConnectionId) {
+      delete schemaCacheRef.current[activeConnectionId];
+      void getSchemaContext();
+    }
+  }, [activeConnectionId, getSchemaContext]);
 
   // Append a SQL snippet to the current console tab (preserving what's already
   // there), or open a fresh console tab if none is active. Then jump to the
@@ -802,19 +812,36 @@ export function AiChatWidget() {
 
           {/* DB schema context toggle */}
           {activeConnectionId && (
-            <button
-              onClick={() => setUseSchema((v) => !v)}
-              title="Cho AI biết schema của kết nối đang mở"
-              className={clsx(
-                "flex items-center gap-1.5 px-3 py-1.5 text-[11px] border-b border-default transition-colors",
-                useSchema
-                  ? "text-blue-400 hover:text-blue-300"
-                  : "text-muted hover:text-secondary",
+            <div className="flex items-center justify-between px-3 py-1.5 text-[11px] border-b border-default bg-surface/50">
+              <button
+                onClick={() => setUseSchema((v) => !v)}
+                title="Cho AI đọc toàn bộ bảng và cấu trúc cơ sở dữ liệu"
+                className={clsx(
+                  "flex items-center gap-1.5 transition-colors font-medium truncate",
+                  useSchema
+                    ? "text-blue-400 hover:text-blue-300"
+                    : "text-muted hover:text-secondary",
+                )}
+              >
+                <Database size={12} className="shrink-0" />
+                <span className="truncate">
+                  {useSchema
+                    ? schemaTableCount !== null
+                      ? `Đang đọc toàn bộ DB (${schemaTableCount} bảng)`
+                      : "Đang đọc toàn bộ DB"
+                    : "Không gửi schema DB"}
+                </span>
+              </button>
+              {useSchema && (
+                <button
+                  onClick={refreshSchema}
+                  title="Làm mới schema DB"
+                  className="p-1 rounded text-muted hover:text-primary hover:bg-surface-secondary transition-colors shrink-0 ml-1"
+                >
+                  <RefreshCw size={11} />
+                </button>
               )}
-            >
-              <Database size={12} />
-              {useSchema ? "Đang gửi schema DB cho AI" : "Không gửi schema DB"}
-            </button>
+            </div>
           )}
 
           {/* Messages */}
