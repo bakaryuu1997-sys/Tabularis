@@ -112,6 +112,7 @@ export interface Tab {
   distinct?: boolean; // When true, the table query uses SELECT DISTINCT
   queryParams?: Record<string, string>; // Saved values for query parameters
   schema?: string; // Schema name (PostgreSQL) for query reconstruction
+  database?: string; // Database name (multi-database connections)
   readOnly?: boolean; // Hides the Run button (e.g. for definition views)
   materialized?: boolean; // Grid data is read-only (e.g. materialized views: only REFRESH writes)
   results?: QueryResultEntry[];

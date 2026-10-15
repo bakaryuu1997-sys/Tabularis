@@ -920,18 +920,20 @@ export const DataGrid = React.memo(
                   title={tooltipText}
                 >
                   {isPk && (
-                    <Key
-                      size={12}
-                      className="text-amber-400 shrink-0"
-                      title="Khóa chính (Primary Key)"
-                    />
+                    <span title="Khóa chính (Primary Key)" className="inline-flex items-center">
+                      <Key
+                        size={12}
+                        className="text-amber-400 shrink-0"
+                      />
+                    </span>
                   )}
                   {fk && (
-                    <Link2
-                      size={12}
-                      className="text-cyan-400 shrink-0"
-                      title={`Khóa ngoại ➔ ${fk.ref_table}.${fk.ref_column}`}
-                    />
+                    <span title={`Khóa ngoại ➔ ${fk.ref_table}.${fk.ref_column}`} className="inline-flex items-center">
+                      <Link2
+                        size={12}
+                        className="text-cyan-400 shrink-0"
+                      />
+                    </span>
                   )}
                   <span
                     className="select-text cursor-text font-medium text-primary hover:text-white"
