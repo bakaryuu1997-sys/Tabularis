@@ -189,7 +189,12 @@ const SidebarTableItemImpl = ({
               : "text-muted group-hover:text-accent"
           }
         />
-        <span className="truncate flex-1 select-text cursor-text" onClick={(e) => e.stopPropagation()}>{table.name}</span>
+        <span
+          className="truncate flex-1 select-text cursor-text"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {table.name}
+        </span>
       </div>
       {isExpanded && (
         <div className="ml-[22px] border-l border-default">

@@ -101,7 +101,7 @@ export const SidebarRoutineItem = ({
           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
         <Code2 size={14} className="text-muted group-hover:text-yellow-500" />
-        <span className="truncate flex-1">{routine.name}</span>
+        <span className="truncate flex-1 select-text cursor-text">{routine.name}</span>
       </div>
       {isExpanded && (
         <div className="ml-[22px] border-l border-default">

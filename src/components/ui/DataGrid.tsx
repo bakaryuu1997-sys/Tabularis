@@ -937,6 +937,7 @@ export const DataGrid = React.memo(
                   )}
                   <span
                     className="select-text cursor-text font-medium text-primary hover:text-white"
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       // Allow selecting text without triggering sort
                       e.stopPropagation();

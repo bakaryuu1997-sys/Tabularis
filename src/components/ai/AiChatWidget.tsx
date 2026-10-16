@@ -207,20 +207,20 @@ function CodeBlock({
 }
 
 const PROSE_CLASSES =
-  "prose-notebook text-sm leading-relaxed break-words " +
-  "[&_h1]:text-base [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:text-primary " +
-  "[&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mb-1.5 [&_h2]:text-primary " +
-  "[&_h3]:text-sm [&_h3]:font-medium [&_h3]:mb-1 [&_h3]:text-primary " +
-  "[&_p]:mb-2 last:[&_p]:mb-0 " +
-  "[&_code]:bg-black/30 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono " +
-  "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 " +
-  "[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 " +
-  "[&_li]:mb-1 " +
+  "prose-notebook text-sm leading-relaxed break-words select-text " +
+  "[&_h1]:text-base [&_h1]:font-bold [&_h1]:mb-2 [&_h1]:text-primary [&_h1]:select-text " +
+  "[&_h2]:text-sm [&_h2]:font-semibold [&_h2]:mb-1.5 [&_h2]:text-primary [&_h2]:select-text " +
+  "[&_h3]:text-sm [&_h3]:font-medium [&_h3]:mb-1 [&_h3]:text-primary [&_h3]:select-text " +
+  "[&_p]:mb-2 last:[&_p]:mb-0 [&_p]:select-text " +
+  "[&_code]:bg-black/30 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono [&_code]:select-text " +
+  "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2 [&_ul]:select-text " +
+  "[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2 [&_ol]:select-text " +
+  "[&_li]:mb-1 [&_li]:select-text " +
   "[&_a]:text-blue-400 [&_a]:underline " +
-  "[&_blockquote]:border-l-2 [&_blockquote]:border-muted [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-muted " +
-  "[&_table]:border-collapse [&_table]:w-full [&_table]:mb-2 " +
-  "[&_th]:border [&_th]:border-default [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:text-xs " +
-  "[&_td]:border [&_td]:border-default [&_td]:px-2 [&_td]:py-1 [&_td]:text-xs " +
+  "[&_blockquote]:border-l-2 [&_blockquote]:border-muted [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-muted [&_blockquote]:select-text " +
+  "[&_table]:border-collapse [&_table]:w-full [&_table]:mb-2 [&_table]:select-text " +
+  "[&_th]:border [&_th]:border-default [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:text-xs [&_th]:select-text " +
+  "[&_td]:border [&_td]:border-default [&_td]:px-2 [&_td]:py-1 [&_td]:text-xs [&_td]:select-text " +
   "[&_strong]:font-semibold [&_strong]:text-primary [&_em]:italic";
 
 export function AiChatWidget() {
@@ -258,6 +258,23 @@ export function AiChatWidget() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedMsgIndex, setCopiedMsgIndex] = useState<number | null>(null);
+  const [copiedError, setCopiedError] = useState(false);
+
+  const handleCopyText = async (text: string, index?: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      if (typeof index === "number") {
+        setCopiedMsgIndex(index);
+        setTimeout(() => setCopiedMsgIndex(null), 1500);
+      } else {
+        setCopiedError(true);
+        setTimeout(() => setCopiedError(false), 1500);
+      }
+    } catch {
+      /* clipboard fallback */
+    }
+  };
 
   const cancelRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -847,10 +864,10 @@ export function AiChatWidget() {
           {/* Messages */}
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto px-3 py-3 space-y-3"
+            className="flex-1 overflow-y-auto px-3 py-3 space-y-3 select-text chat-messages"
           >
             {messages.length === 0 && !error && (
-              <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-muted px-3">
+              <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-muted px-3 select-none">
                 <Bot size={32} className="opacity-40" />
                 <p className="text-sm">Hỏi AI bất cứ điều gì.</p>
                 {!provider ? (
@@ -883,28 +900,45 @@ export function AiChatWidget() {
               <div
                 key={i}
                 className={clsx(
-                  "flex",
+                  "flex group/msg relative",
                   m.role === "user" ? "justify-end" : "justify-start",
                 )}
               >
                 <div
                   className={clsx(
-                    "max-w-[85%] rounded-xl px-3 py-2",
+                    "max-w-[85%] rounded-xl px-3 py-2 select-text chat-bubble relative group/bubble",
                     m.role === "user"
                       ? "bg-blue-600 text-white"
                       : "bg-surface-secondary text-secondary border border-default",
                   )}
                 >
+                  <button
+                    onClick={() => handleCopyText(m.content, i)}
+                    title="Sao chép nội dung tin nhắn"
+                    className={clsx(
+                      "absolute top-1.5 right-1.5 p-1 rounded opacity-0 group-hover/bubble:opacity-100 transition-opacity z-10",
+                      m.role === "user"
+                        ? "bg-blue-700/80 hover:bg-blue-800 text-white"
+                        : "bg-surface-tertiary/90 hover:bg-surface-tertiary text-muted hover:text-primary shadow-sm border border-default/50",
+                    )}
+                  >
+                    {copiedMsgIndex === i ? (
+                      <Check size={12} className="text-green-300" />
+                    ) : (
+                      <Copy size={12} />
+                    )}
+                  </button>
+
                   {m.role === "user" ? (
-                    <p className="text-sm whitespace-pre-wrap break-words">
+                    <p className="text-sm whitespace-pre-wrap break-words select-text cursor-text pr-5">
                       {m.content}
                     </p>
                   ) : m.content ? (
-                    <div className={PROSE_CLASSES}>
+                    <div className={clsx(PROSE_CLASSES, "select-text cursor-text pr-5")}>
                       <Markdown components={mdComponents}>{m.content}</Markdown>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-muted text-sm py-0.5">
+                    <div className="flex items-center gap-2 text-muted text-sm py-0.5 select-text">
                       <Loader2 size={14} className="animate-spin" />
                       Đang trả lời…
                     </div>
@@ -915,7 +949,7 @@ export function AiChatWidget() {
 
             {loading && messages[messages.length - 1]?.role === "user" && (
               <div className="flex justify-start">
-                <div className="bg-surface-secondary border border-default rounded-xl px-3 py-2 flex items-center gap-2 text-muted text-sm">
+                <div className="bg-surface-secondary border border-default rounded-xl px-3 py-2 flex items-center gap-2 text-muted text-sm select-text">
                   <Loader2 size={14} className="animate-spin" />
                   Đang trả lời…
                 </div>
@@ -923,8 +957,19 @@ export function AiChatWidget() {
             )}
 
             {error && (
-              <div className="text-xs text-red-400 bg-red-900/10 border border-red-900/20 rounded-lg px-3 py-2 break-words">
-                {error}
+              <div className="group/err relative text-xs text-red-400 bg-red-900/10 border border-red-900/20 rounded-lg px-3 py-2 pr-8 break-words select-text cursor-text">
+                <span className="select-text cursor-text">{error}</span>
+                <button
+                  onClick={() => handleCopyText(error)}
+                  title="Sao chép thông báo lỗi"
+                  className="absolute top-1.5 right-1.5 p-1 rounded bg-red-900/30 hover:bg-red-900/60 text-red-300 hover:text-white transition-colors"
+                >
+                  {copiedError ? (
+                    <Check size={12} className="text-green-400" />
+                  ) : (
+                    <Copy size={12} />
+                  )}
+                </button>
               </div>
             )}
           </div>

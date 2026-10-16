@@ -140,7 +140,7 @@ export const SidebarViewItem = ({
             }
           />
         )}
-        <span className="truncate flex-1">{view.name}</span>
+        <span className="truncate flex-1 select-text cursor-text">{view.name}</span>
       </div>
       {isExpanded && (
         <div className="ml-[22px] border-l border-default">
