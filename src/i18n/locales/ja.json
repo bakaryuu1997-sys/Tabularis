@@ -93,6 +93,11 @@
     "failDeleteIndex": "インデックスの削除に失敗しました: ",
     "modifyColumn": "カラムを変更",
     "copyName": "名前をコピー",
+    "plainName": "プレーン名",
+    "quotedName": "クォート付き名",
+    "qualifiedName": "スキーマ付き完全修飾名",
+    "copySelectQuery": "SELECTクエリをコピー",
+    "copyQuery": "クエリをコピー",
     "openInEditor": "エディタで開く",
     "closePanel": "パネルを閉じる",
     "setAsActive": "アクティブに設定",
@@ -278,6 +283,11 @@
   },
   "connectionAppearance": {
     "section": "外観",
+    "environment": "環境 (Production Guard)",
+    "envProduction": "本番 (Production)",
+    "envStaging": "検証 (Staging)",
+    "envDevelopment": "開発 (Development)",
+    "envLocal": "ローカル (Local)",
     "accentColor": "アクセントカラー",
     "customColor": "カスタム",
     "resetColor": "ドライバーの初期設定に戻す",
@@ -888,6 +898,8 @@
     "newRow": "新規行",
     "editing": "編集中: {{table}}",
     "rowsRetrieved": "{{count}} 行を取得しました",
+    "columnsCount_one": "{{count}} 列",
+    "columnsCount_other": "{{count}} 列",
     "queryExecuted": "クエリが正常に実行されました",
     "rowsAffected": "{{count}} 行に影響",
     "autoPaginated": "自動ページング",
@@ -927,6 +939,30 @@
     "saveThisQuery": "このクエリを保存",
     "noValidQueries": "有効なクエリが見つかりません",
     "queryFailed": "クエリが失敗しました。",
+    "dangerousQueryTitle": "WHERE句なしで実行しますか？",
+    "dangerousQueryMessage": "このステートメントにはWHERE句がないため、テーブル内の全行に影響します。この操作は元に戻せません。",
+    "dangerousQueryConfirm": "それでも実行する",
+    "dangerousQueryDropTitle": "このオブジェクトを削除 (DROP) しますか？",
+    "dangerousQueryDropMessage": "DROPを実行すると、このオブジェクトとその全データが完全に削除されます。元に戻すことはできません。",
+    "dangerousQueryTruncateTitle": "このテーブルを空 (TRUNCATE) にしますか？",
+    "dangerousQueryTruncateMessage": "TRUNCATEを実行すると、テーブル内の全行が削除されます。元に戻すことはできません。",
+    "sqlTemplates": {
+      "button": "SQLテンプレート",
+      "tooltip": "SQLテンプレートとスニペット (Ctrl+J)",
+      "title": "SQLテンプレートとスニペット",
+      "searchPlaceholder": "テンプレートを検索 (SELECT, JOIN, CTE, INSERT...)",
+      "categories": {
+        "all": "すべて",
+        "select": "SELECTクエリ",
+        "dml": "データ変更 (DML)",
+        "advanced": "CTE・高度なクエリ",
+        "ddl": "テーブル定義 (DDL)"
+      },
+      "empty": "一致するSQLテンプレートが見つかりません。",
+      "insert": "エディタに挿入",
+      "copy": "SQLをコピー",
+      "copied": "コピー完了"
+    },
     "showErrorDetails": "詳細を表示",
     "hideErrorDetails": "詳細を非表示",
     "errorBoundary": {
@@ -1681,5 +1717,21 @@
       "resourceNameRequired": "リソース名は必須です",
       "portInvalid": "ポートは 1 から 65535 の範囲で指定してください"
     }
+  },
+  "safety": {
+    "productionWarningTitle": "本番環境（PRODUCTION）実行警告",
+    "dangerousQueryTitle": "危険なクエリ実行の警告",
+    "productionAlert": "この接続は本番環境（PRODUCTION）に設定されています。本番データへの変更は永久的なデータ損失やサービス停止を引き起こす恐れがあります！",
+    "dangerousQueryAlert": "このクエリには、データを永久に削除または制限なく更新する危険なコマンドが含まれています！",
+    "detectedRisks": "検出されたリスク:",
+    "riskDrop": "DROP文: テーブルやデータベースの構造を永久に削除します。元に戻すことはできません。",
+    "riskTruncate": "TRUNCATE文: テーブル内の全行を即座に消去します。",
+    "riskNoWhereUpdate": "WHERE句のないUPDATE文: テーブル内のすべての行を更新します！",
+    "riskNoWhereDelete": "WHERE句のないDELETE文: テーブル内のすべての行を削除します！",
+    "riskProductionTarget": "本番環境（Production）に対する操作です。",
+    "queryPreview": "実行予定のステートメント:",
+    "waitCountdown": "安全確認のためお待ちください (残り{{seconds}}秒)...",
+    "confirmExecute": "リスクを理解した上で実行する",
+    "cancel": "キャンセル"
   }
 }

@@ -64,7 +64,8 @@
     "recharts": "^3.8.1",
     "sql-formatter": "^15.8.2",
     "util": "^0.12.5",
-    "wkx": "^0.5.0"
+    "wkx": "^0.5.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

@@ -262,6 +262,14 @@ export function SplitResultsPane({
               <div className="h-7 shrink-0 flex items-center justify-end gap-1 px-2 bg-elevated border-t border-default text-xs text-muted w-full">
                 <span className="mr-auto">
                   {t("editor.rowsRetrieved", { count: tab.result!.rows.length })}
+                  {tab.result!.columns.length > 0 && (
+                    <span>
+                      {" · "}
+                      {t("editor.columnsCount", {
+                        count: tab.result!.columns.length,
+                      })}
+                    </span>
+                  )}
                 </span>
                 <button
                   disabled={pagination.page <= 1 || tab.isLoading}

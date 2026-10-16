@@ -85,7 +85,23 @@ export function AppearanceSection({
     const next: ConnectionAppearance = { ...value };
     if (c) next.accentColor = c;
     else delete next.accentColor;
-    const isEmpty = !next.accentColor && !next.icon;
+    const isEmpty = !next.accentColor && !next.icon && !next.environment;
+    onChange(isEmpty ? {} : next);
+  }
+
+  function setEnvironment(env: ConnectionAppearance["environment"]) {
+    const next: ConnectionAppearance = { ...value };
+    if (env) {
+      next.environment = env;
+      if (!value.accentColor) {
+        if (env === "production") next.accentColor = "#ef4444";
+        else if (env === "staging") next.accentColor = "#f59e0b";
+        else if (env === "development") next.accentColor = "#10b981";
+      }
+    } else {
+      delete next.environment;
+    }
+    const isEmpty = !next.accentColor && !next.icon && !next.environment;
     onChange(isEmpty ? {} : next);
   }
 
@@ -93,7 +109,7 @@ export function AppearanceSection({
     const next: ConnectionAppearance = { ...value };
     if (icon) next.icon = icon;
     else delete next.icon;
-    const isEmpty = !next.accentColor && !next.icon;
+    const isEmpty = !next.accentColor && !next.icon && !next.environment;
     onChange(isEmpty ? {} : next);
   }
 
@@ -164,8 +180,50 @@ export function AppearanceSection({
             <span className="text-[9px] uppercase font-semibold tracking-widest text-muted">
               {t("connectionAppearance.previewLabel", { defaultValue: "Preview" })}
             </span>
-            <span className="text-sm font-medium text-primary truncate">{previewLabel}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-primary truncate">{previewLabel}</span>
+              {value.environment === "production" && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-red-600 text-white shrink-0">
+                  PROD
+                </span>
+              )}
+              {value.environment === "staging" && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-600 text-white shrink-0">
+                  STG
+                </span>
+              )}
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Environment Guardrail Selection */}
+      <div className="flex flex-col gap-2">
+        <label className="text-[10px] uppercase font-semibold tracking-wider text-muted">
+          {t("connectionAppearance.environment", { defaultValue: "Môi trường (Production Guard)" })}
+        </label>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { id: "production", label: "Production", color: "bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/25", active: "bg-red-600 text-white border-red-600 shadow-sm shadow-red-600/30" },
+            { id: "staging", label: "Staging", color: "bg-amber-500/15 border-amber-500/40 text-amber-400 hover:bg-amber-500/25", active: "bg-amber-600 text-white border-amber-600 shadow-sm shadow-amber-600/30" },
+            { id: "development", label: "Development", color: "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/25", active: "bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/30" },
+            { id: "local", label: "Local", color: "bg-slate-500/15 border-slate-500/40 text-slate-300 hover:bg-slate-500/25", active: "bg-slate-600 text-white border-slate-600 shadow-sm shadow-slate-600/30" },
+          ].map((env) => {
+            const isSelected = value.environment === env.id;
+            return (
+              <button
+                key={env.id}
+                type="button"
+                onClick={() => setEnvironment(isSelected ? undefined : (env.id as any))}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all text-center",
+                  isSelected ? env.active : env.color
+                )}
+              >
+                {env.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 

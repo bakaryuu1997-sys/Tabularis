@@ -5,9 +5,11 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { useAlert } from "../../../hooks/useAlert";
 import { Key, Columns, Edit, Copy, Trash2 } from "lucide-react";
 import clsx from "clsx";
-import { ContextMenu } from "../../ui/ContextMenu";
+import { ContextMenu, type ContextMenuItem } from "../../ui/ContextMenu";
 import type { TableColumn } from "../../../types/schema";
 import { quoteIdentifier, quoteTableRef } from "../../../utils/identifiers";
+import { formatObjectNameForCopy, type ObjectNameCopyFormat } from "../../../utils/objectNameCopy";
+import { copyTextToClipboard } from "../../../utils/clipboard";
 
 interface SidebarColumnItemProps {
   column: TableColumn;
@@ -77,6 +79,29 @@ export const SidebarColumnItem = ({
     }
   };
 
+  const createCopyNameItem = (): ContextMenuItem => {
+    const copyName = (format: ObjectNameCopyFormat) => async () => {
+      try {
+        await copyTextToClipboard(
+          formatObjectNameForCopy(column.name, format, driver),
+        );
+        showAlert(t("common.copied"), { kind: "info" });
+      } catch (error) {
+        console.error("Failed to copy column name:", error);
+        showAlert(t("common.error"), { kind: "error" });
+      }
+    };
+
+    return {
+      label: t("sidebar.copyName"),
+      icon: Copy,
+      submenu: [
+        { label: t("sidebar.plainName"), action: copyName("name") },
+        { label: t("sidebar.quotedName"), action: copyName("quoted") },
+      ],
+    };
+  };
+
   return (
     <>
       <div
@@ -113,11 +138,7 @@ export const SidebarColumnItem = ({
               icon: Edit,
               action: () => onEdit(column),
             },
-            {
-              label: t("sidebar.copyName"),
-              icon: Copy,
-              action: () => navigator.clipboard.writeText(column.name),
-            },
+            createCopyNameItem(),
             {
               label: t("sidebar.deleteColumn"),
               icon: Trash2,

@@ -201,6 +201,8 @@ pub struct ConnectionAppearance {
     pub icon: Option<IconOverride>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accent_color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -214,6 +216,8 @@ pub struct SavedConnection {
     pub sort_order: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detect_json_in_text_columns: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub environment: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub appearance: Option<ConnectionAppearance>,
 }

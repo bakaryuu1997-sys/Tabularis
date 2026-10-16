@@ -33,7 +33,10 @@ export type IconOverride =
 export interface ConnectionAppearance {
   icon?: IconOverride;
   accentColor?: string;
+  environment?: ConnectionEnvironment;
 }
+
+export type ConnectionEnvironment = "production" | "staging" | "development" | "local";
 
 export interface SavedConnection {
   id: string;
@@ -53,6 +56,7 @@ export interface SavedConnection {
   };
   group_id?: string;
   sort_order?: number;
+  environment?: ConnectionEnvironment;
   /** Per-connection opt-in: detect JSON in plain text columns. */
   detect_json_in_text_columns?: boolean;
   appearance?: ConnectionAppearance;

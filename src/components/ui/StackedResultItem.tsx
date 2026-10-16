@@ -230,6 +230,14 @@ export function StackedResultItem({
             )}
             <span className="text-muted text-[11px]">
               {t("editor.rowsRetrieved", { count: entry.result!.rows.length })}
+              {entry.result!.columns.length > 0 && (
+                <span>
+                  {" · "}
+                  {t("editor.columnsCount", {
+                    count: entry.result!.columns.length,
+                  })}
+                </span>
+              )}
               {entry.executionTime !== null && (
                 <span className="font-mono ml-1">
                   ({formatDuration(entry.executionTime)})

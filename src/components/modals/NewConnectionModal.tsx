@@ -841,7 +841,7 @@ export const NewConnectionModal = ({
           : formData.database,
       };
       const appearancePayload =
-        appearance.icon || appearance.accentColor ? appearance : undefined;
+        appearance.icon || appearance.accentColor || appearance.environment ? appearance : undefined;
 
       let persistedInKeychain = params.save_in_keychain;
       if (initialConnection) {

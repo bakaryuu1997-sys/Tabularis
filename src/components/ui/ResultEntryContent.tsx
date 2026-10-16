@@ -135,7 +135,15 @@ export function ResultEntryContent({
           <span>
             {t("editor.rowsRetrieved", {
               count: entry.result.rows.length,
-            })}{" "}
+            })}
+            {entry.result.columns.length > 0 && (
+              <span className="text-muted">
+                {" · "}
+                {t("editor.columnsCount", {
+                  count: entry.result.columns.length,
+                })}
+              </span>
+            )}{" "}
             {entry.executionTime !== null && (
               <span className="text-muted ml-2 font-mono">
                 ({formatDuration(entry.executionTime)})

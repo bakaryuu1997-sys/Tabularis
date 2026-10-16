@@ -46,7 +46,9 @@ import {
   Loader2,
   Copy,
   FileText,
+  FileSpreadsheet,
   FileJson,
+  Zap,
   Maximize2,
   Minimize2,
   ExternalLink,
@@ -55,6 +57,7 @@ import {
   Columns2,
   Rows2,
 } from "lucide-react";
+import { exportQueryResultToExcel } from "../utils/excelExport";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
 import { TableToolbar } from "../components/ui/TableToolbar";
@@ -74,11 +77,9 @@ import {
 } from "../utils/splitView";
 import { ErrorDisplay } from "../components/ui/ErrorDisplay";
 import { NewRowModal } from "../components/modals/NewRowModal";
-import { ConfirmModal } from "../components/modals/ConfirmModal";
-import {
-  useDangerousQueryGuard,
-  DANGEROUS_QUERY_I18N,
-} from "../hooks/useDangerousQueryGuard";
+import { ProductionSafetyModal } from "../components/modals/ProductionSafetyModal";
+import { SqlTemplatesModal } from "../components/modals/SqlTemplatesModal";
+import { useDangerousQueryGuard } from "../hooks/useDangerousQueryGuard";
 import { QuerySelectionModal } from "../components/modals/QuerySelectionModal";
 import { ExplainSelectionModal } from "../components/modals/ExplainSelectionModal";
 import { TabSwitcherModal } from "../components/modals/TabSwitcherModal";
@@ -418,6 +419,7 @@ export const Editor = () => {
   const [visualExplainQuery, setVisualExplainQuery] = useState<string | null>(null);
   const [isExplainSelectionOpen, setIsExplainSelectionOpen] = useState(false);
   const [explainSelectableQueries, setExplainSelectableQueries] = useState<{ query: string; index: number }[]>([]);
+  const [isSqlTemplatesOpen, setIsSqlTemplatesOpen] = useState(false);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [tempPage, setTempPage] = useState("1");
   const [isCountLoading, setIsCountLoading] = useState(false);
@@ -759,7 +761,13 @@ export const Editor = () => {
 
       if (!textToRun || !textToRun.trim()) return;
 
-      if (!(await guardDangerousQuery(textToRun))) return;
+      const targetConn = connections.find(
+        (c) => c.id === (targetTab?.connectionId || activeConnectionId),
+      );
+      const connEnv =
+        targetConn?.environment ?? targetConn?.appearance?.environment;
+
+      if (!(await guardDangerousQuery(textToRun, connEnv))) return;
 
       // Check for parameters
       const params = extractQueryParams(textToRun);
@@ -936,6 +944,7 @@ export const Editor = () => {
       activeDatabaseName,
       addHistoryEntry,
       guardDangerousQuery,
+      connections,
     ],
   );
 
@@ -947,7 +956,13 @@ export const Editor = () => {
       const targetTab = tabsRef.current.find((t) => t.id === targetTabId);
       if (!targetTab) return;
 
-      if (!(await guardDangerousQuery(queries))) return;
+      const targetConn = connections.find(
+        (c) => c.id === (targetTab?.connectionId || activeConnectionId),
+      );
+      const connEnv =
+        targetConn?.environment ?? targetConn?.appearance?.environment;
+
+      if (!(await guardDangerousQuery(queries, connEnv))) return;
 
       // Collect all unique parameters across all queries
       const allParams = [
@@ -1119,7 +1134,7 @@ export const Editor = () => {
       });
       updateTab(targetTabId, { isLoading: false });
     },
-    [activeConnectionId, updateTab, patchResultEntry, settings.resultPageSize, activeSchema, t, isMultiDb, activeDatabaseName, addHistoryEntry, guardDangerousQuery],
+    [activeConnectionId, updateTab, patchResultEntry, settings.resultPageSize, activeSchema, t, isMultiDb, activeDatabaseName, addHistoryEntry, guardDangerousQuery, connections],
   );
 
   const runResultEntryPage = useCallback(
@@ -2961,6 +2976,35 @@ export const Editor = () => {
   const handleExportCSV = () => handleExportCommon("csv");
   const handleExportJSON = () => handleExportCommon("json");
 
+  const handleExportExcel = async () => {
+    if (!activeTab?.result) return;
+    const { columns, rows } = activeTab.result;
+    if (!columns.length || !rows.length) return;
+
+    setExportMenuOpen(false);
+    try {
+      const defaultName = activeTab.title
+        ? `${activeTab.title.replace(/[^a-zA-Z0-9_\-\u00C0-\u024F\u1EA0-\u1EF9]/g, "_")}_${Date.now()}.xlsx`
+        : `result_${Date.now()}.xlsx`;
+
+      const savedPath = await exportQueryResultToExcel({
+        columns,
+        rows,
+        defaultFileName: defaultName,
+        sheetName: activeTab.title ? activeTab.title.slice(0, 31) : "Results",
+      });
+
+      if (savedPath) {
+        showAlert(t("common.saved", { defaultValue: "Đã xuất file Excel thành công!" }), {
+          kind: "info",
+        });
+      }
+    } catch (err) {
+      console.error("Export Excel error:", err);
+      showAlert(String(err), { kind: "error" });
+    }
+  };
+
   const handleRunDropdownToggle = useCallback(() => {
     if (!isRunDropdownOpen) {
       // Monaco Editor: split queries from editor
@@ -2989,6 +3033,46 @@ export const Editor = () => {
     }
     setIsRunDropdownOpen((prev) => !prev);
   }, [isRunDropdownOpen, activeTab, activeDialect]);
+
+  const handleInsertSqlTemplate = useCallback(
+    (templateSql: string) => {
+      if (!activeTab) return;
+      const editor = editorsRef.current[activeTab.id];
+      if (editor) {
+        const selection = editor.getSelection();
+        const model = editor.getModel();
+        if (selection && model) {
+          editor.executeEdits("tabularis.insertTemplate", [
+            {
+              range: selection,
+              text: templateSql,
+              forceMoveMarkers: true,
+            },
+          ]);
+          editor.pushUndoStop();
+          editor.focus();
+          return;
+        }
+      }
+      // Fallback: append to tab query if editor ref is not yet mounted
+      const currentQuery = activeTab.query || "";
+      const newQuery = currentQuery.trim()
+        ? `${currentQuery}\n\n${templateSql}`
+        : templateSql;
+      updateTab(activeTab.id, { query: newQuery });
+    },
+    [activeTab, updateTab],
+  );
+
+  useEffect(() => {
+    const handleOpenTemplates = () => {
+      setIsSqlTemplatesOpen(true);
+    };
+    window.addEventListener("tabularis:open-sql-templates", handleOpenTemplates);
+    return () => {
+      window.removeEventListener("tabularis:open-sql-templates", handleOpenTemplates);
+    };
+  }, []);
 
   if (!activeTab) {
     return (
@@ -3367,6 +3451,15 @@ export const Editor = () => {
               >
                 <button
                   role="menuitem"
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
+                >
+                  <FileSpreadsheet size={14} className="shrink-0 text-emerald-400 opacity-90" />
+                  <span className="flex-1 font-medium">Excel</span>
+                  <span className="text-xs text-muted">.xlsx</span>
+                </button>
+                <button
+                  role="menuitem"
                   onClick={handleExportCSV}
                   className="flex items-center gap-2.5 text-left px-3 py-2 text-sm text-secondary hover:bg-blue-500/15 hover:text-blue-400 transition-colors"
                 >
@@ -3512,6 +3605,18 @@ export const Editor = () => {
                   <Network size={12} />
                   {t("editor.visualExplain.buttonShort")}
                 </button>
+                )}
+                {/* SQL Templates button (Ctrl+J) */}
+                {!tab.readOnly && (
+                  <button
+                    onClick={() => setIsSqlTemplatesOpen(true)}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-blue-300 bg-elevated/80 hover:bg-blue-900/40 border border-default hover:border-blue-500/40 transition-all backdrop-blur-sm shadow-sm"
+                    title={t("editor.sqlTemplates.tooltip", { defaultValue: "Mẫu SQL & Snippets (Ctrl+J)" })}
+                  >
+                    <Zap size={12} className="text-amber-400" />
+                    <span>{t("editor.sqlTemplates.button", { defaultValue: "Mẫu SQL" })}</span>
+                    <span className="text-[10px] text-muted opacity-80 font-mono">Ctrl+J</span>
+                  </button>
                 )}
                 {/* AI dropdown — only if AI enabled */}
                 {settings.aiEnabled && (
@@ -3757,7 +3862,15 @@ export const Editor = () => {
                       <span>
                         {t("editor.rowsRetrieved", {
                           count: activeTab.result.rows.length,
-                        })}{" "}
+                        })}
+                        {activeTab.result.columns.length > 0 && (
+                          <span className="text-muted">
+                            {" · "}
+                            {t("editor.columnsCount", {
+                              count: activeTab.result.columns.length,
+                            })}
+                          </span>
+                        )}{" "}
                         {activeTab.executionTime !== null && (
                           <span className="text-muted ml-2 font-mono">
                             ({formatDuration(activeTab.executionTime)})
@@ -4317,24 +4430,18 @@ export const Editor = () => {
         }}
         onClose={() => setIsQuerySelectionModalOpen(false)}
       />
-      <ConfirmModal
+      <ProductionSafetyModal
         isOpen={!!dangerousQuery}
-        onClose={() => resolveDangerousQuery(false)}
+        query={dangerousQuery?.sql || ""}
+        dangerReasons={dangerousQuery?.reasons || []}
+        isProduction={!!dangerousQuery?.isProduction}
         onConfirm={() => resolveDangerousQuery(true)}
-        title={t(
-          dangerousQuery
-            ? DANGEROUS_QUERY_I18N[dangerousQuery.kind].title
-            : "editor.dangerousQueryTitle",
-        )}
-        message={t(
-          dangerousQuery
-            ? DANGEROUS_QUERY_I18N[dangerousQuery.kind].message
-            : "editor.dangerousQueryMessage",
-        )}
-        sql={dangerousQuery?.sql}
-        confirmLabel={t("editor.dangerousQueryConfirm")}
-        variant="danger"
-        confirmDelaySeconds={3}
+        onClose={() => resolveDangerousQuery(false)}
+      />
+      <SqlTemplatesModal
+        isOpen={isSqlTemplatesOpen}
+        onClose={() => setIsSqlTemplatesOpen(false)}
+        onInsert={handleInsertSqlTemplate}
       />
       <TabSwitcherModal
         isOpen={isTabSwitcherOpen}

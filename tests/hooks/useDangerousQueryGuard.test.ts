@@ -24,7 +24,7 @@ describe('useDangerousQueryGuard', () => {
     });
 
     expect(result.current.isPending).toBe(true);
-    expect(result.current.pending).toEqual({
+    expect(result.current.pending).toMatchObject({
       kind: 'no-where',
       sql: 'DELETE FROM users',
       count: 1,
@@ -91,7 +91,7 @@ describe('useDangerousQueryGuard', () => {
 
     expect(result.current.isPending).toBe(true);
     // The first flagged statement drives the preview; count reflects all of them.
-    expect(result.current.pending).toEqual({
+    expect(result.current.pending).toMatchObject({
       kind: 'no-where',
       sql: 'DELETE FROM sessions',
       count: 2,

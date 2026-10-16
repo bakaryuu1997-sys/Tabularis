@@ -93,6 +93,11 @@
     "failDeleteIndex": "Không xóa được index: ",
     "modifyColumn": "Sửa cột",
     "copyName": "Sao chép tên",
+    "plainName": "Tên gốc (không quote)",
+    "quotedName": "Tên có Quote chuẩn SQL",
+    "qualifiedName": "Tên đầy đủ kèm Schema",
+    "copySelectQuery": "Sao chép lệnh SELECT mẫu",
+    "copyQuery": "Sao chép câu truy vấn",
     "openInEditor": "Mở trong trình soạn thảo",
     "closePanel": "Đóng bảng",
     "setAsActive": "Đặt làm hiện hành",
@@ -278,6 +283,11 @@
   },
   "connectionAppearance": {
     "section": "Giao diện",
+    "environment": "Môi trường (Production Guard)",
+    "envProduction": "Production (Sản xuất)",
+    "envStaging": "Staging (Thử nghiệm)",
+    "envDevelopment": "Development (Phát triển)",
+    "envLocal": "Local (Cục bộ)",
     "accentColor": "Màu nhấn",
     "customColor": "Tùy chỉnh",
     "resetColor": "Đặt lại về mặc định của driver",
@@ -897,6 +907,8 @@
     "newRow": "Hàng mới",
     "editing": "Đang sửa: {{table}}",
     "rowsRetrieved": "Đã lấy {{count}} hàng",
+    "columnsCount_one": "{{count}} cột",
+    "columnsCount_other": "{{count}} cột",
     "queryExecuted": "Thực thi truy vấn thành công",
     "rowsAffected": "{{count}} hàng bị ảnh hưởng",
     "autoPaginated": "Tự động phân trang",
@@ -944,6 +956,23 @@
     "dangerousQueryDropMessage": "DROP xóa vĩnh viễn đối tượng này và toàn bộ dữ liệu của nó. Không thể hoàn tác.",
     "dangerousQueryTruncateTitle": "Xóa sạch (TRUNCATE) bảng này?",
     "dangerousQueryTruncateMessage": "TRUNCATE xóa mọi hàng trong bảng. Không thể hoàn tác.",
+    "sqlTemplates": {
+      "button": "Mẫu SQL",
+      "tooltip": "Mẫu SQL & Snippets (Ctrl+J)",
+      "title": "Mẫu SQL & Snippets",
+      "searchPlaceholder": "Tìm kiếm mẫu (SELECT, JOIN, CTE, INSERT...)",
+      "categories": {
+        "all": "Tất cả",
+        "select": "Truy vấn SELECT",
+        "dml": "Dữ liệu (DML)",
+        "advanced": "CTE & Nâng cao",
+        "ddl": "Cấu trúc (DDL)"
+      },
+      "empty": "Không tìm thấy mẫu SQL nào phù hợp.",
+      "insert": "Chèn vào code",
+      "copy": "Sao chép SQL",
+      "copied": "Đã chép"
+    },
     "showErrorDetails": "Xem chi tiết",
     "hideErrorDetails": "Ẩn chi tiết",
     "errorBoundary": {
@@ -1752,5 +1781,21 @@
       "resourceNameRequired": "Tên resource là bắt buộc",
       "portInvalid": "Cổng phải nằm trong khoảng 1 đến 65535"
     }
+  },
+  "safety": {
+    "productionWarningTitle": "CẢNH BÁO MÔI TRƯỜNG PRODUCTION",
+    "dangerousQueryTitle": "CẢNH BÁO TRUY VẤN NGUY HIỂM",
+    "productionAlert": "Kết nối này được gắn nhãn PRODUCTION. Thao tác trên môi trường thật có thể gây gián đoạn hoặc mất dữ liệu vĩnh viễn!",
+    "dangerousQueryAlert": "Truy vấn chứa các lệnh có nguy cơ phá hủy hoặc cập nhật không giới hạn dữ liệu!",
+    "detectedRisks": "Các rủi ro được phát hiện:",
+    "riskDrop": "Lệnh DROP: Xóa hoàn toàn cấu trúc bảng/database, không thể hoàn tác.",
+    "riskTruncate": "Lệnh TRUNCATE: Làm rỗng toàn bộ dữ liệu bảng ngay lập tức.",
+    "riskNoWhereUpdate": "Lệnh UPDATE không có WHERE: Cập nhật toàn bộ các dòng trong bảng!",
+    "riskNoWhereDelete": "Lệnh DELETE không có WHERE: Xóa sạch toàn bộ các dòng trong bảng!",
+    "riskProductionTarget": "Thao tác trên môi trường Production.",
+    "queryPreview": "Nội dung câu lệnh chuẩn bị chạy:",
+    "waitCountdown": "Vui lòng chờ xác nhận ({{seconds}}s)...",
+    "confirmExecute": "Tôi hiểu rủi ro, Thực thi ngay",
+    "cancel": "Hủy bỏ"
   }
 }

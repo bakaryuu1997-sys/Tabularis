@@ -844,6 +844,7 @@ pub async fn save_connection<R: Runtime>(
         group_id: None,
         sort_order: None,
         detect_json_in_text_columns,
+        environment: None,
         appearance: None,
     };
     conn_file.connections.push(new_conn.clone());
@@ -1021,6 +1022,7 @@ pub async fn update_connection<R: Runtime>(
     let original_db_selection = conn_file.connections[conn_idx].params.database.clone();
     // Preserve user's appearance customization across edits
     let original_appearance = conn_file.connections[conn_idx].appearance.clone();
+    let original_environment = conn_file.connections[conn_idx].environment.clone();
     let persisted_in_keychain = params_to_save.save_in_keychain.unwrap_or(false);
 
     let updated = SavedConnection {
@@ -1030,6 +1032,7 @@ pub async fn update_connection<R: Runtime>(
         group_id: original_group_id,
         sort_order: original_sort_order,
         detect_json_in_text_columns,
+        environment: original_environment,
         appearance: original_appearance,
     };
 
@@ -1222,6 +1225,7 @@ pub async fn duplicate_connection<R: Runtime>(
         group_id: original.group_id.clone(), // Copy to same group as original
         sort_order: None,                    // Will be placed at end of group
         detect_json_in_text_columns: original.detect_json_in_text_columns,
+        environment: original.environment.clone(),
         appearance: new_appearance,
     };
 
@@ -2080,6 +2084,7 @@ mod tests {
             group_id: None,
             sort_order: None,
             detect_json_in_text_columns: None,
+            environment: None,
             appearance: None,
         }
     }
@@ -2127,9 +2132,11 @@ mod tests {
             group_id: Some("group-a".to_string()),
             sort_order: Some(3),
             detect_json_in_text_columns: None,
+            environment: None,
             appearance: Some(ConnectionAppearance {
                 accent_color: Some("#ff0000".to_string()),
                 icon: Some(IconOverride::Emoji { value: "🐘".to_string() }),
+                environment: None,
             }),
         };
 
@@ -2143,6 +2150,7 @@ mod tests {
             group_id: existing.group_id.clone(),
             sort_order: existing.sort_order,
             detect_json_in_text_columns: None,
+            environment: None,
             appearance: original_appearance,
         };
 
@@ -2160,6 +2168,7 @@ mod tests {
             group_id: None,
             sort_order: None,
             detect_json_in_text_columns: None,
+            environment: None,
             appearance,
         };
         ConnectionsFile {

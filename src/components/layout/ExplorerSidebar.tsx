@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { quoteTableRef } from "../../utils/identifiers";
+import { formatObjectNameForCopy, type ObjectNameCopyFormat } from "../../utils/objectNameCopy";
+import { getSavedQueryCopyName } from "../../utils/savedQueryNames";
+import { copyTextToClipboard } from "../../utils/clipboard";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Database,
@@ -272,6 +275,31 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
     navigate("/editor", {
       state: { initialQuery: sql, queryName, tableName, preventAutoRun, schema, readOnly, targetConnectionId: activeConnectionId },
     });
+  };
+
+  const createCopyNameItem = (name: string, schema?: string, isTableOrView?: boolean): ContextMenuItem => {
+    const copyName = (format: ObjectNameCopyFormat) => async () => {
+      try {
+        await copyTextToClipboard(
+          formatObjectNameForCopy(name, format, activeCapabilities ?? activeDriver, schema),
+        );
+        showAlert(t("common.copied"), { kind: "info" });
+      } catch (error) {
+        console.error("Failed to copy object name:", error);
+        showAlert(t("common.error"), { kind: "error" });
+      }
+    };
+
+    return {
+      label: t("sidebar.copyName"),
+      icon: Copy,
+      submenu: [
+        { label: t("sidebar.plainName"), action: copyName("name") },
+        { label: t("sidebar.quotedName"), action: copyName("quoted") },
+        ...(schema ? [{ label: t("sidebar.qualifiedName"), action: copyName("qualified") }] : []),
+        ...(isTableOrView ? [{ label: t("sidebar.copySelectQuery"), action: copyName("select") }] : []),
+      ],
+    };
   };
 
   // Notebook count for the tab badge — kept in sync with the active connection
@@ -1815,11 +1843,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       icon: Clipboard,
                       action: () => setIsClipboardImportOpen(true),
                     } : null,
-                    {
-                      label: t("sidebar.copyName"),
-                      icon: Copy,
-                      action: () => navigator.clipboard.writeText(contextMenu.id),
-                    },
+                    createCopyNameItem(contextMenu.id, ctxSchema, true),
                     supportsManageTables(activeCapabilities) ? {
                       label: t("sidebar.addColumn"),
                       icon: Plus,
@@ -1856,11 +1880,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                 })()
               : contextMenu.type === "index"
                 ? [
-                    {
-                      label: t("sidebar.copyName"),
-                      icon: Copy,
-                      action: () => navigator.clipboard.writeText(contextMenu.id),
-                    },
+                    createCopyNameItem(contextMenu.id, undefined, false),
                     supportsManageTables(activeCapabilities) ? {
                       label: t("sidebar.deleteIndex"),
                       icon: Trash2,
@@ -1896,11 +1916,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                   ].filter(Boolean) as ContextMenuItem[]
                 : contextMenu.type === "foreign_key"
                   ? [
-                      {
-                        label: t("sidebar.copyName"),
-                        icon: Copy,
-                        action: () => navigator.clipboard.writeText(contextMenu.id),
-                      },
+                      createCopyNameItem(contextMenu.id, undefined, false),
                       supportsManageTables(activeCapabilities) ? {
                         label: t("sidebar.deleteFk"),
                         icon: Trash2,
@@ -1986,11 +2002,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   setViewEditorModal({ isOpen: true, viewName: contextMenu.id, isNewView: false });
                                 },
                               },
-                              {
-                                label: t("sidebar.copyName"),
-                                icon: Copy,
-                                action: () => navigator.clipboard.writeText(contextMenu.id),
-                              },
+                              createCopyNameItem(contextMenu.id, viewCtxSchema, true),
                               {
                                 label: t("sidebar.dropView"),
                                 icon: Trash2,
@@ -2076,11 +2088,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   }
                                 },
                               },
-                              {
-                                label: t("sidebar.copyName"),
-                                icon: Copy,
-                                action: () => navigator.clipboard.writeText(contextMenu.id),
-                              },
+                              createCopyNameItem(contextMenu.id, mvCtxSchema, true),
                             ];
                           })()
                         : contextMenu.type === "routine"
@@ -2110,11 +2118,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   }
                                 },
                               },
-                              {
-                                label: t("sidebar.copyName"),
-                                icon: Copy,
-                                action: () => navigator.clipboard.writeText(contextMenu.id),
-                              },
+                              createCopyNameItem(contextMenu.id, activeSchema ?? undefined, false),
                             ]
                           : contextMenu.type === "trigger"
                             ? (() => {
@@ -2157,11 +2161,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                       });
                                     },
                                   },
-                                  {
-                                    label: t("sidebar.copyName"),
-                                    icon: Copy,
-                                    action: () => navigator.clipboard.writeText(contextMenu.id),
-                                  },
+                                  createCopyNameItem(contextMenu.id, triggerSchema, false),
                                   {
                                     label: t("sidebar.dropTrigger"),
                                     icon: Trash2,
@@ -2290,6 +2290,44 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   if (contextMenu.data && "sql" in contextMenu.data) {
                                     const sq = contextMenu.data as SavedQuery;
                                     runQuery(sq.sql, sq.name, undefined, false, sq.database ?? undefined);
+                                  }
+                                },
+                              },
+                              {
+                                label: t("sidebar.openInEditor"),
+                                icon: FileInput,
+                                action: () => {
+                                  if (contextMenu.data && "sql" in contextMenu.data) {
+                                    const sq = contextMenu.data as SavedQuery;
+                                    runQuery(sq.sql, sq.name, undefined, true, sq.database ?? undefined);
+                                  }
+                                },
+                              },
+                              {
+                                label: t("sidebar.copyQuery"),
+                                icon: Copy,
+                                action: async () => {
+                                  if (!contextMenu.data || !("sql" in contextMenu.data)) return;
+                                  try {
+                                    await copyTextToClipboard((contextMenu.data as SavedQuery).sql);
+                                    showAlert(t("common.copied"), { kind: "info" });
+                                  } catch (error) {
+                                    showAlert(t("common.error"), { kind: "error" });
+                                  }
+                                },
+                              },
+                              {
+                                label: t("connections.duplicate"),
+                                icon: Copy,
+                                action: async () => {
+                                  if (!contextMenu.data || !("sql" in contextMenu.data)) return;
+                                  const sq = contextMenu.data as SavedQuery;
+                                  const copyName = getSavedQueryCopyName(sq.name, queries.map((query) => query.name));
+                                  try {
+                                    await saveQuery(copyName, sq.sql, sq.database);
+                                    showAlert(t("common.copied"), { kind: "info" });
+                                  } catch (error) {
+                                    showAlert(t("common.error"), { kind: "error" });
                                   }
                                 },
                               },

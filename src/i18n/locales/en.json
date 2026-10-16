@@ -93,6 +93,11 @@
     "failDeleteIndex": "Failed to delete index: ",
     "modifyColumn": "Modify Column",
     "copyName": "Copy Name",
+    "plainName": "Plain Name",
+    "quotedName": "Quoted Name",
+    "qualifiedName": "Qualified Name",
+    "copySelectQuery": "Copy SELECT Query",
+    "copyQuery": "Copy Query",
     "openInEditor": "Open in Editor",
     "closePanel": "Close panel",
     "setAsActive": "Set as Active",
@@ -278,6 +283,11 @@
   },
   "connectionAppearance": {
     "section": "Appearance",
+    "environment": "Environment (Production Guard)",
+    "envProduction": "Production",
+    "envStaging": "Staging",
+    "envDevelopment": "Development",
+    "envLocal": "Local",
     "accentColor": "Accent color",
     "customColor": "Custom",
     "resetColor": "Reset to driver default",
@@ -897,6 +907,8 @@
     "newRow": "New Row",
     "editing": "Editing: {{table}}",
     "rowsRetrieved": "{{count}} rows retrieved",
+    "columnsCount_one": "{{count}} column",
+    "columnsCount_other": "{{count}} columns",
     "queryExecuted": "Query executed successfully",
     "rowsAffected": "{{count}} rows affected",
     "autoPaginated": "Auto paginated",
@@ -944,6 +956,23 @@
     "dangerousQueryDropMessage": "DROP permanently removes this object and all of its data. This cannot be undone.",
     "dangerousQueryTruncateTitle": "Truncate this table?",
     "dangerousQueryTruncateMessage": "TRUNCATE deletes every row in the table. This cannot be undone.",
+    "sqlTemplates": {
+      "button": "SQL Templates",
+      "tooltip": "SQL Templates & Snippets (Ctrl+J)",
+      "title": "SQL Templates & Snippets",
+      "searchPlaceholder": "Search templates (SELECT, JOIN, CTE, INSERT...)",
+      "categories": {
+        "all": "All",
+        "select": "SELECT Queries",
+        "dml": "INSERT / UPDATE / DELETE",
+        "advanced": "CTE & Subqueries",
+        "ddl": "DDL / Table Schema"
+      },
+      "empty": "No matching SQL templates found.",
+      "insert": "Insert into editor",
+      "copy": "Copy SQL",
+      "copied": "Copied"
+    },
     "showErrorDetails": "Show details",
     "hideErrorDetails": "Hide details",
     "errorBoundary": {
@@ -1752,5 +1781,21 @@
       "resourceNameRequired": "Resource name is required",
       "portInvalid": "Port must be between 1 and 65535"
     }
+  },
+  "safety": {
+    "productionWarningTitle": "PRODUCTION ENVIRONMENT WARNING",
+    "dangerousQueryTitle": "DANGEROUS QUERY WARNING",
+    "productionAlert": "This connection is tagged as PRODUCTION. Modifications on a live environment can cause permanent data loss or service disruption!",
+    "dangerousQueryAlert": "This query contains statements that can permanently destroy or update unrestricted data!",
+    "detectedRisks": "Detected Risks:",
+    "riskDrop": "DROP statement: Permanently deletes table/database structure. Cannot be undone.",
+    "riskTruncate": "TRUNCATE statement: Empties all rows from the table immediately.",
+    "riskNoWhereUpdate": "UPDATE statement without WHERE: Updates every row in the table!",
+    "riskNoWhereDelete": "DELETE statement without WHERE: Deletes every row in the table!",
+    "riskProductionTarget": "Action executed against Production environment.",
+    "queryPreview": "Statement to execute:",
+    "waitCountdown": "Please wait for safety confirmation ({{seconds}}s)...",
+    "confirmExecute": "I understand the risks, Execute now",
+    "cancel": "Cancel"
   }
 }

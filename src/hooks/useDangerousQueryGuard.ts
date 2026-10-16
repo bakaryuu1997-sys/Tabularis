@@ -3,20 +3,27 @@ import {
   classifyDangerousQuery,
   type DangerousQueryKind,
 } from "../utils/sqlAnalysis";
+import { checkSqlSafety } from "../utils/sqlSafety";
+
+export type ExtendedDangerousQueryKind = DangerousQueryKind | "production";
 
 /** Details about the dangerous statement that triggered a confirmation. */
 export interface DangerousQueryInfo {
   /** Why the statement was flagged — drives the dialog copy. */
-  kind: DangerousQueryKind;
+  kind: ExtendedDangerousQueryKind;
   /** The flagged statement itself, shown to the user as a preview. */
   sql: string;
   /** How many statements in the batch were flagged (>= 1). */
   count: number;
+  /** Whether the query targets a production connection. */
+  isProduction?: boolean;
+  /** Concrete reasons why the query was flagged. */
+  reasons?: string[];
 }
 
 /** i18n key pairs for each danger kind, shared by every consumer of the guard. */
 export const DANGEROUS_QUERY_I18N: Record<
-  DangerousQueryKind,
+  ExtendedDangerousQueryKind,
   { title: string; message: string }
 > = {
   "no-where": {
@@ -31,15 +38,15 @@ export const DANGEROUS_QUERY_I18N: Record<
     title: "editor.dangerousQueryTruncateTitle",
     message: "editor.dangerousQueryTruncateMessage",
   },
+  production: {
+    title: "safety.productionWarningTitle",
+    message: "safety.productionAlert",
+  },
 };
 
 /**
  * Gates execution of dangerous statements (DELETE/UPDATE with no WHERE, DROP,
- * TRUNCATE) behind a user confirmation. `guardQuery` resolves immediately (no
- * dialog) for safe statements; for dangerous ones it opens the dialog and
- * resolves once the user answers. A second dangerous statement submitted while
- * a dialog is already open is declined immediately instead of replacing the
- * pending one, so the first caller's promise always settles.
+ * TRUNCATE, or targeting PRODUCTION) behind a user confirmation with a 5-second countdown.
  */
 export function useDangerousQueryGuard() {
   const [pending, setPending] = useState<DangerousQueryInfo | null>(null);
@@ -63,7 +70,7 @@ export function useDangerousQueryGuard() {
   }, []);
 
   const guardQuery = useCallback(
-    (sqlOrQueries: string | string[]): Promise<boolean> => {
+    (sqlOrQueries: string | string[], environment?: string): Promise<boolean> => {
       const statements = Array.isArray(sqlOrQueries)
         ? sqlOrQueries
         : [sqlOrQueries];
@@ -71,10 +78,27 @@ export function useDangerousQueryGuard() {
       let first: DangerousQueryInfo | null = null;
       let count = 0;
       for (const sql of statements) {
-        const kind = classifyDangerousQuery(sql);
-        if (!kind) continue;
-        count++;
-        if (!first) first = { kind, sql, count: 0 };
+        const safety = checkSqlSafety(sql, environment);
+        if (safety.isDangerous) {
+          count++;
+          if (!first) {
+            const kind: ExtendedDangerousQueryKind = safety.dangerTypes.includes("drop")
+              ? "drop"
+              : safety.dangerTypes.includes("truncate")
+                ? "truncate"
+                : safety.dangerTypes.includes("production_target")
+                  ? "production"
+                  : "no-where";
+
+            first = {
+              kind,
+              sql,
+              count: 0,
+              isProduction: safety.isProduction,
+              reasons: safety.reasons,
+            };
+          }
+        }
       }
 
       if (!first) return Promise.resolve(true);

@@ -149,8 +149,8 @@ const SqlEditorInternal = ({
         contextMenuGroupId: '1_modification',
         contextMenuOrder: 1.7,
         keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyJ],
-        run: (ed) => {
-          ed.trigger('keyboard', 'editor.action.triggerSuggest', {});
+        run: () => {
+          window.dispatchEvent(new CustomEvent('tabularis:open-sql-templates'));
         },
       });
 
