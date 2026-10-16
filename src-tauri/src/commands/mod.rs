@@ -3230,6 +3230,17 @@ pub fn detect_mime_type(header_base64: String) -> Result<String, String> {
     Ok(mime.to_string())
 }
 
+/// Writes binary data (encoded as Base64) to any file path chosen by the user
+/// (e.g. Downloads, Desktop, Documents). Bypasses Tauri's strict plugin:fs ACL.
+#[tauri::command]
+pub fn write_binary_file(path: String, base64_data: String) -> Result<(), String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(&base64_data)
+        .map_err(|e| format!("Invalid base64 payload: {}", e))?;
+    std::fs::write(&path, bytes).map_err(|e| format!("Failed to write file to '{}': {}", path, e))
+}
+
 /// Gets file statistics (size and MIME type) without reading the entire file.
 /// Used after streaming upload to construct the final wire format.
 #[tauri::command]

@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { save } from "@tauri-apps/plugin-dialog";
-import { writeFile } from "@tauri-apps/plugin-fs";
+import { invoke } from "@tauri-apps/api/core";
 
 export interface ExcelExportOptions {
   columns: string[];
@@ -86,12 +86,16 @@ export async function exportQueryResultToExcel({
 
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
 
-  // Write as binary array buffer
-  const excelBuffer = XLSX.write(workbook, {
+  // Write as base64 string
+  const base64Data = XLSX.write(workbook, {
     bookType: "xlsx",
-    type: "array",
-  }) as ArrayBuffer;
+    type: "base64",
+  }) as string;
 
-  await writeFile(filePath, new Uint8Array(excelBuffer));
+  await invoke("write_binary_file", {
+    path: filePath,
+    base64Data,
+  });
+
   return filePath;
 }

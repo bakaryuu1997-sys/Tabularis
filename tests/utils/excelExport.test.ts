@@ -1,18 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { exportQueryResultToExcel } from "../../src/utils/excelExport";
 import { save } from "@tauri-apps/plugin-dialog";
-import { writeFile } from "@tauri-apps/plugin-fs";
+import { invoke } from "@tauri-apps/api/core";
 import * as XLSX from "xlsx";
 
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   save: vi.fn(),
 }));
 
-vi.mock("@tauri-apps/plugin-fs", () => ({
-  writeFile: vi.fn(),
-  writeTextFile: vi.fn(),
-  readTextFile: vi.fn(),
-  stat: vi.fn(),
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(),
 }));
 
 describe("exportQueryResultToExcel", () => {
@@ -29,12 +26,12 @@ describe("exportQueryResultToExcel", () => {
     });
 
     expect(result).toBeNull();
-    expect(writeFile).not.toHaveBeenCalled();
+    expect(invoke).not.toHaveBeenCalled();
   });
 
   it("creates Excel file with correct data and UTF-8 characters", async () => {
     vi.mocked(save).mockResolvedValueOnce("C:\\exports\\customers.xlsx");
-    vi.mocked(writeFile).mockResolvedValueOnce();
+    vi.mocked(invoke).mockResolvedValueOnce(undefined);
 
     const columns = ["Mã KH", "Họ Tên", "Doanh Thu", "Trạng Thái"];
     const rows = [
@@ -49,14 +46,17 @@ describe("exportQueryResultToExcel", () => {
     });
 
     expect(result).toBe("C:\\exports\\customers.xlsx");
-    expect(writeFile).toHaveBeenCalledTimes(1);
+    expect(invoke).toHaveBeenCalledTimes(1);
 
-    const [writtenPath, bytes] = vi.mocked(writeFile).mock.calls[0];
-    expect(writtenPath).toBe("C:\\exports\\customers.xlsx");
-    expect(bytes).toBeInstanceOf(Uint8Array);
+    const [cmd, args] = vi.mocked(invoke).mock.calls[0];
+    expect(cmd).toBe("write_binary_file");
+    expect(args).toEqual({
+      path: "C:\\exports\\customers.xlsx",
+      base64Data: expect.any(String),
+    });
 
-    // Verify written bytes can be parsed back with SheetJS
-    const parsedWb = XLSX.read(bytes, { type: "array" });
+    // Verify written base64 data can be parsed back with SheetJS
+    const parsedWb = XLSX.read((args as { base64Data: string }).base64Data, { type: "base64" });
     expect(parsedWb.SheetNames).toContain("Khách hàng");
 
     const parsedWs = parsedWb.Sheets["Khách hàng"];
