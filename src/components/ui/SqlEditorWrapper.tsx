@@ -18,6 +18,11 @@ import {
   resetFontSize,
   DEFAULT_EDITOR_FONT_SIZE,
 } from "../../utils/editorFontZoom";
+import {
+  findAutoUppercaseCandidate,
+  isOffsetInNonCodeSpan,
+  AUTO_UPPERCASE_DELIMITERS,
+} from "../../utils/sqlAutoUppercase";
 
 interface SqlEditorWrapperProps {
   initialValue: string;
@@ -53,6 +58,8 @@ const SqlEditorInternal = ({
   dialectRef.current = dialect;
   const editorTheme = useEditorTheme();
   const { settings, updateSetting } = useSettings();
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
   const updateSettingRef = useRef(updateSetting);
   updateSettingRef.current = updateSetting;
   const fontSizeRef = useRef(settings.editorFontSize ?? DEFAULT_EDITOR_FONT_SIZE);
@@ -322,6 +329,65 @@ const SqlEditorInternal = ({
         run: () => {
           updateSettingRef.current("editorFontSize", resetFontSize());
         },
+      });
+
+      // As-you-type SQL keyword auto-uppercasing
+      let isAutoUppercasing = false;
+      editor.onDidChangeModelContent((event) => {
+        if (isAutoUppercasing) return;
+        if (settingsRef.current.autocompleteKeywordCase === "lower") return;
+
+        const model = editor.getModel();
+        if (!model) return;
+
+        for (const change of event.changes) {
+          if (
+            change.text.length > 0 &&
+            change.text.length <= 2 &&
+            AUTO_UPPERCASE_DELIMITERS.has(change.text)
+          ) {
+            const line = model.getLineContent(change.range.startLineNumber);
+            const candidate = findAutoUppercaseCandidate(
+              line,
+              change.text,
+              change.range.startColumn,
+            );
+            if (!candidate) continue;
+
+            const wordOffset = model.getOffsetAt({
+              lineNumber: change.range.startLineNumber,
+              column: candidate.startColumn,
+            });
+
+            if (
+              isOffsetInNonCodeSpan(
+                wordOffset,
+                model.getValue(),
+                dialectRef.current,
+              )
+            ) {
+              continue;
+            }
+
+            isAutoUppercasing = true;
+            try {
+              editor.executeEdits("tabularis.autoUppercase", [
+                {
+                  range: {
+                    startLineNumber: change.range.startLineNumber,
+                    startColumn: candidate.startColumn,
+                    endLineNumber: change.range.startLineNumber,
+                    endColumn: candidate.endColumn,
+                  },
+                  text: candidate.upper,
+                  forceMoveMarkers: true,
+                },
+              ]);
+            } finally {
+              isAutoUppercasing = false;
+            }
+          }
+        }
       });
 
       if (onMount) onMount(editor, monaco);
