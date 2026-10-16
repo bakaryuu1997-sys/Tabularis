@@ -1,8 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import {
-  classifyDangerousQuery,
-  type DangerousQueryKind,
-} from "../utils/sqlAnalysis";
+import { type DangerousQueryKind } from "../utils/sqlAnalysis";
 import { checkSqlSafety } from "../utils/sqlSafety";
 
 export type ExtendedDangerousQueryKind = DangerousQueryKind | "production";
