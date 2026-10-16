@@ -194,6 +194,7 @@ export const Editor = () => {
     selectedDatabases,
     activeConnectionName,
     activeDatabaseName,
+    tables,
   } = useDatabase();
   const { allDrivers } = useDrivers();
   const { explorerConnectionId } = useConnectionLayoutContext();
@@ -4442,6 +4443,8 @@ export const Editor = () => {
         isOpen={isSqlTemplatesOpen}
         onClose={() => setIsSqlTemplatesOpen(false)}
         onInsert={handleInsertSqlTemplate}
+        tables={tables?.map((t) => t.name) || []}
+        activeTable={activeTab?.activeTable || null}
       />
       <TabSwitcherModal
         isOpen={isTabSwitcherOpen}
