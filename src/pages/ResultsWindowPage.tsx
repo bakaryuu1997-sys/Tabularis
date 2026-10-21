@@ -26,7 +26,7 @@ import {
   type ResultsSyncPayload,
   type ResultsWindowAction,
 } from "../utils/resultsWindowSync";
-import type { SqlDialect } from "../types/editor";
+import type { SqlDialect } from "../utils/sql";
 
 export type DetachedViewMode = "both" | "editor" | "results";
 
