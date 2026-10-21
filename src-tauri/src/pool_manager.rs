@@ -263,7 +263,10 @@ async fn build_and_connect_mysql_pool(
             })??;
     }
 
-    let mut pool_options = sqlx::mysql::MySqlPoolOptions::new().max_connections(10);
+    let mut pool_options = sqlx::mysql::MySqlPoolOptions::new()
+        .max_connections(10)
+        .test_before_acquire(true)
+        .idle_timeout(Some(Duration::from_secs(300)));
     if let Some(script) = script {
         let script = script.to_owned();
         pool_options = pool_options.after_connect(move |conn, _meta| {
@@ -940,7 +943,49 @@ pub async fn get_sqlite_pool_with_id(
 
 /// Check whether a connection pool exists for the given params without creating one.
 pub async fn has_pool(params: &ConnectionParams, connection_id: Option<&str>) -> bool {
+    if let Some(id) = connection_id {
+        let prefix = connection_pool_prefix(&params.driver, id);
+        let has_any = match params.driver.as_str() {
+            "mysql" => MYSQL_POOLS.read().await.keys().any(|k| k.starts_with(&prefix)),
+            "postgres" => POSTGRES_POOLS.read().await.keys().any(|k| k.starts_with(&prefix)),
+            "sqlite" => SQLITE_POOLS.read().await.keys().any(|k| k.starts_with(&prefix)),
+            _ => false,
+        };
+        if has_any {
+            return true;
+        }
+    }
     has_pool_for_database(params, None, connection_id).await
+}
+
+/// Retrieve any existing active MySQL pool for the connection, or fall back to creating/getting the default pool.
+pub async fn get_any_mysql_pool_for_connection(
+    params: &ConnectionParams,
+    connection_id: Option<&str>,
+) -> Result<Pool<MySql>, String> {
+    if let Some(id) = connection_id {
+        let prefix = connection_pool_prefix("mysql", id);
+        let pools = MYSQL_POOLS.read().await;
+        if let Some((_, pool)) = pools.iter().find(|(k, _)| k.starts_with(&prefix)) {
+            return Ok(pool.clone());
+        }
+    }
+    get_mysql_pool_with_id(params, connection_id).await
+}
+
+/// Retrieve any existing active PostgreSQL pool for the connection, or fall back to creating/getting the default pool.
+pub async fn get_any_postgres_pool_for_connection(
+    params: &ConnectionParams,
+    connection_id: Option<&str>,
+) -> Result<PgPool, String> {
+    if let Some(id) = connection_id {
+        let prefix = connection_pool_prefix("postgres", id);
+        let pools = POSTGRES_POOLS.read().await;
+        if let Some((_, pool)) = pools.iter().find(|(k, _)| k.starts_with(&prefix)) {
+            return Ok(pool.clone());
+        }
+    }
+    get_postgres_pool_with_id(params, connection_id).await
 }
 
 /// Check whether a connection pool exists for the given params and database without creating one.

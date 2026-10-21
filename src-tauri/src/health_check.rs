@@ -14,11 +14,11 @@ static PING_STOP_TX: Lazy<Mutex<Option<oneshot::Sender<()>>>> = Lazy::new(|| Mut
 /// Default ping interval in seconds.
 pub const DEFAULT_PING_INTERVAL: u32 = 30;
 
-/// Number of consecutive failures before disconnecting.
-const FAILURE_THRESHOLD: u32 = 2;
+/// Number of consecutive failures before disconnecting (5 x 30s = 2.5 minutes of continuous failure).
+const FAILURE_THRESHOLD: u32 = 5;
 
-/// Per-ping timeout.
-const PING_TIMEOUT: Duration = Duration::from_secs(5);
+/// Per-ping timeout (increased to 15s to tolerate WSL / slow network wakeups).
+const PING_TIMEOUT: Duration = Duration::from_secs(15);
 
 /// Register a connection ID as active (will be pinged).
 pub async fn register_connection(connection_id: String) {

@@ -47,7 +47,7 @@ pub async fn open_results_window(
         return Ok(());
     }
 
-    let window_title = title.unwrap_or_else(|| "Query Results".to_string());
+    let window_title = title.unwrap_or_else(|| "SQL Console & Query Results".to_string());
 
     let remembered = store
         .bounds
@@ -60,14 +60,14 @@ pub async fn open_results_window(
     let mut builder =
         WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url.into()))
             .title(&window_title)
-            .min_inner_size(500.0, 300.0)
+            .min_inner_size(600.0, 400.0)
             .background_color(tauri::webview::Color(2, 6, 23, 255));
 
     builder = match remembered {
         Some(b) => builder
             .inner_size(b.width as f64, b.height as f64)
             .position(b.x as f64, b.y as f64),
-        None => builder.inner_size(900.0, 600.0).center(),
+        None => builder.inner_size(1050.0, 720.0).center(),
     };
 
     match builder.build() {

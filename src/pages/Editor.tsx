@@ -3619,6 +3619,18 @@ export const Editor = () => {
                     <span className="text-[10px] text-muted opacity-80 font-mono">Ctrl+J</span>
                   </button>
                 )}
+                {/* Pop out Console & Results to separate window */}
+                {!tab.readOnly && (
+                  <button
+                    onClick={() => handleDetachResults(tab.id)}
+                    disabled={detachedTabIds.has(tab.id)}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-cyan-300 bg-elevated/80 hover:bg-cyan-900/40 border border-default hover:border-cyan-500/40 transition-all backdrop-blur-sm shadow-sm disabled:opacity-30 disabled:pointer-events-none"
+                    title={t("editor.console.detachTooltip", { defaultValue: "Mở Console & Kết quả ra cửa sổ riêng" })}
+                  >
+                    <ExternalLink size={12} />
+                    <span className="hidden sm:inline">{t("editor.console.detachButton", { defaultValue: "Cửa sổ riêng" })}</span>
+                  </button>
+                )}
                 {/* AI dropdown — only if AI enabled */}
                 {settings.aiEnabled && (
                   <AiDropdownButton

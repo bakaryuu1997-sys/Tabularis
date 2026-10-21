@@ -1664,7 +1664,7 @@ impl DatabaseDriver for MysqlDriver {
         if !crate::pool_manager::has_pool(params, conn_id).await {
             return Err("No active connection pool".into());
         }
-        let pool = crate::pool_manager::get_mysql_pool_with_id(params, conn_id).await?;
+        let pool = crate::pool_manager::get_any_mysql_pool_for_connection(params, conn_id).await?;
         let mut conn = pool.acquire().await.map_err(|e| e.to_string())?;
         sqlx::Connection::ping(&mut *conn)
             .await

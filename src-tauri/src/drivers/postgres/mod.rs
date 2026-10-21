@@ -1613,7 +1613,7 @@ impl DatabaseDriver for PostgresDriver {
         if !crate::pool_manager::has_pool(params, conn_id).await {
             return Err("No active connection pool".into());
         }
-        let pool = crate::pool_manager::get_postgres_pool_with_id(params, conn_id).await?;
+        let pool = crate::pool_manager::get_any_postgres_pool_for_connection(params, conn_id).await?;
         let client = pool
             .get()
             .await
