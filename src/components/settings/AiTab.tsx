@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  Zap,
 } from "lucide-react";
 import clsx from "clsx";
 import { useSettings } from "../../hooks/useSettings";
@@ -88,6 +89,37 @@ export function AiTab() {
     Record<string, string[]>
   >({});
   const [keyInput, setKeyInput] = useState("");
+  const [testingModel, setTestingModel] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    latencyMs: number;
+    message: string;
+  } | null>(null);
+
+  const handleTestModel = async () => {
+    if (!settings.aiProvider || !settings.aiModel) return;
+    setTestingModel(true);
+    setTestResult(null);
+    try {
+      const res = await invoke<{
+        success: boolean;
+        latencyMs: number;
+        message: string;
+      }>("test_ai_model", {
+        provider: settings.aiProvider,
+        model: settings.aiModel,
+      });
+      setTestResult(res);
+    } catch (e) {
+      setTestResult({
+        success: false,
+        latencyMs: 0,
+        message: String(e),
+      });
+    } finally {
+      setTestingModel(false);
+    }
+  };
   const [editingKey, setEditingKey] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -543,9 +575,39 @@ export function AiTab() {
 
             {/* Model selection */}
             <div className="border-t border-default pt-4 space-y-1 py-3">
-              <label className="block text-sm font-medium text-secondary">
-                {t("settings.ai.defaultModel")}
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-secondary">
+                  {t("settings.ai.defaultModel")}
+                </label>
+                {settings.aiProvider && (
+                  <div className="flex items-center gap-2">
+                    {settings.aiCustomModels?.[settings.aiProvider]?.length ? (
+                      <div className="flex items-center gap-1.5 text-xs text-green-400 bg-green-900/10 px-2 py-0.5 rounded-full border border-green-900/20">
+                        <CheckCircle2 size={11} />
+                        <span>Đang lọc: {settings.aiCustomModels[settings.aiProvider].length} model hoạt động</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = { ...(settings.aiCustomModels || {}) };
+                            delete next[settings.aiProvider!];
+                            updateSetting("aiCustomModels", next);
+                          }}
+                          className="ml-1 text-xs text-muted hover:text-primary underline cursor-pointer"
+                          title="Khôi phục danh sách đầy đủ"
+                        >
+                          (Hiện tất cả)
+                        </button>
+                      </div>
+                    ) : (
+                      (availableModels[settings.aiProvider] || []).length > 20 && (
+                        <span className="text-xs text-muted">
+                          {availableModels[settings.aiProvider]?.length} models
+                        </span>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
               {(() => {
                 const currentModels =
                   settings.aiCustomModels?.[settings.aiProvider] ||
@@ -560,9 +622,10 @@ export function AiTab() {
                       <div className="flex-1">
                         <Select
                           value={settings.aiModel}
-                          onChange={(val) =>
-                            updateSetting("aiModel", val)
-                          }
+                          onChange={(val) => {
+                            updateSetting("aiModel", val);
+                            setTestResult(null);
+                          }}
                           options={currentModels}
                           placeholder={t(
                             "settings.ai.modelPlaceholder",
@@ -578,12 +641,53 @@ export function AiTab() {
                       </div>
                       <button
                         onClick={() => loadModels(true)}
-                        className="px-3 py-2 bg-surface-secondary hover:bg-surface-tertiary border border-default text-secondary hover:text-primary rounded-lg transition-colors"
+                        className="px-3 py-2 bg-surface-secondary hover:bg-surface-tertiary border border-default text-secondary hover:text-primary rounded-lg transition-colors cursor-pointer"
                         title={t("settings.ai.refresh")}
                       >
                         <RefreshCw size={18} />
                       </button>
+                      <button
+                        type="button"
+                        onClick={handleTestModel}
+                        disabled={testingModel || !settings.aiModel}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 whitespace-nowrap cursor-pointer"
+                        title="Thử gửi câu lệnh kiểm tra phản hồi model"
+                      >
+                        {testingModel ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" />
+                            <span>Đang thử...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap size={14} />
+                            <span>Thử model</span>
+                          </>
+                        )}
+                      </button>
                     </div>
+                    {testResult && (
+                      <div
+                        className={clsx(
+                          "flex items-center gap-2 mt-2 px-3 py-2 rounded-lg text-xs border transition-all",
+                          testResult.success
+                            ? "bg-green-900/10 border-green-900/20 text-green-400"
+                            : "bg-red-900/10 border-red-900/20 text-red-400",
+                        )}
+                      >
+                        {testResult.success ? (
+                          <>
+                            <CheckCircle2 size={13} className="shrink-0" />
+                            <span>Model phản hồi tốt ({testResult.latencyMs}ms)</span>
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle size={13} className="shrink-0" />
+                            <span className="truncate">Lỗi phản hồi: {testResult.message}</span>
+                          </>
+                        )}
+                      </div>
+                    )}
                     {!isModelValid && settings.aiModel && (
                       <div className="flex items-center gap-1.5 mt-2 text-xs text-red-400 bg-red-900/10 p-2 rounded-lg border border-red-900/20">
                         <AlertTriangle

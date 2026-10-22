@@ -415,6 +415,7 @@ pub fn run() {
             ai::generate_tab_rename,
             ai::suggest_table_name,
             ai::get_ai_models,
+            ai::test_ai_model,
             // Clipboard Import
             clipboard_import::execute_clipboard_import,
             commands::get_schema_snapshot,

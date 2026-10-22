@@ -575,6 +575,59 @@ pub async fn chat_ai_stream(
     generate_chat_stream(app, req, on_event).await
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct AiModelTestResult {
+    pub success: bool,
+    pub latency_ms: u64,
+    pub message: String,
+}
+
+#[tauri::command]
+pub async fn test_ai_model(
+    app: AppHandle,
+    provider: String,
+    model: String,
+) -> Result<AiModelTestResult, String> {
+    let t0 = std::time::Instant::now();
+    let app_config = config::load_config_internal(&app);
+    let ollama_port = app_config.ai_ollama_port.unwrap_or(11434);
+
+    let req = AiGenerateRequest {
+        provider,
+        model,
+        prompt: "SELECT 1;".to_string(),
+        schema: "".to_string(),
+    };
+
+    match dispatch_provider(
+        &app,
+        &app_config,
+        &req,
+        "You are a test ping bot. Respond concisely with 1.",
+        ollama_port,
+    )
+    .await
+    {
+        Ok(res) => {
+            let latency_ms = t0.elapsed().as_millis() as u64;
+            Ok(AiModelTestResult {
+                success: true,
+                latency_ms,
+                message: if res.is_empty() { "OK".to_string() } else { res },
+            })
+        }
+        Err(err) => {
+            let latency_ms = t0.elapsed().as_millis() as u64;
+            Ok(AiModelTestResult {
+                success: false,
+                latency_ms,
+                message: err,
+            })
+        }
+    }
+}
+
 // --- Shared helpers ---
 
 async fn resolve_model(
