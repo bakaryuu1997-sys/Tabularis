@@ -5,7 +5,9 @@ import {
   rowToJSON,
   rowsToJSON,
   getSelectedRows,
-  copyTextToClipboard
+  copyTextToClipboard,
+  rowsToMarkdownTable,
+  rowsToTypeScriptInterface
 } from '../../src/utils/clipboard';
 
 describe('clipboard utils', () => {
@@ -179,6 +181,59 @@ describe('clipboard utils', () => {
       ];
       const columns = ['id', 'name'];
       expect(rowsToJSON(rows, columns)).toBe('[{"id":1,"name":null},{"id":2,"name":"value"}]');
+    });
+  });
+
+  describe('rowsToMarkdownTable', () => {
+    it('should convert rows and columns to markdown table', () => {
+      const columns = ['id', 'name', 'active'];
+      const rows = [
+        [1, 'Alice', true],
+        [2, 'Bob', false]
+      ];
+      const result = rowsToMarkdownTable(rows, columns);
+      expect(result).toBe('| id | name | active |\n| --- | --- | --- |\n| 1 | Alice | true |\n| 2 | Bob | false |');
+    });
+
+    it('should escape pipe characters in content', () => {
+      const columns = ['id', 'desc'];
+      const rows = [[1, 'a|b']];
+      const result = rowsToMarkdownTable(rows, columns);
+      expect(result).toContain('a\\|b');
+    });
+
+    it('should return empty string for empty columns', () => {
+      expect(rowsToMarkdownTable([], [])).toBe('');
+    });
+
+    it('should handle header only for empty rows', () => {
+      const result = rowsToMarkdownTable([], ['id', 'name']);
+      expect(result).toBe('| id | name |\n| --- | --- |');
+    });
+  });
+
+  describe('rowsToTypeScriptInterface', () => {
+    it('should generate typescript interface with inferred types', () => {
+      const columns = ['id', 'username', 'is_active'];
+      const rows = [
+        [1, 'alice', true],
+        [2, 'bob', false]
+      ];
+      const result = rowsToTypeScriptInterface('users', columns, rows);
+      expect(result).toContain('export interface UsersRow {');
+      expect(result).toContain('id: number;');
+      expect(result).toContain('username: string;');
+      expect(result).toContain('is_active: boolean;');
+    });
+
+    it('should handle null union types', () => {
+      const columns = ['id', 'score'];
+      const rows = [
+        [1, null],
+        [2, 100]
+      ];
+      const result = rowsToTypeScriptInterface('scores', columns, rows);
+      expect(result).toContain('score: number | null;');
     });
   });
 

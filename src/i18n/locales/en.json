@@ -183,7 +183,6 @@
     "addToFavorites": "Add to Favorites",
     "insertToEditor": "Insert to Editor",
     "openInNewTab": "Open in New Tab",
-    "copyQuery": "Copy Query",
     "runQuery": "Run Query",
     "dateGroupToday": "Today",
     "dateGroupYesterday": "Yesterday",
@@ -866,7 +865,9 @@
     "setEmpty": "Set EMPTY",
     "setServerNow": "Insert Current Timestamp",
     "previewReferenced": "Preview related record",
-    "openReferenced": "Open referenced row in {{table}}"
+    "openReferenced": "Open referenced row in {{table}}",
+    "copyAs": "Copy As...",
+    "inspectCell": "Inspect Cell Value (Value Inspector)"
   },
   "editRow": {
     "title": "Edit Row",
@@ -1797,5 +1798,11 @@
     "waitCountdown": "Please wait for safety confirmation ({{seconds}}s)...",
     "confirmExecute": "I understand the risks, Execute now",
     "cancel": "Cancel"
+  },
+  "cellInspector": {
+    "title": "Cell Value Inspector"
+  },
+  "queryHistory": {
+    "title": "SQL Query History"
   }
-}
+}

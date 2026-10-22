@@ -154,6 +154,18 @@ const SqlEditorInternal = ({
         },
       });
 
+      // Register Query History quick trigger (Ctrl + H)
+      editor.addAction({
+        id: 'tabularis.showQueryHistory',
+        label: t('editor.showQueryHistory', 'Show Query History'),
+        contextMenuGroupId: '1_modification',
+        contextMenuOrder: 1.8,
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyH],
+        run: () => {
+          window.dispatchEvent(new CustomEvent('tabularis:open-query-history'));
+        },
+      });
+
       // Register custom Paste action using Tauri clipboard API
       editor.addAction({
         id: 'tauri.clipboardPaste',

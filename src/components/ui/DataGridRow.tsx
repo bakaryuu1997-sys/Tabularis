@@ -1,5 +1,5 @@
 import React from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Link2 } from "lucide-react";
 import {
   formatCellValue,
   resolveInsertionCellDisplay,
@@ -349,6 +349,10 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
                 if (target.closest("button")) {
                   return;
                 }
+                if ((e.ctrlKey || e.metaKey) && fkForPreview && onForeignKeyNavigate) {
+                  onForeignKeyNavigate(fkForPreview, rawCellValue);
+                  return;
+                }
                 setFocusedCell({ rowIndex, colIndex });
                 updateSelection(new Set());
 
@@ -611,7 +615,7 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
                     if (fkForPreview && onForeignKeyNavigate) {
                       return (
                         <span className="inline-flex items-center gap-1 group/fkcell w-full min-w-0">
-                          <span className="truncate flex-1 min-w-0">
+                          <span className="truncate flex-1 min-w-0 group-hover/fkcell:text-blue-400 group-hover/fkcell:underline cursor-pointer">
                             {renderDefaultCellContent(
                               displayValue,
                               formattedDisplay,
@@ -624,12 +628,12 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
                               e.stopPropagation();
                               onForeignKeyNavigate(fkForPreview, rawCellValue);
                             }}
-                            className="opacity-0 group-hover/fkcell:opacity-100 transition-opacity p-0.5 rounded text-muted hover:text-blue-400 hover:bg-surface-tertiary flex-shrink-0"
+                            className="opacity-60 group-hover/fkcell:opacity-100 transition-opacity p-0.5 rounded text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 flex-shrink-0"
                             title={t("dataGrid.openReferenced", {
                               table: fkForPreview.ref_table,
-                            })}
+                            }) + ` (${fkForPreview.ref_column} = ${displayValue}) [Ctrl+Click]`}
                           >
-                            <ExternalLink size={11} />
+                            <Link2 size={12} />
                           </button>
                         </span>
                       );

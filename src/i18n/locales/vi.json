@@ -97,7 +97,7 @@
     "quotedName": "Tên có Quote chuẩn SQL",
     "qualifiedName": "Tên đầy đủ kèm Schema",
     "copySelectQuery": "Sao chép lệnh SELECT mẫu",
-    "copyQuery": "Sao chép câu truy vấn",
+    "copyQuery": "Sao chép truy vấn",
     "openInEditor": "Mở trong trình soạn thảo",
     "closePanel": "Đóng bảng",
     "setAsActive": "Đặt làm hiện hành",
@@ -183,7 +183,6 @@
     "addToFavorites": "Thêm vào yêu thích",
     "insertToEditor": "Chèn vào trình soạn thảo",
     "openInNewTab": "Mở trong tab mới",
-    "copyQuery": "Sao chép truy vấn",
     "runQuery": "Chạy truy vấn",
     "dateGroupToday": "Hôm nay",
     "dateGroupYesterday": "Hôm qua",
@@ -866,7 +865,9 @@
     "setEmpty": "Đặt EMPTY",
     "setServerNow": "Chèn thời điểm hiện tại",
     "previewReferenced": "Xem trước bản ghi liên quan",
-    "openReferenced": "Mở hàng được tham chiếu trong {{table}}"
+    "openReferenced": "Mở hàng được tham chiếu trong {{table}}",
+    "copyAs": "Sao chép dưới dạng...",
+    "inspectCell": "Kiểm tra chi tiết ô (Value Inspector)"
   },
   "editRow": {
     "title": "Sửa hàng",
@@ -1797,5 +1798,11 @@
     "waitCountdown": "Vui lòng chờ xác nhận ({{seconds}}s)...",
     "confirmExecute": "Tôi hiểu rủi ro, Thực thi ngay",
     "cancel": "Hủy bỏ"
+  },
+  "cellInspector": {
+    "title": "Kiểm tra chi tiết ô"
+  },
+  "queryHistory": {
+    "title": "Lịch sử truy vấn SQL"
   }
-}
+}

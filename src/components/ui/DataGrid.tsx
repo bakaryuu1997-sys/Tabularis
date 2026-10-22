@@ -70,12 +70,15 @@ import {
   formatDateTime,
 } from "../../utils/dateInput";
 import { RowEditorSidebar } from "./RowEditorSidebar";
+import { CellValueInspector } from "./CellValueInspector";
 import { useDatabase } from "../../hooks/useDatabase";
 import {
   rowsToCSV,
   rowsToCSVWithHeaders,
   rowsToJSON,
   rowsToSqlInsert,
+  rowsToMarkdownTable,
+  rowsToTypeScriptInterface,
   getSelectedRows,
   copyTextToClipboard,
 } from "../../utils/clipboard";
@@ -133,7 +136,7 @@ interface DataGridProps {
   onDuplicateRow?: (rowData: Record<string, unknown>) => void;
   selectedRows?: Set<number>;
   onSelectionChange?: (indices: Set<number>) => void;
-  copyFormat?: "csv" | "json" | "sql-insert";
+  copyFormat?: "csv" | "json" | "sql-insert" | "markdown" | "typescript";
   csvDelimiter?: string;
   csvIncludeHeaders?: boolean;
   sortClause?: string;
@@ -309,6 +312,13 @@ export const DataGrid = React.memo(
     const [focusedCell, setFocusedCell] = useState<{
       rowIndex: number;
       colIndex: number;
+    } | null>(null);
+    const [inspectorOpen, setInspectorOpen] = useState(false);
+    const [inspectorCell, setInspectorCell] = useState<{
+      rowIndex: number;
+      colIndex: number;
+      colName: string;
+      value: unknown;
     } | null>(null);
     const editInputRef = useRef<HTMLInputElement>(null);
     // Mirror of editingCell so the commit/keydown callbacks can read the latest
@@ -549,6 +559,10 @@ export const DataGrid = React.memo(
           ? rowsToJSON(allRows, columns)
           : copyFormat === "sql-insert"
           ? rowsToSqlInsert(allRows, columns, tableName ?? "table")
+          : copyFormat === "markdown"
+          ? rowsToMarkdownTable(allRows, columns)
+          : copyFormat === "typescript"
+          ? rowsToTypeScriptInterface(tableName ?? "Record", columns, allRows)
           : csvIncludeHeaders
           ? rowsToCSVWithHeaders(allRows, columns, "null", csvDelimiter)
           : rowsToCSV(allRows, "null", csvDelimiter);
@@ -1304,6 +1318,10 @@ export const DataGrid = React.memo(
         if (copyFormat === "json") return rowsToJSON(rows, columns);
         if (copyFormat === "sql-insert")
           return rowsToSqlInsert(rows, columns, tableName ?? "table");
+        if (copyFormat === "markdown")
+          return rowsToMarkdownTable(rows, columns);
+        if (copyFormat === "typescript")
+          return rowsToTypeScriptInterface(tableName ?? "Record", columns, rows);
         if (withHeaders && csvIncludeHeaders)
           return rowsToCSVWithHeaders(rows, columns, "null", csvDelimiter);
         return rowsToCSV(rows, "null", csvDelimiter);
@@ -1771,6 +1789,89 @@ export const DataGrid = React.memo(
                 action: copySelectedOrContextRow,
               });
 
+              menuItems.push({
+                label: t("dataGrid.copyAs", { defaultValue: "Sao chép dưới dạng..." }),
+                icon: Copy,
+                submenu: [
+                  {
+                    label: "JSON",
+                    action: async () => {
+                      const rows =
+                        selectedRowIndices.size > 0
+                          ? getSelectedRows(data, selectedRowIndices)
+                          : [contextMenu.row];
+                      await copyToClipboard(rowsToJSON(rows, columns));
+                      setContextMenu(null);
+                    },
+                  },
+                  {
+                    label: "SQL INSERT",
+                    action: async () => {
+                      const rows =
+                        selectedRowIndices.size > 0
+                          ? getSelectedRows(data, selectedRowIndices)
+                          : [contextMenu.row];
+                      await copyToClipboard(
+                        rowsToSqlInsert(rows, columns, tableName ?? "table"),
+                      );
+                      setContextMenu(null);
+                    },
+                  },
+                  {
+                    label: "CSV (kèm Header)",
+                    action: async () => {
+                      const rows =
+                        selectedRowIndices.size > 0
+                          ? getSelectedRows(data, selectedRowIndices)
+                          : [contextMenu.row];
+                      await copyToClipboard(
+                        rowsToCSVWithHeaders(rows, columns, "null", csvDelimiter),
+                      );
+                      setContextMenu(null);
+                    },
+                  },
+                  {
+                    label: "Markdown Table",
+                    action: async () => {
+                      const rows =
+                        selectedRowIndices.size > 0
+                          ? getSelectedRows(data, selectedRowIndices)
+                          : [contextMenu.row];
+                      await copyToClipboard(rowsToMarkdownTable(rows, columns));
+                      setContextMenu(null);
+                    },
+                  },
+                  {
+                    label: "TypeScript Interface",
+                    action: async () => {
+                      const rows =
+                        selectedRowIndices.size > 0
+                          ? getSelectedRows(data, selectedRowIndices)
+                          : [contextMenu.row];
+                      await copyToClipboard(
+                        rowsToTypeScriptInterface(tableName ?? "Record", columns, rows),
+                      );
+                      setContextMenu(null);
+                    },
+                  },
+                ],
+              });
+
+              menuItems.push({
+                label: t("dataGrid.inspectCell", { defaultValue: "Kiểm tra chi tiết ô (Value Inspector)" }),
+                icon: Eye,
+                action: () => {
+                  setInspectorCell({
+                    rowIndex: contextMenu.rowIndex,
+                    colIndex: contextMenu.colIndex,
+                    colName: contextMenu.colName,
+                    value: contextMenu.row[contextMenu.colIndex],
+                  });
+                  setInspectorOpen(true);
+                  setContextMenu(null);
+                },
+              });
+
               if (!readonlyProp) {
                 menuItems.push(
                   {
@@ -1948,6 +2049,33 @@ export const DataGrid = React.memo(
                 />
               );
             })()}
+
+          {inspectorOpen && inspectorCell && (
+            <CellValueInspector
+              isOpen={inspectorOpen}
+              onClose={() => setInspectorOpen(false)}
+              columnName={inspectorCell.colName}
+              columnType={columnTypeMap?.get(inspectorCell.colName)}
+              cellValue={
+                mergedRows[inspectorCell.rowIndex]?.rowData[inspectorCell.colIndex] ??
+                inspectorCell.value
+              }
+              rowIndex={inspectorCell.rowIndex}
+              readOnly={readonlyProp}
+              onApplyValue={(val) => {
+                const mergedRow = mergedRows[inspectorCell.rowIndex];
+                if (!mergedRow) return;
+                const isInsertion = mergedRow.type === "insertion";
+                const colName = inspectorCell.colName;
+                if (isInsertion && onPendingInsertionChange && mergedRow.tempId) {
+                  onPendingInsertionChange(mergedRow.tempId, colName, val);
+                } else if (!isInsertion && onPendingChange && pkColumns && pkIndexMaps.length > 0) {
+                  const pkMapVal = buildPkMap(pkColumns, mergedRow.rowData, pkIndexMaps);
+                  onPendingChange(pkMapVal, colName, val);
+                }
+              }}
+            />
+          )}
         </div>
       </>
     );

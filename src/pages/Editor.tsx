@@ -52,6 +52,8 @@ import {
   Maximize2,
   Minimize2,
   ExternalLink,
+  History,
+  RotateCcw,
   PanelRight,
   CheckCircle2,
   Columns2,
@@ -79,6 +81,7 @@ import { ErrorDisplay } from "../components/ui/ErrorDisplay";
 import { NewRowModal } from "../components/modals/NewRowModal";
 import { ProductionSafetyModal } from "../components/modals/ProductionSafetyModal";
 import { SqlTemplatesModal } from "../components/modals/SqlTemplatesModal";
+import { QueryHistoryModal } from "../components/modals/QueryHistoryModal";
 import { useDangerousQueryGuard } from "../hooks/useDangerousQueryGuard";
 import { QuerySelectionModal } from "../components/modals/QuerySelectionModal";
 import { ExplainSelectionModal } from "../components/modals/ExplainSelectionModal";
@@ -423,11 +426,14 @@ export const Editor = () => {
   const [isExplainSelectionOpen, setIsExplainSelectionOpen] = useState(false);
   const [explainSelectableQueries, setExplainSelectableQueries] = useState<{ query: string; index: number }[]>([]);
   const [isSqlTemplatesOpen, setIsSqlTemplatesOpen] = useState(false);
+  const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false);
+  const [transactionMode, setTransactionMode] = useState<"auto" | "manual">("auto");
+  const [isTransactionActive, setIsTransactionActive] = useState(false);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [tempPage, setTempPage] = useState("1");
   const [isCountLoading, setIsCountLoading] = useState(false);
   const [applyToAll, setApplyToAll] = useState(false);
-  const [copyFormat, setCopyFormat] = useState<"csv" | "json" | "sql-insert">(
+  const [copyFormat, setCopyFormat] = useState<"csv" | "json" | "sql-insert" | "markdown" | "typescript">(
     settings.copyFormat ?? "csv",
   );
   const [csvDelimiter, setCsvDelimiter] = useState(
@@ -1677,6 +1683,18 @@ export const Editor = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === "F5") {
         e.preventDefault();
         handleRunButton();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+        e.preventDefault();
+        setIsQueryHistoryOpen(true);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        handleCommitTransaction();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === "r" || e.key === "R")) {
+        e.preventDefault();
+        handleRollbackTransaction();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -3082,6 +3100,49 @@ export const Editor = () => {
     setIsRunDropdownOpen((prev) => !prev);
   }, [isRunDropdownOpen, activeTab, activeDialect]);
 
+  const handleStartTransaction = useCallback(async () => {
+    if (!activeConnectionId) return;
+    try {
+      const sql = activeDriver === "postgres" || activeDriver === "sqlite" ? "BEGIN;" : "START TRANSACTION;";
+      await runQuery(sql, 1);
+      setIsTransactionActive(true);
+      showAlert(t("editor.transactionStarted", { defaultValue: "Đã bắt đầu Giao dịch (Transaction) mới." }), {
+        title: "Transaction",
+        kind: "info",
+      });
+    } catch (e) {
+      showAlert(String(e), { title: "Transaction Error", kind: "error" });
+    }
+  }, [activeConnectionId, activeDriver, runQuery, showAlert, t]);
+
+  const handleCommitTransaction = useCallback(async () => {
+    if (!activeConnectionId) return;
+    try {
+      await runQuery("COMMIT;", 1);
+      setIsTransactionActive(false);
+      showAlert(t("editor.transactionCommitted", { defaultValue: "Đã COMMIT giao dịch thành công!" }), {
+        title: "Transaction",
+        kind: "info",
+      });
+    } catch (e) {
+      showAlert(String(e), { title: "Commit Error", kind: "error" });
+    }
+  }, [activeConnectionId, runQuery, showAlert, t]);
+
+  const handleRollbackTransaction = useCallback(async () => {
+    if (!activeConnectionId) return;
+    try {
+      await runQuery("ROLLBACK;", 1);
+      setIsTransactionActive(false);
+      showAlert(t("editor.transactionRolledBack", { defaultValue: "Đã ROLLBACK hoàn tác giao dịch." }), {
+        title: "Transaction",
+        kind: "info",
+      });
+    } catch (e) {
+      showAlert(String(e), { title: "Rollback Error", kind: "error" });
+    }
+  }, [activeConnectionId, runQuery, showAlert, t]);
+
   const handleInsertSqlTemplate = useCallback(
     (templateSql: string) => {
       if (!activeTab) return;
@@ -3116,9 +3177,14 @@ export const Editor = () => {
     const handleOpenTemplates = () => {
       setIsSqlTemplatesOpen(true);
     };
+    const handleOpenHistory = () => {
+      setIsQueryHistoryOpen(true);
+    };
     window.addEventListener("tabularis:open-sql-templates", handleOpenTemplates);
+    window.addEventListener("tabularis:open-query-history", handleOpenHistory);
     return () => {
       window.removeEventListener("tabularis:open-sql-templates", handleOpenTemplates);
+      window.removeEventListener("tabularis:open-query-history", handleOpenHistory);
     };
   }, []);
 
@@ -3666,6 +3732,78 @@ export const Editor = () => {
                     <span className="text-[10px] text-muted opacity-80 font-mono">Ctrl+J</span>
                   </button>
                 )}
+                {/* Query History button (Ctrl+H) */}
+                {!tab.readOnly && (
+                  <button
+                    onClick={() => setIsQueryHistoryOpen(true)}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-purple-300 bg-elevated/80 hover:bg-purple-900/40 border border-default hover:border-purple-500/40 transition-all backdrop-blur-sm shadow-sm"
+                    title={t("editor.queryHistory.tooltip", { defaultValue: "Lịch sử truy vấn SQL (Ctrl+H)" })}
+                  >
+                    <History size={12} className="text-purple-400" />
+                    <span>{t("editor.queryHistory.button", { defaultValue: "Lịch sử" })}</span>
+                    <span className="text-[10px] text-muted opacity-80 font-mono">Ctrl+H</span>
+                  </button>
+                )}
+                {/* Transaction Control */}
+                {!tab.readOnly && (
+                  <div className="flex items-center gap-1 bg-elevated/80 border border-default rounded px-1.5 py-0.5 text-xs backdrop-blur-sm shadow-sm">
+                    <span className="text-[11px] text-muted font-medium">Tx:</span>
+                    <button
+                      onClick={() =>
+                        setTransactionMode((prev) => (prev === "auto" ? "manual" : "auto"))
+                      }
+                      className={`px-1.5 py-0.5 rounded text-[11px] font-semibold transition-colors ${
+                        transactionMode === "auto"
+                          ? "bg-blue-900/40 text-blue-300 border border-blue-600/40 hover:bg-blue-900/60"
+                          : "bg-amber-900/40 text-amber-300 border border-amber-600/40 hover:bg-amber-900/60"
+                      }`}
+                      title={
+                        transactionMode === "auto"
+                          ? "Chế độ Auto-Commit: Tự động lưu sau mỗi lệnh"
+                          : "Chế độ Manual: Cần Commit hoặc Rollback thủ công"
+                      }
+                    >
+                      {transactionMode === "auto" ? "Auto" : "Manual"}
+                    </button>
+
+                    {transactionMode === "manual" && (
+                      <div className="flex items-center gap-1 ml-1 pl-1 border-l border-default">
+                        {!isTransactionActive ? (
+                          <button
+                            onClick={handleStartTransaction}
+                            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-surface-secondary hover:bg-surface-tertiary text-secondary hover:text-primary transition-colors"
+                            title="Bắt đầu Transaction (BEGIN / START TRANSACTION)"
+                          >
+                            <span>Bắt đầu</span>
+                          </button>
+                        ) : (
+                          <>
+                            <span
+                              className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"
+                              title="Đang có Transaction mở"
+                            />
+                            <button
+                              onClick={handleCommitTransaction}
+                              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-emerald-700/50 hover:bg-emerald-600/60 text-emerald-300 border border-emerald-500/40 font-medium transition-colors"
+                              title="Commit các thay đổi (COMMIT;)"
+                            >
+                              <Check size={11} />
+                              <span>Commit</span>
+                            </button>
+                            <button
+                              onClick={handleRollbackTransaction}
+                              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-rose-700/50 hover:bg-rose-600/60 text-rose-300 border border-rose-500/40 font-medium transition-colors"
+                              title="Hoàn tác các thay đổi (ROLLBACK;)"
+                            >
+                              <RotateCcw size={11} />
+                              <span>Rollback</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Pop out Console & Results to separate window */}
                 {!tab.readOnly && (
                   <button
@@ -4135,7 +4273,7 @@ export const Editor = () => {
                       <select
                         value={copyFormat}
                         onChange={(e) =>
-                          setCopyFormat(e.target.value as "csv" | "json" | "sql-insert")
+                          setCopyFormat(e.target.value as "csv" | "json" | "sql-insert" | "markdown" | "typescript")
                         }
                         className="bg-transparent border-none text-[11px] text-secondary hover:text-primary focus:outline-none cursor-pointer appearance-none pr-3 font-medium uppercase tracking-wide"
                         title={t("settings.copyFormat")}
@@ -4144,6 +4282,8 @@ export const Editor = () => {
                         <option value="csv">CSV</option>
                         <option value="json">JSON</option>
                         <option value="sql-insert">SQL INSERT</option>
+                        <option value="markdown">MARKDOWN</option>
+                        <option value="typescript">TYPESCRIPT</option>
                       </select>
                       {copyFormat === "csv" && (
                         <select
@@ -4511,6 +4651,12 @@ export const Editor = () => {
         onInsert={handleInsertSqlTemplate}
         tables={tables?.map((t) => t.name) || []}
         activeTable={activeTab?.activeTable || null}
+      />
+      <QueryHistoryModal
+        isOpen={isQueryHistoryOpen}
+        onClose={() => setIsQueryHistoryOpen(false)}
+        onInsertQuery={handleInsertSqlTemplate}
+        onRunQuery={(sql) => runQuery(sql, 1)}
       />
       <TabSwitcherModal
         isOpen={isTabSwitcherOpen}

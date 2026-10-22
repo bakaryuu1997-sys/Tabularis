@@ -3,7 +3,7 @@ import type { AppLanguage } from "../i18n/config";
 import type { AutocompleteKeywordCase } from "../utils/autocomplete";
 
 export type { AppLanguage };
-export type CopyFormat = "csv" | "json" | "sql-insert";
+export type CopyFormat = "csv" | "json" | "sql-insert" | "markdown" | "typescript";
 export type AiProvider =
   | "openai"
   | "anthropic"
