@@ -200,7 +200,9 @@
       "delete": "Delete",
       "deleteConfirm": "Delete notebook \"{{title}}\"? This cannot be undone.",
       "renamePlaceholder": "Notebook name"
-    }
+    },
+    "mockData": "Generate Mock Data",
+    "schemaDiff": "Schema Compare & Sync"
   },
   "mcp": {
     "title": "MCP Server Integration",
@@ -867,7 +869,8 @@
     "previewReferenced": "Preview related record",
     "openReferenced": "Open referenced row in {{table}}",
     "copyAs": "Copy As...",
-    "inspectCell": "Inspect Cell Value (Value Inspector)"
+    "inspectCell": "Inspect Cell Value (Value Inspector)",
+    "profileColumn": "Column Profile"
   },
   "editRow": {
     "title": "Edit Row",
@@ -1218,6 +1221,14 @@
       "collapseAll": "Collapse all",
       "expandAll": "Expand all",
       "collapsed": "Collapsed"
+    },
+    "formatSql": {
+      "button": "Format",
+      "tooltip": "Format SQL Query (Ctrl+Alt+F)"
+    },
+    "maskSensitiveData": {
+      "button": "Mask PII",
+      "tooltip": "Protect & mask sensitive data (Email, Phone, Password, Salary)"
     }
   },
   "createTable": {
@@ -1328,7 +1339,8 @@
     "showAllTables": "Show All Tables",
     "showAll": "Show All",
     "focusedOn": "Focused on",
-    "focusOnTable": "Focus on Table"
+    "focusOnTable": "Focus on Table",
+    "export": "Export Diagram"
   },
   "views": {
     "createView": "Create View",
@@ -1804,5 +1816,44 @@
   },
   "queryHistory": {
     "title": "SQL Query History"
+  },
+  "columnProfile": {
+    "title": "Column Profile",
+    "subtitle": "Statistical analysis & value distribution",
+    "totalRows": "Total Rows",
+    "nullCount": "Null Values",
+    "distinctCount": "Distinct Values",
+    "average": "Average",
+    "lengthRange": "Character Length (Min - Max)",
+    "validRows": "Non-null Rows",
+    "topValues": "Top Most Frequent Values",
+    "copyReport": "Copy Report"
+  },
+  "mockData": {
+    "title": "Mock Data Generator",
+    "subtitle": "Generate realistic random test data tailored to column schema",
+    "rowCount": "Row Count",
+    "rowCountDesc": "Data generated according to column types",
+    "preview": "Preview (first 5 rows)",
+    "columns": "columns",
+    "copySql": "Copy SQL",
+    "openEditor": "Open in Editor",
+    "insertBtn": "Insert {{count}} rows into table",
+    "inserting": "Inserting...",
+    "insertSuccess": "Successfully inserted {{count}} mock rows into {{table}}!",
+    "insertFailure": "Failed to insert mock data"
+  },
+  "schemaDiff": {
+    "title": "Schema Compare & Synchronization",
+    "subtitle": "Compare schema structure differences and generate migration scripts",
+    "source": "Source (Reference)",
+    "target": "Target (To Sync)",
+    "selectConnection": "Select connection...",
+    "compareBtn": "Compare Now",
+    "comparing": "Comparing...",
+    "visualDiff": "Structural Differences",
+    "migrationSql": "Migration Script",
+    "copySql": "Copy Migration SQL",
+    "openEditor": "Open in Editor"
   }
-}
+}

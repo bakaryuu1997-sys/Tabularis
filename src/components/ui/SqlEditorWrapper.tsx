@@ -402,6 +402,14 @@ const SqlEditorInternal = ({
         }
       });
 
+      const handleFormatEvent = () => {
+        editor.trigger('toolbar', 'tabularis.formatSql', null);
+      };
+      window.addEventListener('tabularis:format-sql', handleFormatEvent);
+      editor.onDidDispose(() => {
+        window.removeEventListener('tabularis:format-sql', handleFormatEvent);
+      });
+
       if (onMount) onMount(editor, monaco);
     };
 

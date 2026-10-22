@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SchemaDiagram } from '../components/ui/SchemaDiagram';
 import { resolveDiagramSchema } from '../utils/schemaDiagram';
-import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Download, Image, Code2, ChevronDown } from 'lucide-react';
+import { downloadTextFile } from '../utils/diagramExport';
 import { useTranslation } from 'react-i18next';
 import { DatabaseProvider } from '../contexts/DatabaseProvider';
 import { EditorProvider } from '../contexts/EditorProvider';
@@ -30,6 +31,55 @@ export const SchemaDiagramPage = () => {
       document.exitFullscreen();
       setIsFullscreen(false);
     }
+  };
+
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+  const handleExportSvg = () => {
+    const flowViewport = document.querySelector('.react-flow__viewport') as HTMLElement | null;
+    if (!flowViewport) return;
+    const serializer = new XMLSerializer();
+    const content = serializer.serializeToString(flowViewport);
+    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1600" style="background:#0f172a"><foreignObject width="100%" height="100%">${content}</foreignObject></svg>`;
+    downloadTextFile(svgString, `${databaseName || 'schema'}-erd.svg`, 'image/svg+xml');
+    setIsExportMenuOpen(false);
+  };
+
+  const handleExportPng = () => {
+    const flowViewport = document.querySelector('.react-flow__viewport') as HTMLElement | null;
+    if (!flowViewport) return;
+    const serializer = new XMLSerializer();
+    const content = serializer.serializeToString(flowViewport);
+    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1600" style="background:#0f172a"><foreignObject width="100%" height="100%">${content}</foreignObject></svg>`;
+    const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 2400;
+      canvas.height = 1600;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((pngBlob) => {
+          if (pngBlob) {
+            const pngUrl = URL.createObjectURL(pngBlob);
+            const a = document.createElement('a');
+            a.href = pngUrl;
+            a.download = `${databaseName || 'schema'}-erd.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(pngUrl);
+          }
+        }, 'image/png');
+      }
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+    setIsExportMenuOpen(false);
   };
 
   const handleRefresh = () => {
@@ -74,6 +124,37 @@ export const SchemaDiagramPage = () => {
               {databaseName}{schema ? ` / ${schema}` : ''} ({connectionName})
             </h1>
             <div className="flex items-center gap-2">
+                            {/* Export Diagram Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsExportMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
+                  title="Xuất sơ đồ ERD"
+                >
+                  <Download size={15} />
+                  <span>{t('erDiagram.export', { defaultValue: 'Xuất sơ đồ' })}</span>
+                  <ChevronDown size={14} className="opacity-80" />
+                </button>
+
+                {isExportMenuOpen && (
+                  <div className="absolute right-0 mt-1.5 w-48 bg-elevated border border-strong rounded-xl shadow-2xl py-1.5 z-50 text-xs font-sans">
+                    <button
+                      onClick={handleExportPng}
+                      className="w-full px-3 py-2 flex items-center gap-2 text-primary hover:bg-surface-secondary text-left transition-colors"
+                    >
+                      <Image size={14} className="text-blue-400" />
+                      <span>Xuất ảnh PNG (.png)</span>
+                    </button>
+                    <button
+                      onClick={handleExportSvg}
+                      className="w-full px-3 py-2 flex items-center gap-2 text-primary hover:bg-surface-secondary text-left transition-colors"
+                    >
+                      <Code2 size={14} className="text-emerald-400" />
+                      <span>Xuất vector SVG (.svg)</span>
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={handleRefresh}
                 className="flex items-center gap-2 px-3 py-1.5 bg-surface-secondary hover:bg-surface-tertiary text-primary rounded-lg border border-strong transition-colors text-sm"

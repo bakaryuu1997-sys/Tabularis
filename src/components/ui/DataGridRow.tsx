@@ -24,6 +24,7 @@ import { JsonExpansionEditor } from "./JsonExpansionEditor";
 import { TextCell } from "./TextCell";
 import { TextExpansionEditor } from "./TextExpansionEditor";
 import type { ForeignKey } from "../../types/editor";
+import { isSensitiveColumn, maskSensitiveValue } from "../../utils/dataMasking";
 
 /**
  * Stable, per-grid dependencies shared by every row. Bundled into a single
@@ -56,6 +57,7 @@ export interface RowCtx {
   mergedRows: MergedRow[];
   pkIndexMaps: number[];
   parentViewportWidth: number;
+  isMaskingEnabled?: boolean;
   readonly: boolean | undefined;
   updateSelection: (s: Set<number>) => void;
   setFocusedCell: React.Dispatch<
@@ -173,6 +175,7 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
     mergedRows,
     pkIndexMaps,
     parentViewportWidth,
+    isMaskingEnabled,
     readonly: readonlyProp,
     updateSelection,
     setFocusedCell,
@@ -333,12 +336,15 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
 
           // Format once and reuse for both the title tooltip and
           // the rendered content (previously formatted twice).
-          const formattedDisplay = formatCellValue(
-            displayValue,
-            t("dataGrid.null"),
-            colTypeForCell,
-            columnLengthMap?.get(colName),
-          );
+          const formattedDisplay =
+            isMaskingEnabled && isSensitiveColumn(colName)
+              ? maskSensitiveValue(displayValue, colName)
+              : formatCellValue(
+                  displayValue,
+                  t("dataGrid.null"),
+                  colTypeForCell,
+                  columnLengthMap?.get(colName),
+                );
 
           return (
             <td

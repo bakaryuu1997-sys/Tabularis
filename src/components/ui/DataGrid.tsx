@@ -19,6 +19,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  BarChart2,
   Braces,
   Copy,
   CopyPlus,
@@ -71,6 +72,8 @@ import {
 } from "../../utils/dateInput";
 import { RowEditorSidebar } from "./RowEditorSidebar";
 import { CellValueInspector } from "./CellValueInspector";
+import { ColumnProfileModal } from "../modals/ColumnProfileModal";
+import { profileColumn, type ColumnProfileResult } from "../../utils/columnProfiler";
 import { useDatabase } from "../../hooks/useDatabase";
 import {
   rowsToCSV,
@@ -145,6 +148,8 @@ interface DataGridProps {
   /** When set, client-side hidden columns are persisted under this key
    * (e.g. `${connectionId}:${tableName}`). Omit for session-only visibility. */
   columnVisibilityKey?: string;
+  isMaskingEnabled?: boolean;
+  onToggleMasking?: () => void;
 }
 
 // SQL tag shown in the chip next to each "Filter by this value" entry.
@@ -215,6 +220,7 @@ export const DataGrid = React.memo(
     sortClause,
     onSort,
     readonly: readonlyProp,
+    isMaskingEnabled: isMaskingEnabledProp,
     columnVisibilityKey,
   }: DataGridProps) => {
     const { t } = useTranslation();
@@ -314,6 +320,9 @@ export const DataGrid = React.memo(
       colIndex: number;
     } | null>(null);
     const [inspectorOpen, setInspectorOpen] = useState(false);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [selectedColumnProfile, setSelectedColumnProfile] = useState<ColumnProfileResult | null>(null);
+
     const [inspectorCell, setInspectorCell] = useState<{
       rowIndex: number;
       colIndex: number;
@@ -1434,6 +1443,7 @@ export const DataGrid = React.memo(
         mergedRows,
         pkIndexMaps,
         parentViewportWidth,
+        isMaskingEnabled: isMaskingEnabledProp,
         readonly: readonlyProp,
         updateSelection,
         setFocusedCell,
@@ -1472,6 +1482,7 @@ export const DataGrid = React.memo(
         mergedRows,
         pkIndexMaps,
         parentViewportWidth,
+        isMaskingEnabledProp,
         readonlyProp,
         updateSelection,
         setFocusedCell,
@@ -1934,6 +1945,23 @@ export const DataGrid = React.memo(
               onClose={() => setHeaderContextMenu(null)}
               items={[
                 {
+                  label: t("dataGrid.profileColumn", { defaultValue: "Thống kê cột (Column Profile)" }),
+                  icon: BarChart2,
+                  action: () => {
+                    const colName = headerContextMenu.colName;
+                    const colType = columnTypeMap?.get(colName);
+                    const rowObjects = data.map((r) => {
+                      const obj: Record<string, unknown> = {};
+                      columns.forEach((col, idx) => { obj[col] = r[idx]; });
+                      return obj;
+                    });
+                    const prof = profileColumn(colName, rowObjects, colType);
+                    setSelectedColumnProfile(prof);
+                    setIsProfileModalOpen(true);
+                    setHeaderContextMenu(null);
+                  },
+                },
+                {
                   label: t("dataGrid.hideColumn"),
                   icon: EyeOff,
                   action: () => hideColumn(headerContextMenu.colName),
@@ -1970,6 +1998,14 @@ export const DataGrid = React.memo(
                   action: copyHeaderNameTable,
                 },
               ]}
+            />
+          )}
+
+                    {isProfileModalOpen && selectedColumnProfile && (
+            <ColumnProfileModal
+              isOpen={isProfileModalOpen}
+              onClose={() => setIsProfileModalOpen(false)}
+              profile={selectedColumnProfile}
             />
           )}
 

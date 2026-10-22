@@ -38,6 +38,8 @@ import {
   Clock,
   Clipboard,
   BookOpen,
+  Sparkles,
+  GitCompare,
 } from "lucide-react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { toErrorMessage } from "../../utils/errors";
@@ -1843,6 +1845,18 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       icon: Clipboard,
                       action: () => setIsClipboardImportOpen(true),
                     } : null,
+                    supportsManageTables(activeCapabilities) ? {
+                      label: t("sidebar.mockData", { defaultValue: "Sinh dữ liệu mẫu (Mock Data)" }),
+                      icon: Sparkles,
+                      action: () => {
+                        window.dispatchEvent(
+                          new CustomEvent("tabularis:open-mock-data", {
+                            detail: { tableName: contextMenu.id, schema: ctxSchema },
+                          }),
+                        );
+                      },
+                    } : null,
+
                     createCopyNameItem(contextMenu.id, ctxSchema, true),
                     supportsManageTables(activeCapabilities) ? {
                       label: t("sidebar.addColumn"),
@@ -2209,6 +2223,13 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   label: t("dump.dumpDatabase"),
                                   icon: Download,
                                   action: () => setDumpModal({ database: contextMenu.id }),
+                                },
+                                {
+                                  label: t("sidebar.schemaDiff", { defaultValue: "So sánh cấu trúc CSDL (Schema Compare)" }),
+                                  icon: GitCompare,
+                                  action: () => {
+                                    window.dispatchEvent(new CustomEvent("tabularis:open-schema-diff"));
+                                  },
                                 },
                                 {
                                   label: t("sidebar.viewERDiagram"),

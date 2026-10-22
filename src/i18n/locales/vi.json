@@ -200,7 +200,9 @@
       "delete": "Xóa",
       "deleteConfirm": "Xóa notebook \"{{title}}\"? Không thể hoàn tác.",
       "renamePlaceholder": "Tên notebook"
-    }
+    },
+    "mockData": "Sinh dữ liệu mẫu (Mock Data)",
+    "schemaDiff": "So sánh cấu trúc CSDL (Schema Compare)"
   },
   "mcp": {
     "title": "Tích hợp máy chủ MCP",
@@ -867,7 +869,8 @@
     "previewReferenced": "Xem trước bản ghi liên quan",
     "openReferenced": "Mở hàng được tham chiếu trong {{table}}",
     "copyAs": "Sao chép dưới dạng...",
-    "inspectCell": "Kiểm tra chi tiết ô (Value Inspector)"
+    "inspectCell": "Kiểm tra chi tiết ô (Value Inspector)",
+    "profileColumn": "Thống kê cột (Column Profile)"
   },
   "editRow": {
     "title": "Sửa hàng",
@@ -1218,6 +1221,14 @@
       "collapseAll": "Thu gọn tất cả",
       "expandAll": "Mở rộng tất cả",
       "collapsed": "Đã thu gọn"
+    },
+    "formatSql": {
+      "button": "Format",
+      "tooltip": "Định dạng câu truy vấn SQL (Ctrl+Alt+F)"
+    },
+    "maskSensitiveData": {
+      "button": "Che mờ PII",
+      "tooltip": "Bảo vệ & che mờ dữ liệu nhạy cảm (Email, Phone, Password, Salary)"
     }
   },
   "createTable": {
@@ -1328,7 +1339,8 @@
     "showAllTables": "Hiện tất cả bảng",
     "showAll": "Hiện tất cả",
     "focusedOn": "Đang tập trung vào",
-    "focusOnTable": "Tập trung vào bảng"
+    "focusOnTable": "Tập trung vào bảng",
+    "export": "Xuất sơ đồ"
   },
   "views": {
     "createView": "Tạo View",
@@ -1804,5 +1816,44 @@
   },
   "queryHistory": {
     "title": "Lịch sử truy vấn SQL"
+  },
+  "columnProfile": {
+    "title": "Thống kê cột",
+    "subtitle": "Phân tích thống kê & phân bổ giá trị dữ liệu",
+    "totalRows": "Tổng số dòng",
+    "nullCount": "Dòng rỗng (NULL)",
+    "distinctCount": "Giá trị duy nhất",
+    "average": "Trung bình (Avg)",
+    "lengthRange": "Độ dài ký tự (Min - Max)",
+    "validRows": "Dòng có dữ liệu",
+    "topValues": "Top giá trị xuất hiện nhiều nhất",
+    "copyReport": "Sao chép báo cáo"
+  },
+  "mockData": {
+    "title": "Sinh dữ liệu mẫu (Mock Data Generator)",
+    "subtitle": "Tự động sinh dữ liệu thử nghiệm ngẫu nhiên nhưng chuẩn thực tế",
+    "rowCount": "Số lượng dòng cần sinh",
+    "rowCountDesc": "Dữ liệu được tạo ngẫu nhiên theo kiểu dữ liệu của từng cột",
+    "preview": "Xem trước (5 dòng đầu tiên)",
+    "columns": "cột",
+    "copySql": "Sao chép SQL",
+    "openEditor": "Mở trong Editor",
+    "insertBtn": "Chèn {{count}} dòng vào bảng",
+    "inserting": "Đang chèn...",
+    "insertSuccess": "Đã chèn thành công {{count}} dòng dữ liệu mẫu vào bảng {{table}}!",
+    "insertFailure": "Lỗi chèn dữ liệu mẫu"
+  },
+  "schemaDiff": {
+    "title": "So sánh cấu trúc CSDL (Schema Compare & Sync)",
+    "subtitle": "Phát hiện chênh lệch cấu trúc giữa 2 Database và sinh script ALTER TABLE tự động",
+    "source": "Nguồn (Source / Chuẩn)",
+    "target": "Đích (Target / Cần đồng bộ)",
+    "selectConnection": "Chọn kết nối...",
+    "compareBtn": "So sánh ngay",
+    "comparing": "Đang so sánh...",
+    "visualDiff": "Chênh lệch cấu trúc",
+    "migrationSql": "Script Migration SQL",
+    "copySql": "Sao chép SQL Migration",
+    "openEditor": "Mở trong Editor"
   }
-}
+}

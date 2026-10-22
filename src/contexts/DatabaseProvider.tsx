@@ -806,34 +806,33 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     invoke('set_last_open_connections', { connectionIds: openConnectionIds }).catch(() => {});
   }, [openConnectionIds]);
 
-  // Listen for backend health-check failures and clean up dead connections.
+  // Listen for backend health-check failures and preserve workspace state while attempting auto-reconnect.
   useEffect(() => {
     const unlisten = listen<{ connectionId: string; error: string }>(
       'connection-health-failed',
       (event) => {
-        const { connectionId } = event.payload;
-        console.warn(`[DatabaseProvider] Connection health check failed for ${connectionId}: ${event.payload.error}`);
+        const { connectionId, error } = event.payload;
+        console.warn(`[DatabaseProvider] Connection health check failed for ${connectionId}: ${error}`);
 
         clearAutocompleteCache(connectionId);
 
-        setOpenConnectionIds(prev => prev.filter(id => id !== connectionId));
-        setConnectionDataMap(prev => {
-          const next = { ...prev };
-          delete next[connectionId];
-          return next;
+        // Mark as disconnected instead of wiping workspace state
+        updateConnectionData(connectionId, {
+          isConnected: false,
+          error,
         });
 
-        setActiveConnectionId(prev => {
-          if (prev !== connectionId) return prev;
-          const remaining = openConnectionIdsRef.current.filter(id => id !== connectionId);
-          if (remaining.length > 0) return remaining[0];
-          setActiveTable(null);
-          return null;
-        });
+        // Trigger automatic reconnect attempt
+        console.log(`[DatabaseProvider] Attempting automatic reconnection for ${connectionId}...`);
+        setTimeout(() => {
+          connect(connectionId).catch((err) => {
+            console.warn(`[DatabaseProvider] Auto-reconnect failed for ${connectionId}:`, err);
+          });
+        }, 1500);
       },
     );
     return () => { unlisten.then(fn => fn()); };
-  }, []);
+  }, [updateConnectionData, connect]);
 
   // Connection Group methods
   const createGroup = useCallback(async (name: string): Promise<ConnectionGroup> => {

@@ -58,6 +58,9 @@ import {
   CheckCircle2,
   Columns2,
   Rows2,
+  Wand2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { exportQueryResultToExcel } from "../utils/excelExport";
 import { invoke } from "@tauri-apps/api/core";
@@ -80,6 +83,8 @@ import {
 import { ErrorDisplay } from "../components/ui/ErrorDisplay";
 import { NewRowModal } from "../components/modals/NewRowModal";
 import { ProductionSafetyModal } from "../components/modals/ProductionSafetyModal";
+import { MockDataModal } from "../components/modals/MockDataModal";
+import { SchemaDiffModal } from "../components/modals/SchemaDiffModal";
 import { SqlTemplatesModal } from "../components/modals/SqlTemplatesModal";
 import { QueryHistoryModal } from "../components/modals/QueryHistoryModal";
 import { useDangerousQueryGuard } from "../hooks/useDangerousQueryGuard";
@@ -427,6 +432,10 @@ export const Editor = () => {
   const [explainSelectableQueries, setExplainSelectableQueries] = useState<{ query: string; index: number }[]>([]);
   const [isSqlTemplatesOpen, setIsSqlTemplatesOpen] = useState(false);
   const [isQueryHistoryOpen, setIsQueryHistoryOpen] = useState(false);
+  const [isMaskingEnabled, setIsMaskingEnabled] = useState(false);
+  const [mockDataModal, setMockDataModal] = useState<{ isOpen: boolean; tableName: string; schema?: string } | null>(null);
+  const [isSchemaDiffOpen, setIsSchemaDiffOpen] = useState(false);
+
   const [transactionMode, setTransactionMode] = useState<"auto" | "manual">("auto");
   const [isTransactionActive, setIsTransactionActive] = useState(false);
   const [isEditingPage, setIsEditingPage] = useState(false);
@@ -3182,9 +3191,22 @@ export const Editor = () => {
     };
     window.addEventListener("tabularis:open-sql-templates", handleOpenTemplates);
     window.addEventListener("tabularis:open-query-history", handleOpenHistory);
+    const handleOpenMockData = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.tableName) {
+        setMockDataModal({ isOpen: true, tableName: detail.tableName, schema: detail.schema });
+      }
+    };
+    const handleOpenSchemaDiff = () => {
+      setIsSchemaDiffOpen(true);
+    };
+    window.addEventListener("tabularis:open-mock-data", handleOpenMockData);
+    window.addEventListener("tabularis:open-schema-diff", handleOpenSchemaDiff);
     return () => {
       window.removeEventListener("tabularis:open-sql-templates", handleOpenTemplates);
       window.removeEventListener("tabularis:open-query-history", handleOpenHistory);
+      window.removeEventListener("tabularis:open-mock-data", handleOpenMockData);
+      window.removeEventListener("tabularis:open-schema-diff", handleOpenSchemaDiff);
     };
   }, []);
 
@@ -3744,6 +3766,18 @@ export const Editor = () => {
                     <span className="text-[10px] text-muted opacity-80 font-mono">Ctrl+H</span>
                   </button>
                 )}
+                                {/* Format SQL button (Ctrl+Alt+F) */}
+                {!tab.readOnly && (
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent("tabularis:format-sql"))}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-emerald-300 bg-elevated/80 hover:bg-emerald-900/40 border border-default hover:border-emerald-500/40 transition-all backdrop-blur-sm shadow-sm"
+                    title={t("editor.formatSql.tooltip", { defaultValue: "Định dạng câu truy vấn SQL (Ctrl+Alt+F)" })}
+                  >
+                    <Wand2 size={12} className="text-emerald-400" />
+                    <span>{t("editor.formatSql.button", { defaultValue: "Format" })}</span>
+                    <span className="text-[10px] text-muted opacity-80 font-mono">Ctrl+Alt+F</span>
+                  </button>
+                )}
                 {/* Transaction Control */}
                 {!tab.readOnly && (
                   <div className="flex items-center gap-1 bg-elevated/80 border border-default rounded px-1.5 py-0.5 text-xs backdrop-blur-sm shadow-sm">
@@ -4081,6 +4115,27 @@ export const Editor = () => {
                           {t("editor.autoPaginated")}
                         </span>
                       )}
+                      {/* PII Masking Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setIsMaskingEnabled((prev) => !prev)}
+                        className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border ${
+                          isMaskingEnabled
+                            ? "bg-purple-900/40 text-purple-300 border-purple-500/50 hover:bg-purple-900/60"
+                            : "bg-surface text-secondary border-default hover:text-primary hover:bg-surface-secondary"
+                        }`}
+                        title={t("editor.maskSensitiveData.tooltip", {
+                          defaultValue: "Bảo vệ & che mờ dữ liệu nhạy cảm (Email, Phone, Password, Salary)",
+                        })}
+                      >
+                        {isMaskingEnabled ? (
+                          <EyeOff size={12} className="text-purple-400 shrink-0" />
+                        ) : (
+                          <Eye size={12} className="shrink-0 text-muted" />
+                        )}
+                        <span>{t("editor.maskSensitiveData.button", { defaultValue: "Che mờ PII" })}</span>
+                      </button>
+
                     </div>
 
                     {/* Pagination Controls */}
@@ -4422,6 +4477,7 @@ export const Editor = () => {
                           ? handleSort
                           : undefined
                       }
+                      isMaskingEnabled={isMaskingEnabled}
                       readonly={driverReadonly || !!activeTab.materialized}
                       columnVisibilityKey={
                         activeTab.activeTable
@@ -4657,6 +4713,20 @@ export const Editor = () => {
         onClose={() => setIsQueryHistoryOpen(false)}
         onInsertQuery={handleInsertSqlTemplate}
         onRunQuery={(sql) => runQuery(sql, 1)}
+      />
+            {mockDataModal && (
+        <MockDataModal
+          isOpen={mockDataModal.isOpen}
+          onClose={() => setMockDataModal(null)}
+          tableName={mockDataModal.tableName}
+          schema={mockDataModal.schema}
+          onOpenInEditor={(sql) => addTab({ type: "console", query: sql })}
+        />
+      )}
+      <SchemaDiffModal
+        isOpen={isSchemaDiffOpen}
+        onClose={() => setIsSchemaDiffOpen(false)}
+        onOpenInEditor={(sql) => addTab({ type: "console", query: sql })}
       />
       <TabSwitcherModal
         isOpen={isTabSwitcherOpen}

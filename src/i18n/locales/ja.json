@@ -200,7 +200,9 @@
       "delete": "削除",
       "deleteConfirm": "ノートブック「{{title}}」を削除しますか？この操作は元に戻せません。",
       "renamePlaceholder": "ノートブック名"
-    }
+    },
+    "mockData": "モックデータ生成",
+    "schemaDiff": "スキーマ比較・同期"
   },
   "mcp": {
     "title": "MCP サーバー連携",
@@ -838,7 +840,8 @@
     "previewReferenced": "関連レコードをプレビュー",
     "openReferenced": "{{table}} で参照行を開く",
     "copyAs": "形式を指定してコピー...",
-    "inspectCell": "セルの値を検査 (Value Inspector)"
+    "inspectCell": "セルの値を検査 (Value Inspector)",
+    "profileColumn": "カラム統計 (プロファイル)"
   },
   "editRow": {
     "title": "行を編集",
@@ -1187,6 +1190,14 @@
       "collapseAll": "すべて折りたたむ",
       "expandAll": "すべて展開",
       "collapsed": "折りたたみ中"
+    },
+    "formatSql": {
+      "button": "整形",
+      "tooltip": "SQLクエリを整形 (Ctrl+Alt+F)"
+    },
+    "maskSensitiveData": {
+      "button": "PIIマスク",
+      "tooltip": "機密データ（メール、電話番号、パスワード、給与等）をマスク保護"
     }
   },
   "createTable": {
@@ -1297,7 +1308,8 @@
     "showAllTables": "すべてのテーブルを表示",
     "showAll": "すべて表示",
     "focusedOn": "フォーカス中",
-    "focusOnTable": "テーブルにフォーカス"
+    "focusOnTable": "テーブルにフォーカス",
+    "export": "図をエクスポート"
   },
   "views": {
     "createView": "ビューを作成",
@@ -1740,5 +1752,44 @@
   },
   "queryHistory": {
     "title": "SQLクエリ履歴"
+  },
+  "columnProfile": {
+    "title": "カラム統計",
+    "subtitle": "データの統計分析および値の分布",
+    "totalRows": "総行数",
+    "nullCount": "NULL値",
+    "distinctCount": "一意の値",
+    "average": "平均値",
+    "lengthRange": "文字長 (最小 - 最大)",
+    "validRows": "有効データ行数",
+    "topValues": "最頻出データ (Top 5)",
+    "copyReport": "レポートをコピー"
+  },
+  "mockData": {
+    "title": "モックデータ生成",
+    "subtitle": "テーブル構造に応じたリアルなテストデータを自動生成",
+    "rowCount": "生成行数",
+    "rowCountDesc": "各カラムのデータ型に合わせて生成されます",
+    "preview": "プレビュー (先頭5行)",
+    "columns": "カラム",
+    "copySql": "SQLをコピー",
+    "openEditor": "エディタで開く",
+    "insertBtn": "{{count}}行をテーブルに挿入",
+    "inserting": "挿入中...",
+    "insertSuccess": "{{table}}に{{count}}行のモックデータを正常に挿入しました！",
+    "insertFailure": "モックデータの挿入に失敗しました"
+  },
+  "schemaDiff": {
+    "title": "スキーマ比較・同期",
+    "subtitle": "2つのデータベース間の構造差分を検出しALTER TABLEスクリプトを自動生成",
+    "source": "ソース (基準)",
+    "target": "ターゲット (同期先)",
+    "selectConnection": "接続を選択...",
+    "compareBtn": "今すぐ比較",
+    "comparing": "比較中...",
+    "visualDiff": "構造の差分",
+    "migrationSql": "マイグレーションスクリプト",
+    "copySql": "SQLをコピー",
+    "openEditor": "エディタで開く"
   }
-}
+}
