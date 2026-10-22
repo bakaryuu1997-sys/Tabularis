@@ -1,4 +1,5 @@
 import type { QueryResult, QueryResultEntry, Tab } from "../types/editor";
+import type { TableInfo } from "../contexts/DatabaseContext";
 
 /**
  * Protocol for syncing query results between the main editor window and a
@@ -45,6 +46,9 @@ export interface ResultsSyncPayload extends ResultsDisplaySettings {
   // Multi-result path (`Tab.results`).
   results?: QueryResultEntry[];
   activeResultId?: string;
+  // Database schema info for detached console autocomplete & hover
+  tables?: TableInfo[];
+  schema?: string | null;
 }
 
 /** Handshake the detached window sends on mount so the main window pushes the
@@ -105,6 +109,8 @@ export function buildSyncPayload(
   tab: Tab,
   settings: ResultsDisplaySettings,
   driver?: string,
+  tables?: TableInfo[],
+  schema?: string | null,
 ): ResultsSyncPayload {
   return {
     tabId: tab.id,
@@ -123,6 +129,8 @@ export function buildSyncPayload(
     copyFormat: settings.copyFormat,
     csvDelimiter: settings.csvDelimiter,
     csvIncludeHeaders: settings.csvIncludeHeaders,
+    tables,
+    schema: schema ?? tab.schema,
   };
 }
 

@@ -1,20 +1,61 @@
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useMemo } from "react";
 import type { Monaco } from "@monaco-editor/react";
 import { loader } from "@monaco-editor/react";
 import { useDatabase } from "./useDatabase";
 import { SettingsContext } from "../contexts/SettingsContext";
-import { isMultiDatabaseCapable } from "../utils/database";
-import { registerSqlAutocomplete, disposeSqlAutocomplete } from "../utils/autocomplete";
+import type { TableInfo } from "../contexts/DatabaseContext";
+import {
+  registerSqlAutocomplete,
+  disposeSqlAutocomplete,
+  registerSqlHover,
+  disposeSqlHover,
+} from "../utils/autocomplete";
 
 type Options = {
   monaco?: Monaco | null;
   schema?: string | null;
+  tables?: TableInfo[];
   /** When false, skips registration (e.g. inactive notebook tabs). Defaults to true. */
   enabled?: boolean;
 };
 
 /**
- * Keeps the global SQL completion provider in sync with the active connection.
+ * Resolves all available tables across active schema, multi-database map, or connection tables.
+ */
+export function getEffectiveTables(
+  tables: TableInfo[],
+  activeCapabilities: any,
+  schema: string | null | undefined,
+  schemaDataMap: Record<string, any>,
+  databaseDataMap: Record<string, any>,
+): TableInfo[] {
+  // 1. PostgreSQL schema-scoped tables
+  if (activeCapabilities?.schemas && schema && schemaDataMap[schema]?.tables?.length) {
+    return schemaDataMap[schema].tables;
+  }
+
+  // 2. Multi-database / MySQL loaded database tables
+  const dbTables: TableInfo[] = [];
+  for (const [db, data] of Object.entries(databaseDataMap)) {
+    if (data?.tables?.length) {
+      for (const t of data.tables) {
+        dbTables.push({
+          name: t.name,
+          schema: t.schema || db,
+        });
+      }
+    }
+  }
+  if (dbTables.length > 0) {
+    return dbTables;
+  }
+
+  // 3. Fallback to connection root tables
+  return tables;
+}
+
+/**
+ * Keeps the global SQL completion provider and hover provider in sync with the active connection.
  * Pass `monaco` from the main editor when available; otherwise Monaco is loaded via loader.init (notebook).
  */
 export function useSqlAutocompleteRegistration(
@@ -28,17 +69,33 @@ export function useSqlAutocompleteRegistration(
     activeCapabilities,
     schemaDataMap,
     databaseDataMap,
-    selectedDatabases,
   } = useDatabase();
   const settingsContext = useContext(SettingsContext);
   const keywordCase =
     settingsContext?.settings.autocompleteKeywordCase ?? "upper";
 
   const schema = options?.schema ?? activeSchema;
-  const isMultiDb =
-    isMultiDatabaseCapable(activeCapabilities) && selectedDatabases.length > 1;
-
   const enabled = options?.enabled ?? true;
+
+  const effectiveTables = useMemo(() => {
+    if (options?.tables && options.tables.length > 0) {
+      return options.tables;
+    }
+    return getEffectiveTables(
+      tables,
+      activeCapabilities,
+      schema,
+      schemaDataMap,
+      databaseDataMap,
+    );
+  }, [
+    options?.tables,
+    tables,
+    activeCapabilities,
+    schema,
+    schemaDataMap,
+    databaseDataMap,
+  ]);
 
   useEffect(() => {
     if (!connectionId || !enabled) return;
@@ -48,15 +105,6 @@ export function useSqlAutocompleteRegistration(
     const register = (monaco: Monaco) => {
       if (cancelled) return;
 
-      let effectiveTables = tables;
-      if (activeCapabilities?.schemas && schema) {
-        effectiveTables = schemaDataMap[schema]?.tables ?? tables;
-      } else if (isMultiDb) {
-        effectiveTables = selectedDatabases.flatMap(
-          (db) => databaseDataMap[db]?.tables ?? [],
-        );
-      }
-
       registerSqlAutocomplete(
         monaco,
         connectionId,
@@ -65,11 +113,19 @@ export function useSqlAutocompleteRegistration(
         activeDriver ?? null,
         keywordCase,
       );
+
+      registerSqlHover(
+        monaco,
+        connectionId,
+        effectiveTables,
+        schema,
+      );
     };
 
     const cleanup = () => {
       cancelled = true;
       disposeSqlAutocomplete();
+      disposeSqlHover();
     };
 
     if (options?.monaco) {
@@ -84,13 +140,10 @@ export function useSqlAutocompleteRegistration(
     enabled,
     options?.monaco,
     schema,
-    tables,
+    effectiveTables,
     activeDriver,
-    activeCapabilities,
-    schemaDataMap,
-    databaseDataMap,
-    isMultiDb,
-    selectedDatabases,
     keywordCase,
   ]);
+
+  return { effectiveTables };
 }

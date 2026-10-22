@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   clearAutocompleteCache,
   registerSqlAutocomplete,
+  registerSqlHover,
+  validateSqlSchema,
   detectSqlClauseContext,
   resolveKeywordCase,
   applyKeywordCase,
@@ -603,5 +605,127 @@ describe('keyword case configuration', () => {
     expect(needsKeywordCaseRetrigger('match', 's')).toBe(false);
     expect(needsKeywordCaseRetrigger('upper', '')).toBe(false);
     expect(needsKeywordCaseRetrigger('lower', '')).toBe(false);
+  });
+});
+
+describe('fallback columns without FROM clause', () => {
+  it('suggests columns from available tables when user types SELECT without FROM', async () => {
+    const mockInvoke = invoke as unknown as ReturnType<typeof vi.fn>;
+    mockInvoke.mockResolvedValueOnce([
+      { name: 'id', data_type: 'INT' },
+      { name: 'email', data_type: 'VARCHAR(255)' },
+    ]);
+
+    const monaco = createMockMonaco();
+    const tables: TableInfo[] = [{ name: 'users' }];
+
+    registerSqlAutocomplete(
+      monaco as unknown as Parameters<typeof registerSqlAutocomplete>[0],
+      'conn1',
+      tables,
+    );
+
+    const provider = monaco.languages.registerCompletionItemProvider.mock.calls[0][1];
+    const model = createMockModel('SELECT ');
+    model.getValueInRange = vi.fn(() => 'SELECT ');
+
+    const result = await provider.provideCompletionItems(model, { lineNumber: 1, column: 8 });
+
+    const columnItems = result.suggestions.filter((s: { detail?: string }) =>
+      s.detail?.includes('users')
+    );
+    expect(columnItems.length).toBeGreaterThanOrEqual(1);
+    const labels = columnItems.map((c: { label: string }) => c.label);
+    expect(labels).toContain('email');
+  });
+});
+
+describe('validateSqlSchema', () => {
+  it('sets warning marker for unknown table in FROM clause', async () => {
+    const { parseTablesFromQuery } = await import('../../src/utils/sqlAnalysis');
+    (parseTablesFromQuery as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+      new Map([['unknown_table', { name: 'unknown_table' }]])
+    );
+
+    const setModelMarkers = vi.fn();
+    const monaco = {
+      editor: { setModelMarkers },
+    } as unknown as Parameters<typeof validateSqlSchema>[0];
+
+    const model = {
+      getValue: () => 'SELECT * FROM unknown_table;',
+      getPositionAt: (offset: number) => ({ lineNumber: 1, column: offset + 1 }),
+      getOffsetAt: (pos: { lineNumber: number; column: number }) => pos.column - 1,
+    };
+
+    const tables: TableInfo[] = [{ name: 'users' }, { name: 'orders' }];
+
+    validateSqlSchema(monaco, model, tables);
+
+    expect(setModelMarkers).toHaveBeenCalledWith(
+      model,
+      'tabularis-sql-lint',
+      expect.arrayContaining([
+        expect.objectContaining({
+          severity: 2,
+          message: expect.stringContaining('unknown_table'),
+        }),
+      ])
+    );
+  });
+
+  it('clears markers when all tables exist in schema', () => {
+    const setModelMarkers = vi.fn();
+    const monaco = {
+      editor: { setModelMarkers },
+    } as unknown as Parameters<typeof validateSqlSchema>[0];
+
+    const model = {
+      getValue: () => 'SELECT * FROM users;',
+      getPositionAt: (offset: number) => ({ lineNumber: 1, column: offset + 1 }),
+      getOffsetAt: (pos: { lineNumber: number; column: number }) => pos.column - 1,
+    };
+
+    const tables: TableInfo[] = [{ name: 'users' }];
+
+    validateSqlSchema(monaco, model, tables);
+
+    expect(setModelMarkers).toHaveBeenCalledWith(
+      model,
+      'tabularis-sql-lint',
+      []
+    );
+  });
+});
+
+describe('registerSqlHover', () => {
+  it('registers hover provider and shows table info on hover', async () => {
+    clearAutocompleteCache();
+    const registerHoverProvider = vi.fn();
+    const monaco = {
+      languages: { registerHoverProvider },
+    } as unknown as Parameters<typeof registerSqlHover>[0];
+
+    const mockInvoke = invoke as unknown as ReturnType<typeof vi.fn>;
+    mockInvoke.mockResolvedValueOnce([
+      { name: 'id', data_type: 'INT' },
+      { name: 'username', data_type: 'VARCHAR(100)' },
+    ]);
+
+    const tables: TableInfo[] = [{ name: 'users', schema: 'public' }];
+
+    registerSqlHover(monaco, 'conn1', tables);
+
+    expect(registerHoverProvider).toHaveBeenCalledWith('sql', expect.any(Object));
+
+    const provider = registerHoverProvider.mock.calls[0][1];
+    const model = {
+      getWordAtPosition: () => ({ word: 'users', startColumn: 15, endColumn: 20 }),
+    };
+
+    const hoverResult = await provider.provideHover(model, { lineNumber: 1, column: 17 });
+    expect(hoverResult).not.toBeNull();
+    expect(hoverResult.contents[0].value).toContain('users');
+    expect(hoverResult.contents[1].value).toContain('id');
   });
 });

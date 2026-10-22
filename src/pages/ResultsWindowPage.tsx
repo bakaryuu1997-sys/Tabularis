@@ -17,6 +17,9 @@ import { MultiResultPanel } from "../components/ui/MultiResultPanel";
 import { ResultEntryContent } from "../components/ui/ResultEntryContent";
 import { SqlEditorWrapper } from "../components/ui/SqlEditorWrapper";
 import { SqlTemplatesModal } from "../components/modals/SqlTemplatesModal";
+import { splitStatements, findStatementAtOffset } from "../utils/sqlSplitter";
+import { useSqlAutocompleteRegistration } from "../hooks/useSqlAutocompleteRegistration";
+import { validateSqlSchema } from "../utils/autocomplete";
 import {
   RESULTS_SYNC_EVENT,
   RESULTS_ACTION_EVENT,
@@ -58,8 +61,36 @@ export const ResultsWindowPage = () => {
   // SQL Templates Modal (Ctrl+J)
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
 
+  // Editor and Monaco references
+  const editorRef = useRef<any>(null);
+  const [monacoInstance, setMonacoInstance] = useState<any>(null);
+
+  // Driver dialect
+  const driverDialect = (payload?.driver as SqlDialect) || "postgres";
+
   // Debounced query sync to main window
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Register SQL autocomplete and hover for detached window
+  useSqlAutocompleteRegistration(payload?.connectionId ?? null, {
+    monaco: monacoInstance,
+    schema: payload?.schema,
+    tables: payload?.tables,
+    enabled: true,
+  });
+
+  // Validate schema on query changes in detached window
+  useEffect(() => {
+    if (!monacoInstance || !editorRef.current || !payload?.tables) return;
+    const model = editorRef.current.getModel();
+    if (!model) return;
+
+    const timer = setTimeout(() => {
+      validateSqlSchema(monacoInstance, model, payload.tables || []);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [monacoInstance, query, payload?.tables]);
 
   // Forward actions back to main window
   const send = useCallback(
@@ -106,10 +137,49 @@ export const ResultsWindowPage = () => {
   );
 
   const handleRunQuery = useCallback(() => {
+    const editor = editorRef.current;
+    if (editor) {
+      const model = editor.getModel();
+      const selection = editor.getSelection();
+      const selectedText = selection && !selection.isEmpty() && model
+        ? model.getValueInRange(selection)?.trim()
+        : "";
+
+      // 1. If text is highlighted / selected (bôi đen), run ONLY the highlighted text!
+      if (selectedText) {
+        send({ type: "run-query", query: selectedText });
+        return;
+      }
+
+      // 2. No text highlighted: check cursor position and split statements
+      const fullText = editor.getValue()?.trim();
+      if (!fullText) return;
+
+      const statements = splitStatements(fullText, driverDialect);
+      if (statements.length <= 1) {
+        send({ type: "run-query", query: statements[0]?.text || fullText });
+        return;
+      }
+
+      const position = editor.getPosition();
+      if (position && model) {
+        const offset = model.getOffsetAt(position);
+        const stmtAtCursor = findStatementAtOffset(statements, offset);
+        if (stmtAtCursor && stmtAtCursor.text.trim()) {
+          send({ type: "run-query", query: stmtAtCursor.text.trim() });
+          return;
+        }
+      }
+
+      send({ type: "run-query", query: statements[0]?.text || fullText });
+      return;
+    }
+
+    // Fallback when editor ref is not yet available
     const q = queryRef.current.trim();
     if (!q) return;
     send({ type: "run-query", query: q });
-  }, [send]);
+  }, [send, driverDialect]);
 
   // Global keyboard shortcuts: Ctrl+Enter to run, Ctrl+J for SQL templates
   useEffect(() => {
@@ -172,7 +242,6 @@ export const ResultsWindowPage = () => {
     );
   }
 
-  const driverDialect = (payload.driver as SqlDialect) || "postgres";
   const rowCount =
     payload.result?.rows?.length ??
     (payload.results && payload.results.length > 0
@@ -310,6 +379,10 @@ export const ResultsWindowPage = () => {
               initialValue={query}
               onChange={handleQueryChange}
               onRun={handleRunQuery}
+              onMount={(editor, monaco) => {
+                editorRef.current = editor;
+                setMonacoInstance(monaco);
+              }}
               dialect={driverDialect}
               height="100%"
               editorKey={`detached-${tabId}`}

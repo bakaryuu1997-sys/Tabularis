@@ -346,6 +346,7 @@ export const registerSqlAutocomplete = (
         range: { startLineNumber: number; endLineNumber: number; startColumn: number; endColumn: number };
         sortText: string;
         filterText?: string;
+        documentation?: { value: string };
       }> = [];
       
       if (tableAliases && tableAliases.size > 0) {
@@ -401,9 +402,39 @@ export const registerSqlAutocomplete = (
                 label: col.label,
                 kind: monaco.languages.CompletionItemKind.Field,
                 detail: `${col.detail} — ${table.name}${aliasHint}`,
+                documentation: {
+                  value: `**Column**: \`${col.label}\`\n\n**Type**: \`${col.detail}\`\n\n**Table**: \`${table.name}\``,
+                },
                 ...buildIdentifierInsert(col.label, range),
                 // Preserve the table's column order (push order) rather than
                 // sorting alphabetically, so the list mirrors the table view.
+                sortText: `0_${String(contextColumnSuggestions.length).padStart(4, "0")}`,
+              });
+            }
+          });
+        });
+      } else if (tables && tables.length > 0 && detectSqlClauseContext(textUntilPosition) === "column") {
+        // Fallback: when user has typed "SELECT " and hasn't written "FROM" yet,
+        // provide columns from the available tables in the database (sample up to 5 tables)
+        const sampleTables = tables.slice(0, 5);
+        const results = await Promise.all(
+          sampleTables.map(t => getTableColumns(connectionId, t.name, t.schema ?? schema))
+        );
+        const seenColumns = new Set<string>();
+        sampleTables.forEach((table, idx) => {
+          const cols = results[idx] || [];
+          cols.forEach(col => {
+            const key = `${table.name}.${col.label}`;
+            if (!seenColumns.has(key)) {
+              seenColumns.add(key);
+              contextColumnSuggestions.push({
+                label: col.label,
+                kind: monaco.languages.CompletionItemKind.Field,
+                detail: `${col.detail} — ${table.name}`,
+                documentation: {
+                  value: `**Column**: \`${col.label}\`\n\n**Type**: \`${col.detail}\`\n\n**Table**: \`${table.name}\``,
+                },
+                ...buildIdentifierInsert(col.label, range),
                 sortText: `0_${String(contextColumnSuggestions.length).padStart(4, "0")}`,
               });
             }
@@ -434,9 +465,12 @@ export const registerSqlAutocomplete = (
       const tableSuggestions = tables.map((t) => ({
         label: t.name,
         kind: monaco.languages.CompletionItemKind.Class,
-        detail: "Table",
+        detail: t.schema ? `Table (${t.schema})` : "Table",
+        documentation: {
+          value: `### 📁 Table: \`${t.name}\`${t.schema ? `\n*Database/Schema*: \`${t.schema}\`` : ''}\n\n*Nhấn Enter để chèn tên bảng vào câu lệnh.*`,
+        },
         ...buildIdentifierInsert(t.name, range),
-        sortText: `1_${t.name}`
+        sortText: `1_${t.name}`,
       }));
 
       // ============================================
@@ -454,6 +488,20 @@ export const registerSqlAutocomplete = (
             ...contextColumnSuggestions, // sortText already "0_…"
             ...keywordSuggestions.map((s) => ({ ...s, sortText: `1_${s.label}` })),
             ...tableSuggestions.map((s) => ({ ...s, sortText: `3_${s.label}` })),
+          ],
+          ...(keywordSuggestions.length > 0 &&
+          needsKeywordCaseRetrigger(keywordCase, typedPrefix)
+            ? { incomplete: true }
+            : {}),
+        };
+      }
+
+      if (detectSqlClauseContext(textUntilPosition) === "table") {
+        return {
+          suggestions: [
+            ...tableSuggestions, // sortText 1_...
+            ...keywordSuggestions.map((s) => ({ ...s, sortText: `2_${s.label}` })),
+            ...contextColumnSuggestions.map((s) => ({ ...s, sortText: `3_${s.label}` })),
           ],
           ...(keywordSuggestions.length > 0 &&
           needsKeywordCaseRetrigger(keywordCase, typedPrefix)
@@ -480,3 +528,150 @@ export const registerSqlAutocomplete = (
   sqlCompletionProvider = provider;
   return provider;
 };
+
+let sqlHoverProvider: { dispose: () => void } | null = null;
+
+export const disposeSqlHover = (): void => {
+  sqlHoverProvider?.dispose();
+  sqlHoverProvider = null;
+};
+
+/**
+ * Register hover provider to display table schemas & column types when hovering over SQL code.
+ */
+export const registerSqlHover = (
+  monaco: Monaco,
+  connectionId: string | null,
+  tables: TableInfo[],
+  schema?: string | null,
+) => {
+  sqlHoverProvider?.dispose();
+  if (!connectionId || !tables.length) return null;
+
+  const provider = monaco.languages.registerHoverProvider("sql", {
+    provideHover: async (model: any, position: any) => {
+      const word = model.getWordAtPosition(position);
+      if (!word) return null;
+
+      const wordText = word.word.toLowerCase();
+
+      // Check if word matches a table name
+      const matchedTable = tables.find(t => t.name.toLowerCase() === wordText);
+      if (matchedTable) {
+        const columns = await getTableColumns(connectionId, matchedTable.name, matchedTable.schema ?? schema);
+        const colList = columns.length > 0
+          ? columns.map(c => `- \`${c.label}\`: *${c.detail}*`).join("\n")
+          : "_Không có cột nào hoặc đang tải..._";
+
+        return {
+          range: {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          },
+          contents: [
+            { value: `### 📁 **Table**: \`${matchedTable.name}\`${matchedTable.schema ? ` (Schema: \`${matchedTable.schema}\`)` : ""}` },
+            { value: `**Danh sách cột (${columns.length}):**\n${colList}` },
+          ],
+        };
+      }
+
+      // Check if word matches a column in cached tables
+      const matchedCols: Array<{ table: string; type: string }> = [];
+      for (const [key, cache] of columnsCache.entries()) {
+        const col = cache.data.find(c => c.label.toLowerCase() === wordText);
+        if (col) {
+          const parts = key.split(":");
+          const tableName = parts[parts.length - 1];
+          matchedCols.push({ table: tableName, type: col.detail });
+        }
+      }
+
+      if (matchedCols.length > 0) {
+        const info = matchedCols.map(m => `- Bảng: \`${m.table}\` (${m.type})`).join("\n");
+        return {
+          range: {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          },
+          contents: [
+            { value: `### 🔹 **Column**: \`${word.word}\`` },
+            { value: `**Thuộc về:**\n${info}` },
+          ],
+        };
+      }
+
+      return null;
+    },
+  });
+
+  sqlHoverProvider = provider;
+  return provider;
+};
+
+/**
+ * Validates table names referenced in FROM / JOIN clauses against the loaded schema.
+ * Displays warning markers in Monaco if a table does not exist.
+ */
+export function validateSqlSchema(
+  monaco: Monaco,
+  model: { getValue: () => string; getPositionAt: (offset: number) => { lineNumber: number; column: number }; getOffsetAt: (position: { lineNumber: number; column: number }) => number },
+  tables: TableInfo[],
+  owner = "tabularis-sql-lint"
+): void {
+  if (!model) return;
+  const editorModel = model as Parameters<typeof monaco.editor.setModelMarkers>[0];
+
+  if (!tables || tables.length === 0) {
+    monaco.editor.setModelMarkers(editorModel, owner, []);
+    return;
+  }
+
+  const text = model.getValue();
+  if (!text || !text.trim()) {
+    monaco.editor.setModelMarkers(editorModel, owner, []);
+    return;
+  }
+
+  const tableMap = parseTablesFromQuery(text);
+  if (!tableMap || tableMap.size === 0) {
+    monaco.editor.setModelMarkers(editorModel, owner, []);
+    return;
+  }
+
+  const knownTableNames = new Set(tables.map(t => t.name.toLowerCase()));
+  const markers: Array<{
+    severity: number;
+    message: string;
+    startLineNumber: number;
+    startColumn: number;
+    endLineNumber: number;
+    endColumn: number;
+  }> = [];
+
+  for (const [, ref] of tableMap.entries()) {
+    const nameLower = ref.name.toLowerCase();
+    // Ignore common system words, CTEs, or known tables
+    if (!knownTableNames.has(nameLower)) {
+      const regex = new RegExp(`\\b(${ref.name})\\b`, "gi");
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(text)) !== null) {
+        const startPos = model.getPositionAt(m.index);
+        const endPos = model.getPositionAt(m.index + m[0].length);
+        markers.push({
+          severity: 2, // Monaco MarkerSeverity.Warning
+          message: `⚠️ Bảng "${ref.name}" không tồn tại trong cơ sở dữ liệu hiện tại.`,
+          startLineNumber: startPos.lineNumber,
+          startColumn: startPos.column,
+          endLineNumber: endPos.lineNumber,
+          endColumn: endPos.column,
+        });
+      }
+    }
+  }
+
+  monaco.editor.setModelMarkers(editorModel, owner, markers);
+}

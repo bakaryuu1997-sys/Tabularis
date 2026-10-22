@@ -93,6 +93,8 @@ import {
   type ExportStatus,
 } from "../components/modals/ExportProgressModal";
 import { splitQueries, extractTableName, getExplainableQueries, statementLabel } from "../utils/sql";
+import { splitStatements, findStatementAtOffset } from "../utils/sqlSplitter";
+import { validateSqlSchema } from "../utils/autocomplete";
 import {
   createResultEntries,
   updateResultEntry,
@@ -443,6 +445,26 @@ export const Editor = () => {
     isMultiDatabaseCapable(activeCapabilities) && selectedDatabases.length > 1;
   const isEditorOpen =
     !isTableTab && (activeTab?.isEditorOpen ?? activeTab?.type !== "table");
+
+  const { effectiveTables } = useSqlAutocompleteRegistration(activeConnectionId, {
+    monaco: monacoInstance,
+    schema: activeSchema,
+    enabled: !isNotebookTab,
+  });
+
+  // Validate schema on query changes in active editor
+  useEffect(() => {
+    if (!monacoInstance || !activeTabId || !editorsRef.current[activeTabId]) return;
+    const editor = editorsRef.current[activeTabId];
+    const model = editor.getModel();
+    if (!model) return;
+
+    const timer = setTimeout(() => {
+      validateSqlSchema(monacoInstance, model, effectiveTables);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [monacoInstance, activeTabId, activeTabQuery, effectiveTables]);
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
@@ -1318,6 +1340,8 @@ export const Editor = () => {
               csvIncludeHeaders,
             },
             activeDriver ?? undefined,
+            effectiveTables,
+            activeSchema,
           ),
         );
       }
@@ -1330,6 +1354,8 @@ export const Editor = () => {
     copyFormat,
     csvDelimiter,
     csvIncludeHeaders,
+    effectiveTables,
+    activeSchema,
   ]);
 
   // If a detached tab is closed in the main window, close its orphaned window.
@@ -1367,6 +1393,8 @@ export const Editor = () => {
               csvIncludeHeaders,
             },
             activeDriver ?? undefined,
+            effectiveTables,
+            activeSchema,
           ),
         );
       }
@@ -1379,7 +1407,14 @@ export const Editor = () => {
       };
       return {
         onRunQueryPage: (query, page) => runQuery(query, page, tabId),
-        onRunQuery: (query) => runQuery(query, 1, tabId),
+        onRunQuery: (query) => {
+          const queries = splitQueries(query, activeDialect);
+          if (queries.length > 1) {
+            runMultipleQueries(queries);
+          } else {
+            runQuery(queries[0] || query, 1, tabId);
+          }
+        },
         onUpdateQuery: (query) => updateTab(tabId, { query }),
         onReattach: () => handleReattachResults(tabId),
         onPageChange: (entryId, page) => runResultEntryPage(entryId, page, tabId),
@@ -1529,9 +1564,10 @@ export const Editor = () => {
     const editor = editorsRef.current[activeTab.id];
     const selection = editor.getSelection();
     const selectedText = selection
-      ? editor.getModel()?.getValueInRange(selection)
+      ? editor.getModel()?.getValueInRange(selection)?.trim()
       : undefined;
 
+    // 1. If text is highlighted (bôi đen), execute ONLY the highlighted text!
     if (selectedText && selection && !selection.isEmpty()) {
       const selectedQueries = splitQueries(selectedText, activeDialect);
       if (selectedQueries.length > 1) {
@@ -1542,15 +1578,32 @@ export const Editor = () => {
       return;
     }
 
+    // 2. If NO text is highlighted:
     const fullText = editor.getValue();
     if (!fullText.trim()) return;
 
-    const queries = splitQueries(fullText, activeDialect);
-    if (queries.length <= 1) runQuery(queries[0] || fullText, 1);
-    else {
-      setSelectableQueries(queries);
-      setIsQuerySelectionModalOpen(true);
+    const statements = splitStatements(fullText, activeDialect);
+    if (statements.length <= 1) {
+      // Single query in console -> run it directly!
+      runQuery(statements[0]?.text || fullText, 1);
+      return;
     }
+
+    // 3. Multiple queries in console: execute statement at current cursor position
+    const model = editor.getModel();
+    const position = editor.getPosition();
+    if (position && model) {
+      const offset = model.getOffsetAt(position);
+      const stmtAtCursor = findStatementAtOffset(statements, offset);
+      if (stmtAtCursor && stmtAtCursor.text.trim()) {
+        runQuery(stmtAtCursor.text.trim(), 1);
+        return;
+      }
+    }
+
+    // Fallback: prompt query selection modal
+    setSelectableQueries(statements.map((s) => s.text));
+    setIsQuerySelectionModalOpen(true);
   }, [activeTab, activeDialect, runQuery, runMultipleQueries]);
 
   const openExplainForQuery = useCallback((query: string) => {
@@ -2730,12 +2783,6 @@ export const Editor = () => {
       },
     });
   };
-
-  useSqlAutocompleteRegistration(activeConnectionId, {
-    monaco: monacoInstance,
-    schema: activeSchema,
-    enabled: !isNotebookTab,
-  });
 
   useEffect(() => {
     const state = location.state as EditorState;
@@ -4317,7 +4364,14 @@ export const Editor = () => {
                       onChange={(newQuery) =>
                         updateTab(t.id, { query: newQuery })
                       }
-                      onRun={() => runQuery(t.query, 1, t.id)}
+                      onRun={() => {
+                        const queries = splitQueries(t.query, activeDialect);
+                        if (queries.length > 1) {
+                          runMultipleQueries(queries);
+                        } else {
+                          runQuery(queries[0] || t.query, 1, t.id);
+                        }
+                      }}
                       dialect={activeDialect}
                     />
                   </div>
