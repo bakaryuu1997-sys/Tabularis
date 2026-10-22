@@ -1791,5 +1791,35 @@
     "migrationSql": "マイグレーションスクリプト",
     "copySql": "SQLをコピー",
     "openEditor": "エディタで開く"
+  },
+  "explainDiff": {
+    "title": "AI実行計画Diff＆インデックス最適化",
+    "subtitle": "インデックス適用前後のクエリ実行計画を比較・最適化",
+    "currentCost": "現在の計画コスト",
+    "projectedCost": "予測計画コスト",
+    "improvement": "推定改善率",
+    "recommendedIndexes": "推奨インデックス",
+    "applyIndex": "今すぐインデックス作成",
+    "planComparison": "実行計画ツリーの比較",
+    "currentPlan": "現在の計画 (Before)",
+    "projectedPlan": "最適化後の計画 (After)",
+    "note": "データベースエンジンのオプティマイザ統計に基づくシミュレーションです",
+    "noConnection": "アクティブな接続が見つかりません。",
+    "indexSuccess": "インデックスが正常に作成されました！",
+    "indexFailed": "インデックス作成エラー:"
+  },
+  "teamSync": {
+    "title": "Git連携チームワークスペース同期",
+    "subtitle": "接続設定、クエリライブラリ、チーム資産を安全に共有",
+    "tabExport": "バンドルをエクスポート",
+    "tabImport": "インポート＆マージ",
+    "tabGit": "Gitチーム運用フロー",
+    "encryptOption": "マスターパスフレーズで機密情報を暗号化 (AES-256-GCM)",
+    "exportSuccess": "ワークスペースバンドルの作成に成功しました！",
+    "exportFailed": "エクスポートエラー:",
+    "downloaded": "tabularis-workspace.jsonをダウンロードしました",
+    "emptyImport": "バンドルのJSON内容を貼り付けてください。",
+    "importInvalid": "無効なバンドルデータです。",
+    "importError": "解析エラー:"
   }
 }

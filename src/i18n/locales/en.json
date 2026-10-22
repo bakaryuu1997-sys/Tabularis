@@ -1855,5 +1855,35 @@
     "migrationSql": "Migration Script",
     "copySql": "Copy Migration SQL",
     "openEditor": "Open in Editor"
+  },
+  "explainDiff": {
+    "title": "AI Explain Plan Diff & Index Optimization",
+    "subtitle": "Compare query execution plan before and after index optimization",
+    "currentCost": "Current Plan Cost",
+    "projectedCost": "Projected Plan Cost",
+    "improvement": "Estimated Improvement",
+    "recommendedIndexes": "Recommended Indexes",
+    "applyIndex": "Create Index Now",
+    "planComparison": "Execution Plan Tree Comparison",
+    "currentPlan": "Current Plan (Before)",
+    "projectedPlan": "Optimized Plan (After)",
+    "note": "Simulated based on database engine query optimization statistics",
+    "noConnection": "No active database connection found.",
+    "indexSuccess": "Index created successfully!",
+    "indexFailed": "Failed to create index:"
+  },
+  "teamSync": {
+    "title": "Git-Backed Team Workspace Sync",
+    "subtitle": "Securely share connections, query library, and workspace assets",
+    "tabExport": "Export Team Bundle",
+    "tabImport": "Import & Merge",
+    "tabGit": "Git Team Workflow",
+    "encryptOption": "Encrypt sensitive fields with Master Passphrase (AES-256-GCM)",
+    "exportSuccess": "Workspace bundle created successfully!",
+    "exportFailed": "Failed to export bundle:",
+    "downloaded": "Downloaded tabularis-workspace.json",
+    "emptyImport": "Please paste bundle JSON content.",
+    "importInvalid": "Invalid workspace bundle data.",
+    "importError": "Parse error:"
   }
 }

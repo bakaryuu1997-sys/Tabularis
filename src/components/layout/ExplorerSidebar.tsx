@@ -40,6 +40,7 @@ import {
   BookOpen,
   Sparkles,
   GitCompare,
+  Share2,
 } from "lucide-react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { toErrorMessage } from "../../utils/errors";
@@ -2229,6 +2230,13 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   icon: GitCompare,
                                   action: () => {
                                     window.dispatchEvent(new CustomEvent("tabularis:open-schema-diff"));
+                                  },
+                                },
+                                {
+                                  label: t("sidebar.teamWorkspaceSync", { defaultValue: "Đồng bộ Workspace nhóm (Git Sync)" }),
+                                  icon: Share2,
+                                  action: () => {
+                                    window.dispatchEvent(new CustomEvent("tabularis:open-team-sync"));
                                   },
                                 },
                                 {

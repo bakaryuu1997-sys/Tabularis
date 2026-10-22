@@ -61,6 +61,7 @@ import {
   Wand2,
   Eye,
   EyeOff,
+  Radio,
 } from "lucide-react";
 import { exportQueryResultToExcel } from "../utils/excelExport";
 import { invoke } from "@tauri-apps/api/core";
@@ -85,6 +86,10 @@ import { NewRowModal } from "../components/modals/NewRowModal";
 import { ProductionSafetyModal } from "../components/modals/ProductionSafetyModal";
 import { MockDataModal } from "../components/modals/MockDataModal";
 import { SchemaDiffModal } from "../components/modals/SchemaDiffModal";
+import { VisualExplainDiffModal } from "../components/modals/VisualExplainDiffModal";
+import { TeamWorkspaceSyncModal } from "../components/modals/TeamWorkspaceSyncModal";
+import { detectRowDeltas } from "../utils/liveTableTail";
+import type { ExplainPlan } from "../types/explain";
 import { SqlTemplatesModal } from "../components/modals/SqlTemplatesModal";
 import { QueryHistoryModal } from "../components/modals/QueryHistoryModal";
 import { useDangerousQueryGuard } from "../hooks/useDangerousQueryGuard";
@@ -435,6 +440,57 @@ export const Editor = () => {
   const [isMaskingEnabled, setIsMaskingEnabled] = useState(false);
   const [mockDataModal, setMockDataModal] = useState<{ isOpen: boolean; tableName: string; schema?: string } | null>(null);
   const [isSchemaDiffOpen, setIsSchemaDiffOpen] = useState(false);
+  const [isTeamSyncOpen, setIsTeamSyncOpen] = useState(false);
+  const [isExplainDiffOpen, setIsExplainDiffOpen] = useState(false);
+  const [explainDiffPlan, setExplainDiffPlan] = useState<ExplainPlan | null>(null);
+  const [isLiveTailActive, setIsLiveTailActive] = useState(false);
+  const [liveTailInterval, setLiveTailInterval] = useState(3);
+  const [liveTailNewRowCount, setLiveTailNewRowCount] = useState(0);
+  const lastSeenRowsRef = useRef<unknown[][] | null>(null);
+
+  const handleOpenExplainDiff = useCallback(async (overrideQuery?: string) => {
+    const queryToExplain = overrideQuery || activeTab?.query;
+    if (!queryToExplain || !activeConnectionId) return;
+
+    try {
+      const plan = await invoke<ExplainPlan>("explain_query_plan", {
+        connectionId: activeConnectionId,
+        query: queryToExplain,
+        analyze: false,
+        schema: null,
+      });
+      setExplainDiffPlan(plan);
+      setIsExplainDiffOpen(true);
+    } catch (err) {
+      showAlert(`Không thể phân tích Explain Plan: ${String(err)}`, { kind: "warning" });
+    }
+  }, [activeTab?.query, activeConnectionId, showAlert]);
+
+  useEffect(() => {
+    if (!isLiveTailActive || !activeTab || !activeConnectionId) return;
+
+    const intervalMs = liveTailInterval * 1000;
+    const timer = setInterval(() => {
+      if (!activeTab.isLoading) {
+        runQueryRef.current(activeTab.query, 1, activeTab.id);
+      }
+    }, intervalMs);
+
+    return () => clearInterval(timer);
+  }, [isLiveTailActive, liveTailInterval, activeTab?.id, activeTab?.query, activeTab?.isLoading, activeConnectionId]);
+
+  useEffect(() => {
+    if (!isLiveTailActive || !activeTab?.result?.rows) return;
+    const currentRows = activeTab.result.rows;
+    const prevRows = lastSeenRowsRef.current;
+    if (prevRows && prevRows.length > 0) {
+      const delta = detectRowDeltas(prevRows, currentRows);
+      if (delta.newRowCount > 0) {
+        setLiveTailNewRowCount((prev) => prev + delta.newRowCount);
+      }
+    }
+    lastSeenRowsRef.current = currentRows;
+  }, [isLiveTailActive, activeTab?.result?.rows]);
 
   const [transactionMode, setTransactionMode] = useState<"auto" | "manual">("auto");
   const [isTransactionActive, setIsTransactionActive] = useState(false);
@@ -3202,11 +3258,17 @@ export const Editor = () => {
     };
     window.addEventListener("tabularis:open-mock-data", handleOpenMockData);
     window.addEventListener("tabularis:open-schema-diff", handleOpenSchemaDiff);
+    const handleOpenTeamSync = () => setIsTeamSyncOpen(true);
+    const handleOpenExplainDiffEvent = () => handleOpenExplainDiff();
+    window.addEventListener("tabularis:open-team-sync", handleOpenTeamSync);
+    window.addEventListener("tabularis:open-explain-diff", handleOpenExplainDiffEvent);
     return () => {
       window.removeEventListener("tabularis:open-sql-templates", handleOpenTemplates);
       window.removeEventListener("tabularis:open-query-history", handleOpenHistory);
       window.removeEventListener("tabularis:open-mock-data", handleOpenMockData);
       window.removeEventListener("tabularis:open-schema-diff", handleOpenSchemaDiff);
+      window.removeEventListener("tabularis:open-team-sync", handleOpenTeamSync);
+      window.removeEventListener("tabularis:open-explain-diff", handleOpenExplainDiffEvent);
     };
   }, []);
 
@@ -4136,6 +4198,59 @@ export const Editor = () => {
                         <span>{t("editor.maskSensitiveData.button", { defaultValue: "Che mờ PII" })}</span>
                       </button>
 
+                      {/* Live Tail Toggle */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsLiveTailActive((prev) => !prev);
+                            setLiveTailNewRowCount(0);
+                          }}
+                          className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border ${
+                            isLiveTailActive
+                              ? "bg-emerald-950/60 text-emerald-300 border-emerald-500/50 hover:bg-emerald-950/80"
+                              : "bg-surface text-secondary border-default hover:text-primary hover:bg-surface-secondary"
+                          }`}
+                          title={t("editor.liveTail.tooltip", {
+                            defaultValue: "Theo dõi dữ liệu bảng thời gian thực (Live Table Tail)",
+                          })}
+                        >
+                          <Radio size={12} className={isLiveTailActive ? "text-emerald-400 animate-pulse" : "text-muted shrink-0"} />
+                          <span>Live Tail{isLiveTailActive ? ` (${liveTailInterval}s)` : ""}</span>
+                          {isLiveTailActive && liveTailNewRowCount > 0 && (
+                            <span className="ml-0.5 px-1 rounded-full bg-emerald-500 text-black text-[10px] font-bold">
+                              +{liveTailNewRowCount}
+                            </span>
+                          )}
+                        </button>
+                        {isLiveTailActive && (
+                          <select
+                            value={liveTailInterval}
+                            onChange={(e) => setLiveTailInterval(Number(e.target.value))}
+                            className="px-1 py-0.5 rounded bg-surface border border-default text-[11px] text-primary focus:outline-none"
+                          >
+                            <option value={2}>2s</option>
+                            <option value={5}>5s</option>
+                            <option value={10}>10s</option>
+                          </select>
+                        )}
+                      </div>
+
+                      {/* Slow Query AI Optimizer */}
+                      {activeTab.executionTime !== null && activeTab.executionTime > 500 && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenExplainDiff()}
+                          className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/40 hover:bg-amber-500/20 transition-all shadow-sm animate-pulse"
+                          title={t("editor.explainDiff.slowQueryTooltip", {
+                            defaultValue: "Truy vấn chạy chậm (>500ms). Nhấn để phân tích cây kế hoạch và tạo index tối ưu!",
+                          })}
+                        >
+                          <Zap size={11} className="text-amber-400" />
+                          <span>Tối ưu AI ({activeTab.executionTime.toFixed(0)}ms)</span>
+                        </button>
+                      )}
+
                     </div>
 
                     {/* Pagination Controls */}
@@ -4727,6 +4842,20 @@ export const Editor = () => {
         isOpen={isSchemaDiffOpen}
         onClose={() => setIsSchemaDiffOpen(false)}
         onOpenInEditor={(sql) => addTab({ type: "console", query: sql })}
+      />
+      <VisualExplainDiffModal
+        isOpen={isExplainDiffOpen}
+        onClose={() => setIsExplainDiffOpen(false)}
+        plan={explainDiffPlan}
+        connectionId={activeConnectionId}
+        onIndexCreated={() => {
+          setIsExplainDiffOpen(false);
+          if (activeTab?.query) runQuery(activeTab.query, 1);
+        }}
+      />
+      <TeamWorkspaceSyncModal
+        isOpen={isTeamSyncOpen}
+        onClose={() => setIsTeamSyncOpen(false)}
       />
       <TabSwitcherModal
         isOpen={isTabSwitcherOpen}

@@ -1855,5 +1855,35 @@
     "migrationSql": "Script Migration SQL",
     "copySql": "Sao chép SQL Migration",
     "openEditor": "Mở trong Editor"
+  },
+  "explainDiff": {
+    "title": "AI Explain Plan Diff & Tối Ưu Chỉ Mục",
+    "subtitle": "So sánh kế hoạch thực thi trước và sau khi đánh index tối ưu",
+    "currentCost": "Chi phí Kế hoạch Hiện tại",
+    "projectedCost": "Chi phí Kế hoạch Đề xuất",
+    "improvement": "Mức độ Tối ưu Ước tính",
+    "recommendedIndexes": "Đề xuất Chỉ Mục (Index Suggestions)",
+    "applyIndex": "Tạo Index Ngay",
+    "planComparison": "So sánh Cây Kế hoạch Thực thi",
+    "currentPlan": "Kế hoạch Hiện tại (Trước)",
+    "projectedPlan": "Kế hoạch Tối ưu (Sau)",
+    "note": "Mô phỏng dựa trên thống kê chi phí tối ưu hóa truy vấn của database engine",
+    "noConnection": "Không tìm thấy kết nối CSDL hiện tại.",
+    "indexSuccess": "Đã tạo chỉ mục thành công!",
+    "indexFailed": "Lỗi tạo chỉ mục:"
+  },
+  "teamSync": {
+    "title": "Đồng Bộ Workspace Nhóm Qua Git (Team Workspace Sync)",
+    "subtitle": "Chia sẻ cấu hình kết nối, thư viện truy vấn và tài liệu nội bộ an toàn",
+    "tabExport": "Xuất Bundle Đồng Bộ",
+    "tabImport": "Nhập & Hợp Nhất (Import)",
+    "tabGit": "Quy Trình Git Team",
+    "encryptOption": "Mã hóa bảo mật bằng Master Passphrase (AES-256-GCM)",
+    "exportSuccess": "Đã tạo bundle thành công!",
+    "exportFailed": "Lỗi xuất bundle:",
+    "downloaded": "Đã tải file tabularis-workspace.json",
+    "emptyImport": "Vui lòng dán nội dung file bundle JSON.",
+    "importInvalid": "Dữ liệu bundle không hợp lệ.",
+    "importError": "Lỗi phân tích:"
   }
 }

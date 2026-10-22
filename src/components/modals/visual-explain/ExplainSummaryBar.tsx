@@ -1,10 +1,10 @@
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, Sparkles, TableProperties, Network } from "lucide-react";
+import { FileText, Sparkles, TableProperties, Network, Zap } from "lucide-react";
 import type { ExplainPlan } from "../../../types/explain";
 import { formatTime, formatCost, getMaxCost } from "../../../utils/explainPlan";
 
-export type ExplainViewMode = "graph" | "table" | "raw" | "ai";
+export type ExplainViewMode = "graph" | "table" | "diff" | "raw" | "ai";
 
 interface ExplainSummaryBarProps {
   plan: ExplainPlan | null;
@@ -81,6 +81,13 @@ export const ExplainSummaryBar = memo(
           >
             <TableProperties size={12} />
             {t("editor.visualExplain.tableView")}
+          </button>
+          <button
+            onClick={() => onViewModeChange("diff")}
+            className={toggleButtonClass("diff")}
+          >
+            <Zap size={12} className="text-amber-400" />
+            {t("editor.visualExplain.diffView", { defaultValue: "Plan Diff & Tối ưu" })}
           </button>
           <button
             onClick={() => onViewModeChange("raw")}

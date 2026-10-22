@@ -14,6 +14,7 @@ import {
 import { ExplainGraph } from "../modals/visual-explain/ExplainGraph";
 import { ExplainTableView } from "../modals/visual-explain/ExplainTableView";
 import { ExplainAiAnalysis } from "../modals/visual-explain/ExplainAiAnalysis";
+import { ExplainDiffView } from "../modals/visual-explain/ExplainDiffView";
 import { ExplainNodeDetails } from "../modals/visual-explain/ExplainNodeDetails";
 import { ExplainOverviewBar } from "../modals/visual-explain/ExplainOverviewBar";
 
@@ -109,6 +110,8 @@ export const VisualExplainView = ({
             />
           ) : viewMode === "ai" ? (
             <ExplainAiAnalysis plan={plan} />
+          ) : viewMode === "diff" ? (
+            <ExplainDiffView plan={plan} />
           ) : viewMode === "table" ? (
             <ExplainTableView
               plan={plan}
