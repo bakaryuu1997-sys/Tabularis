@@ -185,6 +185,7 @@ interface EditorState {
   schema?: string;
   targetConnectionId?: string;
   title?: string;
+  splitRight?: boolean;
 }
 
 interface ExportProgress {
@@ -2967,7 +2968,7 @@ export const Editor = () => {
         )
           return;
 
-        const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}-${state.schema}-${state.title}`;
+        const queryKey = `${state.initialQuery}-${state.tableName}-${state.queryName}-${state.schema}-${state.title}-${state.splitRight ? "split" : "main"}`;
 
         if (processingRef.current === queryKey) {
           // If re-navigating to the same definition with readOnly, patch any
@@ -2992,6 +2993,7 @@ export const Editor = () => {
           materialized: navMaterialized,
           schema: navSchema,
           title: navTitle,
+          splitRight,
         } = state;
         const tabId = addTab({
           type: table ? "table" : "console",
@@ -3002,6 +3004,15 @@ export const Editor = () => {
           readOnly: navReadOnly,
           materialized: navMaterialized,
         });
+
+        if (splitRight && tabId) {
+          setSplitOrientation("horizontal");
+          if (!splitTabIds.includes(tabId)) {
+            togglePin(tabId);
+          } else {
+            setActiveSplitTabId(tabId);
+          }
+        }
 
         if (tabId && !preventAutoRun) {
           // Queue execution only if not prevented

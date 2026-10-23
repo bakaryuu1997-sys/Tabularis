@@ -41,6 +41,7 @@ import {
   Sparkles,
   GitCompare,
   Share2,
+  Columns2,
 } from "lucide-react";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { toErrorMessage } from "../../utils/errors";
@@ -1799,6 +1800,22 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       },
                     },
                     {
+                      label: t("editor.split.splitRight", { defaultValue: "Mở bên phải (Split Right)" }),
+                      icon: Columns2,
+                      action: () => {
+                        const quotedTable = quoteTableRef(contextMenu.id, activeDriver, ctxSchema);
+                        navigate("/editor", {
+                          state: {
+                            initialQuery: `SELECT * FROM ${quotedTable}`,
+                            tableName: contextMenu.id,
+                            schema: ctxSchema,
+                            splitRight: true,
+                            targetConnectionId: activeConnectionId,
+                          },
+                        });
+                      },
+                    },
+                    {
                       label: t("sidebar.newConsole"),
                       icon: FileCode,
                       action: () => {
@@ -2003,6 +2020,22 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                 },
                               },
                               {
+                                label: t("editor.split.splitRight", { defaultValue: "Mở bên phải (Split Right)" }),
+                                icon: Columns2,
+                                action: () => {
+                                  const quotedView = quoteTableRef(contextMenu.id, activeDriver, viewCtxSchema);
+                                  navigate("/editor", {
+                                    state: {
+                                      initialQuery: `SELECT * FROM ${quotedView}`,
+                                      tableName: contextMenu.id,
+                                      schema: viewCtxSchema,
+                                      splitRight: true,
+                                      targetConnectionId: activeConnectionId,
+                                    },
+                                  });
+                                },
+                              },
+                              {
                                 label: t("sidebar.countRows"),
                                 icon: Hash,
                                 action: () => {
@@ -2055,6 +2088,23 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                 action: () => {
                                   const quotedView = quoteTableRef(contextMenu.id, activeDriver, mvCtxSchema);
                                   runQuery(`SELECT * FROM ${quotedView}`, undefined, contextMenu.id);
+                                },
+                              },
+                              {
+                                label: t("editor.split.splitRight", { defaultValue: "Mở bên phải (Split Right)" }),
+                                icon: Columns2,
+                                action: () => {
+                                  const quotedView = quoteTableRef(contextMenu.id, activeDriver, mvCtxSchema);
+                                  navigate("/editor", {
+                                    state: {
+                                      initialQuery: `SELECT * FROM ${quotedView}`,
+                                      tableName: contextMenu.id,
+                                      schema: mvCtxSchema,
+                                      materialized: true,
+                                      splitRight: true,
+                                      targetConnectionId: activeConnectionId,
+                                    },
+                                  });
                                 },
                               },
                               {
