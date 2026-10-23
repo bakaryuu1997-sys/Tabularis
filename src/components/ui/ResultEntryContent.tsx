@@ -110,7 +110,8 @@ export function ResultEntryContent({
     return (
       <div style={{ height: gridHeight }} className="overflow-hidden">
         <DataGrid
-          key={`${entry.id}-${entry.result.rows.length}`}
+          key={entry.id}
+          scrollKey={entry.id}
           columns={entry.result.columns}
           data={entry.result.rows}
           tableName={null}
@@ -166,7 +167,8 @@ export function ResultEntryContent({
       </div>
       <div className="flex-1 min-h-0 overflow-hidden">
         <DataGrid
-          key={`${entry.id}-${entry.result.rows.length}`}
+          key={entry.id}
+          scrollKey={entry.id}
           columns={entry.result.columns}
           data={entry.result.rows}
           tableName={null}

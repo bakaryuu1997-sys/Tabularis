@@ -380,3 +380,18 @@ export function getCellStateClass(params: CellClassParams): string {
 function escapeRegExp(string: string): string {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+/**
+ * Resolves a stable key used to cache and restore DataGrid horizontal & vertical scroll position.
+ */
+export function resolveGridScrollKey(
+  scrollKey?: string,
+  columnVisibilityKey?: string,
+  tableName?: string | null,
+  connectionId?: string | null,
+): string | undefined {
+  return (
+    scrollKey ??
+    columnVisibilityKey ??
+    (tableName && connectionId ? `${connectionId}:${tableName}` : undefined)
+  );
+}

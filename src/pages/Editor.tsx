@@ -960,7 +960,7 @@ export const Editor = () => {
       updateTab(targetTabId, {
         isLoading: true,
         error: "",
-        result: null,
+        result: targetTab?.type === "table" && targetTab.result ? targetTab.result : null,
         executionTime: null,
         page: pageNum,
         // Clear multi-result state when running a single query
@@ -4650,7 +4650,8 @@ export const Editor = () => {
                 <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                   <div className="flex-1 min-h-0 overflow-hidden">
                     <DataGrid
-                      key={`${activeTab.id}-${activeTab.sortClause || "none"}-${activeTab.filterClause || "none"}-${activeTab.result?.rows.length || 0}-${Object.keys(activeTab.pendingInsertions || {}).length}`}
+                      key={activeTab.id}
+                      scrollKey={activeTab.id}
                       columns={activeTab.result?.columns || []}
                       data={activeTab.result?.rows || []}
                       tableName={activeTab.activeTable}
@@ -4919,6 +4920,7 @@ export const Editor = () => {
                         readonly:
                           driverReadonly || !!splitTab.materialized,
                         columnVisibilityKey: `${activeConnectionId ?? ""}:${splitTab.schema ?? ""}:${splitTab.activeTable}`,
+                        scrollKey: `split:${splitTab.id}`,
                       }
                     : undefined
                 }

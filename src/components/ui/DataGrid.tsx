@@ -1,6 +1,7 @@
 import React, {
   useState,
   useEffect,
+  useLayoutEffect,
   useRef,
   useCallback,
   useMemo,
@@ -55,6 +56,7 @@ import {
   getResultValueType,
   buildPkMap,
   serializePkKey,
+  resolveGridScrollKey,
   type MergedRow,
 } from "../../utils/dataGrid";
 import { useSettings } from "../../hooks/useSettings";
@@ -150,6 +152,7 @@ interface DataGridProps {
   columnVisibilityKey?: string;
   isMaskingEnabled?: boolean;
   onToggleMasking?: () => void;
+  scrollKey?: string;
 }
 
 // SQL tag shown in the chip next to each "Filter by this value" entry.
@@ -184,6 +187,9 @@ const CELL_VALUE_FILTER_LABEL_KEYS: Record<CellValueFilterOperator, string> = {
   "IS NULL": "dataGrid.filterIsNull",
   "IS NOT NULL": "dataGrid.filterIsNotNull",
 };
+
+/** Persistent horizontal/vertical scroll positions across renders, tab switches, and sorts. */
+const gridScrollPositions = new Map<string, { scrollLeft: number; scrollTop: number }>();
 
 export const DataGrid = React.memo(
   ({
@@ -222,6 +228,7 @@ export const DataGrid = React.memo(
     readonly: readonlyProp,
     isMaskingEnabled: isMaskingEnabledProp,
     columnVisibilityKey,
+    scrollKey,
   }: DataGridProps) => {
     const { t } = useTranslation();
     const { activeSchema, connections } = useDatabase();
@@ -900,6 +907,92 @@ export const DataGrid = React.memo(
 
     const coreRowModel = useMemo(() => getCoreRowModel(), []);
 
+    const effectiveScrollKey = useMemo(() => {
+      return resolveGridScrollKey(
+        scrollKey,
+        columnVisibilityKey,
+        tableName,
+        connectionId,
+      );
+    }, [scrollKey, columnVisibilityKey, tableName, connectionId]);
+
+    const parentRef = useRef<HTMLDivElement>(null);
+    const lastScrollLeftRef = useRef<number>(0);
+    const lastScrollTopRef = useRef<number>(0);
+
+    // Keep tracked scroll position updated on user scroll
+    useEffect(() => {
+      const el = parentRef.current;
+      if (!el) return;
+
+      const handleScroll = () => {
+        lastScrollLeftRef.current = el.scrollLeft;
+        lastScrollTopRef.current = el.scrollTop;
+        if (effectiveScrollKey) {
+          gridScrollPositions.set(effectiveScrollKey, {
+            scrollLeft: el.scrollLeft,
+            scrollTop: el.scrollTop,
+          });
+        }
+      };
+
+      el.addEventListener("scroll", handleScroll, { passive: true });
+      return () => {
+        el.removeEventListener("scroll", handleScroll);
+      };
+    }, [effectiveScrollKey]);
+
+    // Restore scroll position on initial mount or key change
+    useLayoutEffect(() => {
+      const el = parentRef.current;
+      if (!el) return;
+      const saved = effectiveScrollKey ? gridScrollPositions.get(effectiveScrollKey) : undefined;
+      const targetLeft = saved?.scrollLeft ?? lastScrollLeftRef.current;
+      if (targetLeft > 0) {
+        el.scrollLeft = targetLeft;
+      }
+      const targetTop = saved?.scrollTop ?? lastScrollTopRef.current;
+      if (targetTop > 0) {
+        el.scrollTop = targetTop;
+      }
+    }, [effectiveScrollKey]);
+
+    // Preserve horizontal scroll position when data, columns, or sortClause updates
+    useLayoutEffect(() => {
+      const el = parentRef.current;
+      if (!el) return;
+      const saved = effectiveScrollKey ? gridScrollPositions.get(effectiveScrollKey) : undefined;
+      const targetLeft = saved?.scrollLeft ?? lastScrollLeftRef.current;
+      if (targetLeft > 0) {
+        el.scrollLeft = targetLeft;
+        const rafId = requestAnimationFrame(() => {
+          if (el && targetLeft > 0 && Math.abs(el.scrollLeft - targetLeft) > 1) {
+            el.scrollLeft = targetLeft;
+          }
+        });
+        return () => cancelAnimationFrame(rafId);
+      }
+    }, [data, columns, sortClause, effectiveScrollKey]);
+
+    const handleColumnSort = useCallback(
+      (colName: string) => {
+        if (!onSort) return;
+        const el = parentRef.current;
+        if (el) {
+          lastScrollLeftRef.current = el.scrollLeft;
+          lastScrollTopRef.current = el.scrollTop;
+          if (effectiveScrollKey) {
+            gridScrollPositions.set(effectiveScrollKey, {
+              scrollLeft: el.scrollLeft,
+              scrollTop: el.scrollTop,
+            });
+          }
+        }
+        onSort(colName);
+      },
+      [onSort, effectiveScrollKey],
+    );
+
     const tableColumns = React.useMemo(
       () =>
         columns.map((colName, index) =>
@@ -978,7 +1071,7 @@ export const DataGrid = React.memo(
                       role="button"
                       tabIndex={0}
                       aria-label={sortPrompt}
-                      onClick={() => onSort(colName)}
+                      onClick={() => handleColumnSort(colName)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
@@ -1011,7 +1104,7 @@ export const DataGrid = React.memo(
         columnHelper,
         t,
         sortClause,
-        onSort,
+        handleColumnSort,
         pkColumns,
         foreignKeys,
         columnMetadata,
@@ -1019,7 +1112,6 @@ export const DataGrid = React.memo(
       ],
     );
 
-    const parentRef = useRef<HTMLDivElement>(null);
     const [parentViewportWidth, setParentViewportWidth] = useState(0);
 
     useEffect(() => {
