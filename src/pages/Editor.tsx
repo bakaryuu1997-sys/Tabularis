@@ -531,11 +531,14 @@ export const Editor = () => {
     if (!model) return;
 
     const timer = setTimeout(() => {
-      validateSqlSchema(monacoInstance, model, effectiveTables);
-    }, 400);
+      validateSqlSchema(monacoInstance, model, effectiveTables, {
+        connectionId: activeConnectionId,
+        schema: activeSchema,
+      });
+    }, 250);
 
     return () => clearTimeout(timer);
-  }, [monacoInstance, activeTabId, activeTabQuery, effectiveTables]);
+  }, [monacoInstance, activeTabId, activeTabQuery, effectiveTables, activeConnectionId, activeSchema]);
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
@@ -3772,6 +3775,9 @@ export const Editor = () => {
                 height="100%"
                 dialect={activeDialect}
                 initialValue={tab.query}
+                connectionId={activeConnectionId}
+                tables={effectiveTables}
+                schema={activeSchema}
                 onChange={(val) => {
                   if (isActive) updateTab(tab.id, { query: val });
                 }}
@@ -4672,6 +4678,9 @@ export const Editor = () => {
                     <SqlEditorWrapper
                       editorKey={`split-${t.id}`}
                       initialValue={t.query}
+                      connectionId={activeConnectionId}
+                      tables={effectiveTables}
+                      schema={activeSchema}
                       onChange={(newQuery) =>
                         updateTab(t.id, { query: newQuery })
                       }

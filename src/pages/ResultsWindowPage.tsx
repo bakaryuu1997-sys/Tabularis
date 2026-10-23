@@ -86,11 +86,14 @@ export const ResultsWindowPage = () => {
     if (!model) return;
 
     const timer = setTimeout(() => {
-      validateSqlSchema(monacoInstance, model, payload.tables || []);
-    }, 400);
+      validateSqlSchema(monacoInstance, model, payload.tables || [], {
+        connectionId: payload?.connectionId,
+        schema: payload?.schema,
+      });
+    }, 250);
 
     return () => clearTimeout(timer);
-  }, [monacoInstance, query, payload?.tables]);
+  }, [monacoInstance, query, payload?.tables, payload?.connectionId, payload?.schema]);
 
   // Forward actions back to main window
   const send = useCallback(
@@ -379,6 +382,9 @@ export const ResultsWindowPage = () => {
               initialValue={query}
               onChange={handleQueryChange}
               onRun={handleRunQuery}
+              connectionId={payload?.connectionId}
+              tables={payload?.tables || []}
+              schema={payload?.schema}
               onMount={(editor, monaco) => {
                 editorRef.current = editor;
                 setMonacoInstance(monaco);

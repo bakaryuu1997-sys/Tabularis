@@ -9,10 +9,340 @@ export interface ParsedTableRef {
 
 // Removes wrapping SQL identifier quotes/backticks.
 // Unquoted identifiers are normalized to lowercase.
-function stripIdentifierQuotes(token: string): string {
+export function stripIdentifierQuotes(token: string): string {
   const q = token[0];
-  if (q === '"' || q === '`') return token.slice(1, -1).replaceAll(q + q, q);
+  if (q === '"' || q === '`' || q === '[') {
+    const endChar = q === '[' ? ']' : q;
+    const inner = token.endsWith(endChar) ? token.slice(1, -1) : token.slice(1);
+    return inner.replaceAll(q + q, q);
+  }
   return token.toLowerCase();
+}
+
+/**
+ * Masks comments and string literals with whitespace of identical character length,
+ * ensuring character offsets match 1-to-1 with the original SQL string for diagnostics.
+ */
+export function maskCommentsAndLiterals(sql: string): string {
+  if (!sql) return '';
+  // 1. Single-line comments -- ...
+  let res = sql.replace(/--[^\r\n]*/g, (m) => ' '.repeat(m.length));
+  // 2. Block comments /* ... */
+  res = res.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\r\n]/g, ' '));
+  // 3. PostgreSQL dollar-quoted strings: $tag$...$tag$ or $$...$$
+  res = res.replace(/\$([a-zA-Z0-9_]*)\$[\s\S]*?\$\1\$/g, (m) => m.replace(/[^\r\n]/g, ' '));
+  // 4. Standard string literals: '...'
+  res = res.replace(/'(?:[^'\\]|\\.|'')*'/g, (m) => "'" + ' '.repeat(Math.max(0, m.length - 2)) + "'");
+  return res;
+}
+
+export interface TableOccurrence {
+  name: string;
+  schema?: string;
+  alias?: string;
+  startIndex: number;
+  endIndex: number;
+}
+
+export interface ExtractedSqlScope {
+  tables: Map<string, ParsedTableRef>; // alias/name -> ParsedTableRef
+  cteNames: Set<string>;
+  tablePositions: TableOccurrence[];
+}
+
+export interface ExtractedColumnRef {
+  name: string;
+  tableOrAlias?: string; // If qualified (e.g. u.id or users.id)
+  startIndex: number;
+  endIndex: number;
+}
+
+export const STANDARD_SQL_KEYWORDS = new Set([
+  // Clauses & Keywords
+  'select', 'from', 'where', 'and', 'or', 'not', 'in', 'is', 'null', 'like', 'ilike',
+  'between', 'exists', 'case', 'when', 'then', 'else', 'end', 'as', 'distinct', 'all',
+  'any', 'some', 'join', 'left', 'right', 'inner', 'outer', 'cross', 'full', 'natural',
+  'on', 'using', 'group', 'by', 'having', 'order', 'asc', 'desc', 'nulls', 'first', 'last',
+  'limit', 'offset', 'fetch', 'union', 'intersect', 'except', 'insert', 'into', 'values',
+  'update', 'set', 'delete', 'truncate', 'table', 'create', 'alter', 'drop', 'view',
+  'index', 'database', 'schema', 'default', 'primary', 'key', 'foreign', 'references',
+  'constraint', 'cascade', 'restrict', 'check', 'unique', 'with', 'recursive',
+  'true', 'false', 'boolean', 'collate', 'returning', 'conflict', 'do', 'nothing',
+  'over', 'partition', 'window', 'rows', 'range', 'unbounded', 'preceding', 'following',
+  'current', 'row', 'lateral', 'tablesample', 'qualify', 'straight_join', 'interval',
+  'year', 'month', 'day', 'hour', 'minute', 'second', 'for', 'update', 'share',
+  'session_user', 'user', 'system_user', 'current_date', 'current_time', 'current_timestamp',
+  'current_user', 'localtime', 'localtimestamp', 'cast', 'extract', 'position', 'substring',
+  'trim', 'leading', 'trailing', 'both', 'only',
+  // Common Data Types
+  'int', 'integer', 'bigint', 'smallint', 'tinyint', 'mediumint', 'numeric', 'decimal',
+  'float', 'real', 'double', 'precision', 'money', 'character', 'varying', 'varchar',
+  'char', 'text', 'binary', 'varbinary', 'blob', 'bytea', 'date', 'time', 'timestamp',
+  'timestamptz', 'interval', 'uuid', 'json', 'jsonb', 'xml', 'serial', 'bigserial',
+  // Pseudo-tables and system words
+  'dual', 'information_schema', 'pg_catalog', 'sqlite_master', 'sqlite_schema', 'sys',
+]);
+
+const TABLE_BOUNDARY_KEYWORDS = new Set([
+  'join', 'left', 'right', 'inner', 'outer', 'cross', 'natural', 'full',
+  'on', 'using', 'where', 'group', 'order', 'having', 'limit', 'offset',
+  'union', 'intersect', 'except', 'for', 'fetch', 'window', 'lateral',
+  'tablesample', 'qualify', 'straight_join', 'set', 'values'
+]);
+
+/**
+ * Extracts all table occurrences, aliases, and CTE declarations across SELECT, INSERT, UPDATE, DELETE queries.
+ */
+export function extractAllTablesFromQuery(sql: string): ExtractedSqlScope {
+  const tableMap = new Map<string, ParsedTableRef>();
+  const cteNames = new Set<string>();
+  const tablePositions: TableOccurrence[] = [];
+
+  if (!sql || !sql.trim()) {
+    return { tables: tableMap, cteNames, tablePositions };
+  }
+
+  const masked = maskCommentsAndLiterals(sql);
+
+  // 1. Detect CTE names (WITH [RECURSIVE] name [(...)] AS (...) [, name2 AS (...)])
+  const ctePattern = /(?:\bwith\s+(?:recursive\s+)?|,\s*)([a-zA-Z_][a-zA-Z0-9_]*|"(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\])\s*(?:\([^)]*\)\s*)?as\s*\(/gi;
+  let cteMatch: RegExpExecArray | null;
+  while ((cteMatch = ctePattern.exec(masked)) !== null) {
+    const name = stripIdentifierQuotes(cteMatch[1]);
+    if (!STANDARD_SQL_KEYWORDS.has(name.toLowerCase())) {
+      cteNames.add(name.toLowerCase());
+    }
+  }
+
+  // Helper to record a table occurrence
+  const addTableOccurrence = (rawToken: string, schemaToken: string | undefined, aliasToken: string | undefined, fullMatchIndex: number, fullMatchStr: string) => {
+    const rawName = stripIdentifierQuotes(rawToken);
+    if (STANDARD_SQL_KEYWORDS.has(rawName.toLowerCase()) || cteNames.has(rawName.toLowerCase())) {
+      return;
+    }
+
+    const schema = schemaToken ? stripIdentifierQuotes(schemaToken) : undefined;
+    const cleanAlias = aliasToken ? stripIdentifierQuotes(aliasToken) : rawName;
+    const alias = TABLE_BOUNDARY_KEYWORDS.has(cleanAlias.toLowerCase()) ? rawName : cleanAlias;
+
+    const tableTokenIndex = fullMatchIndex + fullMatchStr.lastIndexOf(rawToken);
+
+    if (!tablePositions.some((p) => p.startIndex === tableTokenIndex)) {
+      tablePositions.push({
+        name: rawName,
+        schema,
+        alias,
+        startIndex: tableTokenIndex,
+        endIndex: tableTokenIndex + rawToken.length,
+      });
+      tableMap.set(alias.toLowerCase(), { name: rawName, schema });
+      tableMap.set(rawName.toLowerCase(), { name: rawName, schema });
+    }
+  };
+
+  // 2. Extract tables in FROM / JOIN sections
+  // Only search after FROM or JOIN keywords
+  const fromJoinRegex = /\b(?:from|(?:left\s+|right\s+|inner\s+|outer\s+|cross\s+|natural\s+|full\s+)*join)\b/gi;
+  let fjMatch: RegExpExecArray | null;
+
+  while ((fjMatch = fromJoinRegex.exec(masked)) !== null) {
+    const isFrom = fjMatch[0].toLowerCase() === 'from';
+    const sectionStart = fjMatch.index + fjMatch[0].length;
+    const rest = masked.slice(sectionStart);
+
+    // If FROM, it can be followed by table1 [as a1], table2 [as a2] until boundary
+    // If JOIN, it's followed by table1 [as a1] until ON / USING / boundary
+    const boundaryMatch = /\b(?:where|group\s+by|order\s+by|having|limit|offset|union|intersect|except|for\s+update|join|left|right|inner|outer|cross|natural|full)\b/i.exec(rest);
+    const sectionLength = boundaryMatch ? boundaryMatch.index : rest.length;
+    const sectionText = rest.slice(0, sectionLength);
+
+    // Strip ON <cond> and USING(...)
+    const cleanedSection = sectionText
+      .replace(/\bon\b[\s\S]*?(?=\bjoin\b|$)/gi, (m) => ' '.repeat(m.length))
+      .replace(/\busing\s*\([^)]*\)/gi, (m) => ' '.repeat(m.length));
+
+    // Match tables in this isolated section: first table or comma-separated tables
+    const tablePattern = /(?:^|,)\s*("(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\]|[a-zA-Z_][a-zA-Z0-9_]*)(?:\.("(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\]|[a-zA-Z_][a-zA-Z0-9_]*))?(?:\s+(?:as\s+)?("(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\]|[a-zA-Z_][a-zA-Z0-9_]*))?/gi;
+    let tMatch: RegExpExecArray | null;
+
+    while ((tMatch = tablePattern.exec(cleanedSection)) !== null) {
+      const schemaToken = tMatch[2] ? tMatch[1] : undefined;
+      const tableToken = tMatch[2] ?? tMatch[1];
+      if (!tableToken) continue;
+
+      const aliasToken = tMatch[3];
+      addTableOccurrence(tableToken, schemaToken, aliasToken, sectionStart + tMatch.index, tMatch[0]);
+
+      // If not FROM (i.e. single table in JOIN), break after first table
+      if (!isFrom) break;
+    }
+  }
+
+  // 3. Extract tables from INSERT INTO, UPDATE, DELETE FROM, TRUNCATE
+  const dmlPattern =
+    /\b(?:insert\s+into|update|delete\s+from|truncate\s+(?:table\s+)?)\s+("(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\]|[a-zA-Z_][a-zA-Z0-9_]*)(?:\.("(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\]|[a-zA-Z_][a-zA-Z0-9_]*))?/gi;
+
+  let dmlMatch: RegExpExecArray | null;
+  while ((dmlMatch = dmlPattern.exec(masked)) !== null) {
+    const schemaToken = dmlMatch[2] ? dmlMatch[1] : undefined;
+    const tableToken = dmlMatch[2] ?? dmlMatch[1];
+    if (!tableToken) continue;
+
+    addTableOccurrence(tableToken, schemaToken, undefined, dmlMatch.index, dmlMatch[0]);
+  }
+
+  return { tables: tableMap, cteNames, tablePositions };
+}
+
+/**
+ * Extracts qualified and unqualified column references from SQL query text for schema validation.
+ */
+export function extractColumnReferences(
+  sql: string,
+  tableAliases: Map<string, ParsedTableRef>,
+  cteNames: Set<string>,
+): ExtractedColumnRef[] {
+  const results: ExtractedColumnRef[] = [];
+  if (!sql || !sql.trim()) return results;
+
+  const masked = maskCommentsAndLiterals(sql);
+
+  // 1. Qualified column references: qualifier.column (e.g. u.id, users.email)
+  const qualifiedPattern =
+    /(?<![a-zA-Z0-9_."`\]])([a-zA-Z_][a-zA-Z0-9_]*|"(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\])\s*\.\s*([a-zA-Z_][a-zA-Z0-9_]*|"(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\]|\*)(?![a-zA-Z0-9_."`\]])/g;
+
+  let qMatch: RegExpExecArray | null;
+  const coveredRanges: Array<[number, number]> = [];
+
+  while ((qMatch = qualifiedPattern.exec(masked)) !== null) {
+    const qualifierRaw = qMatch[1];
+    const columnRaw = qMatch[2];
+
+    const qualifier = stripIdentifierQuotes(qualifierRaw);
+    const colName = stripIdentifierQuotes(columnRaw);
+
+    // Skip wildcard *
+    if (colName === '*') continue;
+
+    const colIndex = qMatch.index + qMatch[0].lastIndexOf(columnRaw);
+    coveredRanges.push([qMatch.index, qMatch.index + qMatch[0].length]);
+
+    results.push({
+      name: colName,
+      tableOrAlias: qualifier,
+      startIndex: colIndex,
+      endIndex: colIndex + columnRaw.length,
+    });
+  }
+
+  // 2. Unqualified columns in INSERT INTO table (col1, col2, ...)
+  const insertPattern = /\binsert\s+into\s+([a-zA-Z0-9_."`\]]+)\s*\(\s*([^)]+)\s*\)/gi;
+  let insMatch: RegExpExecArray | null;
+  while ((insMatch = insertPattern.exec(masked)) !== null) {
+    const rawTable = stripIdentifierQuotes(insMatch[1].split('.').pop()!);
+    const colListStr = insMatch[2];
+    const colListBase = insMatch.index + insMatch[0].indexOf(colListStr);
+
+    const idPattern = /([a-zA-Z_][a-zA-Z0-9_]*|"(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\])/g;
+    let idM: RegExpExecArray | null;
+    while ((idM = idPattern.exec(colListStr)) !== null) {
+      const cName = stripIdentifierQuotes(idM[0]);
+      if (!STANDARD_SQL_KEYWORDS.has(cName.toLowerCase())) {
+        const start = colListBase + idM.index;
+        coveredRanges.push([start, start + idM[0].length]);
+        results.push({
+          name: cName,
+          tableOrAlias: rawTable,
+          startIndex: start,
+          endIndex: start + idM[0].length,
+        });
+      }
+    }
+  }
+
+  // 3. Unqualified columns in UPDATE table SET col1 = ..., col2 = ...
+  const updatePattern = /\bupdate\s+([a-zA-Z0-9_."`\]]+)\s+set\s+([^;]+?)(?:\bwhere\b|;|$)/gi;
+  let updMatch: RegExpExecArray | null;
+  while ((updMatch = updatePattern.exec(masked)) !== null) {
+    const rawTable = stripIdentifierQuotes(updMatch[1].split('.').pop()!);
+    const setListStr = updMatch[2];
+    const setListBase = updMatch.index + updMatch[0].indexOf(setListStr);
+
+    const assignPattern = /([a-zA-Z_][a-zA-Z0-9_]*|"(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\])\s*=/g;
+    let assignM: RegExpExecArray | null;
+    while ((assignM = assignPattern.exec(setListStr)) !== null) {
+      const cName = stripIdentifierQuotes(assignM[1]);
+      if (!STANDARD_SQL_KEYWORDS.has(cName.toLowerCase())) {
+        const start = setListBase + assignM.index;
+        coveredRanges.push([start, start + assignM[1].length]);
+        results.push({
+          name: cName,
+          tableOrAlias: rawTable,
+          startIndex: start,
+          endIndex: start + assignM[1].length,
+        });
+      }
+    }
+  }
+
+  // 4. Collect aliases defined in SELECT (e.g. SELECT name AS full_name)
+  const definedAliases = new Set<string>();
+  const asPattern = /\bas\s+([a-zA-Z_][a-zA-Z0-9_]*|"(?:[^"]|"")*"|`[^`]+`|\[[^\]]+\])/gi;
+  let asM: RegExpExecArray | null;
+  while ((asM = asPattern.exec(masked)) !== null) {
+    definedAliases.add(stripIdentifierQuotes(asM[1]).toLowerCase());
+  }
+
+  // 5. Unqualified identifiers in SELECT, WHERE, ON, GROUP BY, ORDER BY, HAVING
+  const wordPattern = /\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+  let wordM: RegExpExecArray | null;
+  while ((wordM = wordPattern.exec(masked)) !== null) {
+    const word = wordM[1];
+    const wordLower = word.toLowerCase();
+    const startIndex = wordM.index;
+    const endIndex = startIndex + word.length;
+
+    // Check if covered by qualified reference or INSERT/UPDATE
+    if (coveredRanges.some(([s, e]) => startIndex >= s && endIndex <= e)) {
+      continue;
+    }
+
+    // Check if followed immediately by '(' -> function call like COUNT(
+    const rest = masked.slice(endIndex);
+    if (/^\s*\(/.test(rest)) {
+      continue;
+    }
+
+    // Check if immediately preceded or followed by '.'
+    const before = masked.slice(Math.max(0, startIndex - 2), startIndex);
+    if (/\.\s*$/.test(before) || /^\s*\./.test(rest)) {
+      continue;
+    }
+
+    // Check if preceded by AS (it is an alias definition)
+    const precedingText = masked.slice(Math.max(0, startIndex - 10), startIndex);
+    if (/\bas\s+$/i.test(precedingText)) {
+      continue;
+    }
+
+    // Skip SQL keywords, data types, aliases, table names, CTE names
+    if (
+      STANDARD_SQL_KEYWORDS.has(wordLower) ||
+      definedAliases.has(wordLower) ||
+      cteNames.has(wordLower) ||
+      tableAliases.has(wordLower)
+    ) {
+      continue;
+    }
+
+    results.push({
+      name: word,
+      startIndex,
+      endIndex,
+    });
+  }
+
+  return results;
 }
 
 // Isolate the FROM/JOIN section of a SQL statement so clause keywords
@@ -159,7 +489,6 @@ export const getCurrentStatement = (model: { getValue: () => string; getOffsetAt
   const offset = model.getOffsetAt(position);
   let start = 0;
   let end = fullText.length;
-
 
   // Search within reasonable bounds (±2000 chars from cursor)
   const searchStart = Math.max(0, offset - 2000);

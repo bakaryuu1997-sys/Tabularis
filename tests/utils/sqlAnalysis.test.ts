@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { parseTablesFromQuery, getCurrentStatement, isDestructiveWithoutWhere, classifyDangerousQuery, isDangerousQuery } from '../../src/utils/sqlAnalysis';
+import {
+  parseTablesFromQuery,
+  getCurrentStatement,
+  isDestructiveWithoutWhere,
+  classifyDangerousQuery,
+  isDangerousQuery,
+  maskCommentsAndLiterals,
+  extractAllTablesFromQuery,
+  extractColumnReferences,
+} from '../../src/utils/sqlAnalysis';
 
 describe('sqlAnalysis utils', () => {
   describe('parseTablesFromQuery', () => {
@@ -271,6 +280,67 @@ WHERE id = 1`;
       expect(isDangerousQuery('DROP TABLE users')).toBe(true);
       expect(isDangerousQuery('DELETE FROM users')).toBe(true);
       expect(isDangerousQuery('SELECT * FROM users')).toBe(false);
+    });
+  });
+
+  describe('extractAllTablesFromQuery and extractColumnReferences', () => {
+    it('masks comments and literals preserving exact string length and offsets', () => {
+      const sql = "SELECT 'hello world', -- inline comment\n id FROM users /* block */ WHERE name = 'John'";
+      const masked = maskCommentsAndLiterals(sql);
+      expect(masked.length).toBe(sql.length);
+      expect(masked).toContain("'           '");
+      expect(masked).not.toContain("hello world");
+      expect(masked).not.toContain("inline comment");
+      expect(masked).not.toContain("/* block */");
+      expect(masked).toContain("WHERE name = '    '");
+    });
+
+    it('extracts table from simple SELECT', () => {
+      const sql = "SELECT id, name FROM users";
+      const res = extractAllTablesFromQuery(sql);
+      expect(res.tables.has('users')).toBe(true);
+      expect(res.tablePositions.length).toBe(1);
+      expect(res.tablePositions[0].name).toBe('users');
+    });
+
+    it('extracts table with alias and schema', () => {
+      const sql = "SELECT u.id FROM public.users AS u";
+      const res = extractAllTablesFromQuery(sql);
+      expect(res.tables.get('u')?.name).toBe('users');
+      expect(res.tables.get('u')?.schema).toBe('public');
+    });
+
+    it('detects CTEs properly', () => {
+      const sql = "WITH user_summary AS (SELECT id FROM users) SELECT * FROM user_summary";
+      const res = extractAllTablesFromQuery(sql);
+      expect(res.cteNames.has('user_summary')).toBe(true);
+      expect(res.tables.get('users')?.name).toBe('users');
+    });
+
+    it('extracts tables from UPDATE and INSERT', () => {
+      const updateSql = "UPDATE products SET price = 100 WHERE id = 1";
+      const updateRes = extractAllTablesFromQuery(updateSql);
+      expect(updateRes.tables.has('products')).toBe(true);
+
+      const insertSql = "INSERT INTO orders (id, total) VALUES (1, 50)";
+      const insertRes = extractAllTablesFromQuery(insertSql);
+      expect(insertRes.tables.has('orders')).toBe(true);
+    });
+
+    it('extracts qualified and unqualified columns', () => {
+      const sql = "SELECT id, name, u.email, u.bad_col, non_existent FROM users u WHERE u.status = 1";
+      const scope = extractAllTablesFromQuery(sql);
+      const cols = extractColumnReferences(sql, scope.tables, scope.cteNames);
+
+      const qualified = cols.filter((c) => c.tableOrAlias === 'u');
+      expect(qualified.map((c) => c.name)).toContain('email');
+      expect(qualified.map((c) => c.name)).toContain('bad_col');
+      expect(qualified.map((c) => c.name)).toContain('status');
+
+      const unqualified = cols.filter((c) => !c.tableOrAlias);
+      expect(unqualified.map((c) => c.name)).toContain('id');
+      expect(unqualified.map((c) => c.name)).toContain('name');
+      expect(unqualified.map((c) => c.name)).toContain('non_existent');
     });
   });
 });

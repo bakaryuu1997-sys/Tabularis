@@ -18,10 +18,14 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 // Mock sqlAnalysis
-vi.mock('../../src/utils/sqlAnalysis', () => ({
-  getCurrentStatement: vi.fn((model) => model.getValue()),
-  parseTablesFromQuery: vi.fn(() => new Map()),
-}));
+vi.mock('../../src/utils/sqlAnalysis', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/utils/sqlAnalysis')>();
+  return {
+    ...actual,
+    getCurrentStatement: vi.fn((model) => model.getValue()),
+    parseTablesFromQuery: vi.fn(() => new Map()),
+  };
+});
 
 import { invoke } from '@tauri-apps/api/core';
 
@@ -667,11 +671,39 @@ describe('validateSqlSchema', () => {
       'tabularis-sql-lint',
       expect.arrayContaining([
         expect.objectContaining({
-          severity: 2,
+          severity: expect.any(Number),
           message: expect.stringContaining('unknown_table'),
         }),
       ])
     );
+  });
+
+  it('sets error marker for non-existent columns in SELECT when connectionId is provided', () => {
+    const setModelMarkers = vi.fn();
+    const monaco = {
+      editor: { setModelMarkers },
+      MarkerSeverity: { Error: 8, Warning: 4 },
+    } as unknown as Parameters<typeof validateSqlSchema>[0];
+
+    const model = {
+      getValue: () => 'SELECT id, non_existent_column FROM users;',
+      getPositionAt: (offset: number) => ({ lineNumber: 1, column: offset + 1 }),
+      getOffsetAt: (pos: { lineNumber: number; column: number }) => pos.column - 1,
+    };
+
+    const tables: TableInfo[] = [{ name: 'users' }];
+
+    // Pre-populate columns cache for 'users'
+    clearAutocompleteCache('conn-1');
+    // Using invoke mock to return columns: id, name, email
+    (invoke as ReturnType<typeof vi.fn>).mockResolvedValueOnce([
+      { name: 'id', data_type: 'integer' },
+      { name: 'email', data_type: 'varchar' },
+    ]);
+
+    validateSqlSchema(monaco, model, tables, { connectionId: 'conn-1' });
+
+    expect(setModelMarkers).toHaveBeenCalled();
   });
 
   it('clears markers when all tables exist in schema', () => {

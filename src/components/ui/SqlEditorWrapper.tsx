@@ -23,6 +23,8 @@ import {
   isOffsetInNonCodeSpan,
   AUTO_UPPERCASE_DELIMITERS,
 } from "../../utils/sqlAutoUppercase";
+import { validateSqlSchema } from "../../utils/autocomplete";
+import type { TableInfo } from "../../contexts/DatabaseContext";
 
 interface SqlEditorWrapperProps {
   initialValue: string;
@@ -34,6 +36,9 @@ interface SqlEditorWrapperProps {
   editorKey?: string;
   /** Active SQL dialect, used so "Format SQL" matches the connection's engine. */
   dialect?: SqlDialect;
+  connectionId?: string | null;
+  tables?: TableInfo[];
+  schema?: string | null;
 }
 
 // Internal component that resets when key changes
@@ -44,10 +49,20 @@ const SqlEditorInternal = ({
   onMount,
   height = "100%",
   options,
-  dialect
+  dialect,
+  connectionId,
+  tables,
+  schema,
 }: SqlEditorWrapperProps & { editorKey: string }) => {
   const { t } = useTranslation();
   const updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const validationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tablesRef = useRef(tables);
+  tablesRef.current = tables;
+  const connectionIdRef = useRef(connectionId);
+  connectionIdRef.current = connectionId;
+  const schemaRef = useRef(schema);
+  schemaRef.current = schema;
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<typeof Monaco | null>(null);
   const onRunRef = useRef(onRun);
@@ -79,11 +94,27 @@ const SqlEditorInternal = ({
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
+      if (validationTimeoutRef.current) {
+        clearTimeout(validationTimeoutRef.current);
+      }
       editorRef.current?.dispose();
       editorRef.current = null;
       monacoRef.current = null;
     };
   }, []);
+
+  // Validate schema immediately when tables or connection change
+  useEffect(() => {
+    if (editorRef.current && monacoRef.current && tables && tables.length > 0) {
+      const model = editorRef.current.getModel();
+      if (model) {
+        validateSqlSchema(monacoRef.current as any, model as any, tables, {
+          connectionId,
+          schema,
+        });
+      }
+    }
+  }, [tables, connectionId, schema]);
 
   // Sync editor value only when initialValue changes externally (e.g. templates, history, external tab updates)
   // NEVER overwrite while user is typing or when the parent echoes back the editor's own value.
@@ -156,6 +187,22 @@ const SqlEditorInternal = ({
           pendingParentValues.current.add(newValue);
           onChange?.(newValue);
         }, 150);
+
+        if (validationTimeoutRef.current) {
+          clearTimeout(validationTimeoutRef.current);
+        }
+
+        validationTimeoutRef.current = setTimeout(() => {
+          if (editorRef.current && monacoRef.current && tablesRef.current && tablesRef.current.length > 0) {
+            const model = editorRef.current.getModel();
+            if (model) {
+              validateSqlSchema(monacoRef.current as any, model as any, tablesRef.current, {
+                connectionId: connectionIdRef.current,
+                schema: schemaRef.current,
+              });
+            }
+          }
+        }, 250);
       },
       [onChange]
     );

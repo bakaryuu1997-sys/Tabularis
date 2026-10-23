@@ -2,7 +2,7 @@ import type { Monaco } from "@monaco-editor/react";
 import { invoke } from "@tauri-apps/api/core";
 import type { TableInfo } from "../contexts/DatabaseContext";
 import { formatSqlIdentifier, getQuoteChar, quoteIdentifier } from "./identifiers";
-import { getCurrentStatement, parseTablesFromQuery, type ParsedTableRef } from "./sqlAnalysis";
+import { getCurrentStatement, parseTablesFromQuery, extractAllTablesFromQuery, extractColumnReferences, type ParsedTableRef } from "./sqlAnalysis";
 
 export type AutocompleteKeywordCase = "match" | "upper" | "lower";
 
@@ -127,7 +127,21 @@ const cleanupCache = () => {
   }
 };
 
-const getTableColumns = async (connectionId: string, tableName: string, schema?: string | null) => {
+export function getCachedTableColumns(
+  connectionId: string,
+  tableName: string,
+  schema?: string | null,
+): Array<{ label: string; detail: string }> | null {
+  if (!connectionId || !tableName) return null;
+  const cacheKey = schema ? `${connectionId}:${schema}:${tableName}` : `${connectionId}:${tableName}`;
+  const cached = columnsCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp) < cached.ttl) {
+    return cached.data;
+  }
+  return null;
+}
+
+export const getTableColumns = async (connectionId: string, tableName: string, schema?: string | null) => {
   if (!connectionId || !tableName) return [];
 
   const cacheKey = schema ? `${connectionId}:${schema}:${tableName}` : `${connectionId}:${tableName}`;
@@ -612,18 +626,35 @@ export const registerSqlHover = (
   return provider;
 };
 
+export interface SqlValidationOptions {
+  connectionId?: string | null;
+  schema?: string | null;
+  owner?: string;
+  columnProvider?: (tableName: string, schema?: string | null) => Promise<Array<{ label: string; detail: string }>>;
+}
+
 /**
- * Validates table names referenced in FROM / JOIN clauses against the loaded schema.
- * Displays warning markers in Monaco if a table does not exist.
+ * Validates table and column names referenced in SQL against the loaded schema.
+ * Displays clear, highlighted warning/error markers in Monaco if a table or column does not exist.
  */
 export function validateSqlSchema(
   monaco: Monaco,
-  model: { getValue: () => string; getPositionAt: (offset: number) => { lineNumber: number; column: number }; getOffsetAt: (position: { lineNumber: number; column: number }) => number },
+  model: {
+    getValue: () => string;
+    getPositionAt: (offset: number) => { lineNumber: number; column: number };
+    getOffsetAt: (position: { lineNumber: number; column: number }) => number;
+  },
   tables: TableInfo[],
-  owner = "tabularis-sql-lint"
+  optionsOrOwner?: string | SqlValidationOptions,
 ): void {
   if (!model) return;
   const editorModel = model as Parameters<typeof monaco.editor.setModelMarkers>[0];
+
+  const options: SqlValidationOptions =
+    typeof optionsOrOwner === "string" ? { owner: optionsOrOwner } : optionsOrOwner || {};
+  const owner = options.owner || "tabularis-sql-lint";
+  const connectionId = options.connectionId;
+  const schema = options.schema;
 
   if (!tables || tables.length === 0) {
     monaco.editor.setModelMarkers(editorModel, owner, []);
@@ -636,13 +667,38 @@ export function validateSqlSchema(
     return;
   }
 
-  const tableMap = parseTablesFromQuery(text);
+  const extractedScope = typeof extractAllTablesFromQuery === "function"
+    ? extractAllTablesFromQuery(text)
+    : null;
+
+  const tableMap = (extractedScope && extractedScope.tables.size > 0)
+    ? extractedScope.tables
+    : (parseTablesFromQuery(text) || new Map<string, ParsedTableRef>());
+
   if (!tableMap || tableMap.size === 0) {
     monaco.editor.setModelMarkers(editorModel, owner, []);
     return;
   }
 
-  const knownTableNames = new Set(tables.map(t => t.name.toLowerCase()));
+  const cteNames = extractedScope ? extractedScope.cteNames : new Set<string>();
+  const tablePositions = (extractedScope && extractedScope.tablePositions.length > 0)
+    ? extractedScope.tablePositions
+    : Array.from(tableMap.entries()).map(([alias, ref]) => {
+        const idx = text.toLowerCase().indexOf(ref.name.toLowerCase());
+        return {
+          name: ref.name,
+          schema: ref.schema,
+          alias,
+          startIndex: Math.max(0, idx),
+          endIndex: Math.max(0, idx) + ref.name.length,
+        };
+      });
+
+  const knownTableMap = new Map<string, TableInfo>();
+  for (const t of tables) {
+    knownTableMap.set(t.name.toLowerCase(), t);
+  }
+
   const markers: Array<{
     severity: number;
     message: string;
@@ -652,24 +708,145 @@ export function validateSqlSchema(
     endColumn: number;
   }> = [];
 
-  for (const [, ref] of tableMap.entries()) {
-    const nameLower = ref.name.toLowerCase();
-    // Ignore common system words, CTEs, or known tables
-    if (!knownTableNames.has(nameLower)) {
-      const regex = new RegExp(`\\b(${ref.name})\\b`, "gi");
-      let m: RegExpExecArray | null;
-      while ((m = regex.exec(text)) !== null) {
-        const startPos = model.getPositionAt(m.index);
-        const endPos = model.getPositionAt(m.index + m[0].length);
-        markers.push({
-          severity: 2, // Monaco MarkerSeverity.Warning
-          message: `⚠️ Bảng "${ref.name}" không tồn tại trong cơ sở dữ liệu hiện tại.`,
-          startLineNumber: startPos.lineNumber,
-          startColumn: startPos.column,
-          endLineNumber: endPos.lineNumber,
-          endColumn: endPos.column,
+  const markerSeverity = (monaco as any)?.MarkerSeverity?.Error ?? 8;
+
+  // 1. Table Validation
+  const checkedTableNames = new Set<string>();
+  for (const occ of tablePositions) {
+    const nameLower = occ.name.toLowerCase();
+    if (cteNames.has(nameLower) || checkedTableNames.has(nameLower)) {
+      continue;
+    }
+    checkedTableNames.add(nameLower);
+
+    const exists = knownTableMap.has(nameLower);
+    if (!exists) {
+      const startPos = model.getPositionAt(occ.startIndex);
+      const endPos = model.getPositionAt(occ.endIndex);
+      markers.push({
+        severity: markerSeverity,
+        message: `⚠️ Bảng "${occ.name}" không tồn tại trong cơ sở dữ liệu hiện tại.`,
+        startLineNumber: startPos.lineNumber,
+        startColumn: startPos.column,
+        endLineNumber: endPos.lineNumber,
+        endColumn: endPos.column,
+      });
+    }
+  }
+
+  // 2. Column Validation
+  if (connectionId && tablePositions.length > 0) {
+    // Only validate columns for tables that exist in the database
+    const validTablesInQuery = tablePositions
+      .map(p => knownTableMap.get(p.name.toLowerCase()))
+      .filter((t): t is TableInfo => Boolean(t));
+
+    if (validTablesInQuery.length > 0) {
+      const tableColumnsMap = new Map<string, Set<string>>();
+      const missingTablesToFetch: TableInfo[] = [];
+
+      for (const t of validTablesInQuery) {
+        const cached = getCachedTableColumns(connectionId, t.name, t.schema ?? schema);
+        if (cached) {
+          tableColumnsMap.set(t.name.toLowerCase(), new Set(cached.map(c => c.label.toLowerCase())));
+        } else {
+          missingTablesToFetch.push(t);
+        }
+      }
+
+      const applyColumnValidation = () => {
+        if (typeof extractColumnReferences !== "function") return;
+        const colRefs = extractColumnReferences(text, tableMap, cteNames);
+        const colMarkers: typeof markers = [];
+
+        for (const colRef of colRefs) {
+          const colNameLower = colRef.name.toLowerCase();
+
+          if (colRef.tableOrAlias) {
+            // Qualified: qualifier.column
+            const qualifierLower = colRef.tableOrAlias.toLowerCase();
+            const targetTableRef = tableMap.get(qualifierLower);
+            const targetTableName = targetTableRef ? targetTableRef.name.toLowerCase() : qualifierLower;
+
+            const colsSet = tableColumnsMap.get(targetTableName);
+            if (colsSet && !colsSet.has(colNameLower)) {
+              const startPos = model.getPositionAt(colRef.startIndex);
+              const endPos = model.getPositionAt(colRef.endIndex);
+              colMarkers.push({
+                severity: markerSeverity,
+                message: `⚠️ Cột "${colRef.name}" không tồn tại trong bảng "${targetTableRef?.name || colRef.tableOrAlias}".`,
+                startLineNumber: startPos.lineNumber,
+                startColumn: startPos.column,
+                endLineNumber: endPos.lineNumber,
+                endColumn: endPos.column,
+              });
+            }
+          } else {
+            // Unqualified column in single or multi-table query
+            if (validTablesInQuery.length === 1) {
+              const singleTableName = validTablesInQuery[0].name.toLowerCase();
+              const colsSet = tableColumnsMap.get(singleTableName);
+              if (colsSet && !colsSet.has(colNameLower)) {
+                const startPos = model.getPositionAt(colRef.startIndex);
+                const endPos = model.getPositionAt(colRef.endIndex);
+                colMarkers.push({
+                  severity: markerSeverity,
+                  message: `⚠️ Cột "${colRef.name}" không tồn tại trong bảng "${validTablesInQuery[0].name}".`,
+                  startLineNumber: startPos.lineNumber,
+                  startColumn: startPos.column,
+                  endLineNumber: endPos.lineNumber,
+                  endColumn: endPos.column,
+                });
+              }
+            } else if (validTablesInQuery.length > 1) {
+              // In multi-table query: check if exists in ANY of the loaded tables
+              const allColsLoaded = validTablesInQuery.every(t => tableColumnsMap.has(t.name.toLowerCase()));
+              if (allColsLoaded) {
+                const existsInAny = validTablesInQuery.some(t =>
+                  tableColumnsMap.get(t.name.toLowerCase())?.has(colNameLower)
+                );
+                if (!existsInAny) {
+                  const startPos = model.getPositionAt(colRef.startIndex);
+                  const endPos = model.getPositionAt(colRef.endIndex);
+                  const tableNamesList = validTablesInQuery.map(t => t.name).join(", ");
+                  colMarkers.push({
+                    severity: markerSeverity,
+                    message: `⚠️ Cột "${colRef.name}" không tồn tại trong các bảng đã chọn (${tableNamesList}).`,
+                    startLineNumber: startPos.lineNumber,
+                    startColumn: startPos.column,
+                    endLineNumber: endPos.lineNumber,
+                    endColumn: endPos.column,
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        monaco.editor.setModelMarkers(editorModel, owner, [...markers, ...colMarkers]);
+      };
+
+      // If any tables need columns fetched, trigger in background
+      if (missingTablesToFetch.length > 0) {
+        Promise.all(
+          missingTablesToFetch.map(async t => {
+            const cols = await getTableColumns(connectionId, t.name, t.schema ?? schema);
+            return { name: t.name.toLowerCase(), cols: new Set(cols.map(c => c.label.toLowerCase())) };
+          })
+        ).then(fetched => {
+          for (const item of fetched) {
+            tableColumnsMap.set(item.name, item.cols);
+          }
+          if (model.getValue() === text) {
+            applyColumnValidation();
+          }
+        }).catch(err => {
+          console.warn("Failed to fetch columns for validation:", err);
         });
       }
+
+      applyColumnValidation();
+      return;
     }
   }
 
