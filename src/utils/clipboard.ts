@@ -1,4 +1,5 @@
 import { formatCellValue } from './dataGrid';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
 export function rowToCSV(row: unknown[], nullLabel: string = "null", delimiter: string = ","): string {
   return row
@@ -158,14 +159,33 @@ export async function copyTextToClipboard(
   text: string,
   onError?: (error: unknown) => void
 ): Promise<void> {
+  let copied = false;
+  // 1. Write to Tauri native clipboard manager if available
   try {
-    await navigator.clipboard.writeText(text);
+    await writeText(text);
+    copied = true;
+  } catch (_e) {
+    // Non-tauri or permission fallback
+  }
+
+  // 2. Write to browser clipboard API
+  try {
+    if (
+      typeof navigator !== 'undefined' &&
+      navigator.clipboard &&
+      typeof navigator.clipboard.writeText === 'function'
+    ) {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    }
   } catch (e) {
-    console.error("Copy failed:", e);
-    if (onError) {
-      onError(e);
-    } else {
-      throw e;
+    if (!copied) {
+      console.error("Copy failed:", e);
+      if (onError) {
+        onError(e);
+      } else {
+        throw e;
+      }
     }
   }
 }

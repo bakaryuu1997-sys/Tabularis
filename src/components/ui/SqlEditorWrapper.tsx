@@ -65,6 +65,13 @@ const SqlEditorInternal = ({
   const fontSizeRef = useRef(settings.editorFontSize ?? DEFAULT_EDITOR_FONT_SIZE);
   fontSizeRef.current = settings.editorFontSize ?? DEFAULT_EDITOR_FONT_SIZE;
 
+  // Set of values emitted to parent via onChange waiting to echo back in initialValue
+  const pendingParentValues = useRef<Set<string>>(new Set());
+  // The last value in the editor (either typed or externally set)
+  const lastKnownValueRef = useRef<string>(initialValue);
+  // Track whether an IME composition (Vietnamese, Japanese, Chinese, etc.) is active
+  const isImeComposingRef = useRef(false);
+
   // Dispose editor on unmount to prevent "domNode" errors from ResizeObserver
   // firing after the DOM container is removed (e.g., cell deletion/movement)
   useEffect(() => {
@@ -78,16 +85,54 @@ const SqlEditorInternal = ({
     };
   }, []);
 
-  // Sync editor value only when initialValue changes externally (e.g., tab switch)
-  // Preserve cursor position to avoid jumping to start during debounced updates
+  // Sync editor value only when initialValue changes externally (e.g. templates, history, external tab updates)
+  // NEVER overwrite while user is typing or when the parent echoes back the editor's own value.
   useEffect(() => {
     const editor = editorRef.current;
-    if (editor && initialValue !== editor.getValue()) {
+    if (!editor) return;
+
+    // 1. If initialValue is identical to current editor content, nothing to do
+    if (initialValue === editor.getValue()) {
+      lastKnownValueRef.current = initialValue;
+      pendingParentValues.current.delete(initialValue);
+      return;
+    }
+
+    // 2. If this initialValue was produced by this editor (echoed back by parent state),
+    // NEVER overwrite the editor! The user may be actively typing further characters.
+    if (pendingParentValues.current.has(initialValue)) {
+      pendingParentValues.current.delete(initialValue);
+      return;
+    }
+
+    // 3. If initialValue matches what we last recorded from the editor, skip
+    if (initialValue === lastKnownValueRef.current) {
+      return;
+    }
+
+    // 4. This is a genuine EXTERNAL change (template inserted, file loaded, AI query,
+    // format SQL externally triggered, or query history restored).
+    lastKnownValueRef.current = initialValue;
+    pendingParentValues.current.clear();
+
+    const model = editor.getModel();
+    if (model) {
       const position = editor.getPosition();
       const selections = editor.getSelections();
-      editor.setValue(initialValue);
+      // Use executeEdits to preserve undo history and avoid resetting DOM inputarea / IME buffer
+      editor.pushUndoStop();
+      editor.executeEdits("externalSync", [
+        {
+          range: model.getFullModelRange(),
+          text: initialValue,
+          forceMoveMarkers: true,
+        },
+      ]);
+      editor.pushUndoStop();
       if (position) editor.setPosition(position);
       if (selections && selections.length > 0) editor.setSelections(selections);
+    } else {
+      editor.setValue(initialValue);
     }
   }, [initialValue]);
 
@@ -101,14 +146,16 @@ const SqlEditorInternal = ({
     const handleChange = useCallback(
       (val: string | undefined) => {
         const newValue = val || "";
+        lastKnownValueRef.current = newValue;
 
         if (updateTimeoutRef.current) {
           clearTimeout(updateTimeoutRef.current);
         }
 
         updateTimeoutRef.current = setTimeout(() => {
-          onChange(newValue);
-        }, 300);
+          pendingParentValues.current.add(newValue);
+          onChange?.(newValue);
+        }, 150);
       },
       [onChange]
     );
@@ -119,28 +166,117 @@ const SqlEditorInternal = ({
       registerMonacoSqlSnippets(monaco);
     };
 
+    const getClipboardText = async (): Promise<string> => {
+      // 1. Try Tauri clipboard plugin
+      try {
+        const tauriText = await readText();
+        if (typeof tauriText === "string" && tauriText.length > 0) {
+          return tauriText;
+        }
+      } catch (_tauriErr) {
+        // Tauri clipboard read may fail on some OS/webview states, fallback to navigator.clipboard
+      }
+
+      // 2. Fallback to navigator.clipboard if Tauri readText returned empty or failed
+      try {
+        if (
+          typeof navigator !== "undefined" &&
+          navigator.clipboard &&
+          typeof navigator.clipboard.readText === "function"
+        ) {
+          const navText = await navigator.clipboard.readText();
+          if (typeof navText === "string" && navText.length > 0) {
+            return navText;
+          }
+        }
+      } catch (_navErr) {
+        // Navigator clipboard may fail if window not focused
+      }
+
+      return "";
+    };
+
     const tauriPaste = async (ed: Monaco.editor.ICodeEditor) => {
       try {
-        const text = await readText();
+        const text = await getClipboardText();
+        if (!text) {
+          // If reading clipboard returned empty, trigger Monaco's native paste action
+          ed.focus();
+          ed.trigger("keyboard", "editor.action.clipboardPasteAction", null);
+          return;
+        }
+
+        // Normalize Windows/Mac line endings (\r\n -> \n, \r -> \n)
+        const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
         const selections = ed.getSelections();
-        if (selections && selections.length > 0 && text) {
-          const lines = text.split('\n');
-          const edits = selections.map((sel, i) => ({
-            range: sel,
-            text: lines.length === selections.length ? lines[i] : text,
-            forceMoveMarkers: true
-          }));
-          ed.executeEdits('paste', edits);
+
+        if (selections && selections.length > 0) {
+          const lines = normalized.split("\n");
+          const isMultiCursorMultiLine =
+            selections.length > 1 && lines.length === selections.length;
+
+          const newSelections: Monaco.Selection[] = [];
+          const edits = selections.map((sel, i) => {
+            const insertText = isMultiCursorMultiLine ? lines[i] : normalized;
+            const insertLines = insertText.split("\n");
+
+            let endLineNumber: number;
+            let endColumn: number;
+
+            if (insertLines.length === 1) {
+              endLineNumber = sel.startLineNumber;
+              endColumn = sel.startColumn + insertLines[0].length;
+            } else {
+              endLineNumber = sel.startLineNumber + insertLines.length - 1;
+              endColumn = insertLines[insertLines.length - 1].length + 1;
+            }
+
+            if (monacoRef.current) {
+              newSelections.push(
+                new monacoRef.current.Selection(
+                  endLineNumber,
+                  endColumn,
+                  endLineNumber,
+                  endColumn,
+                )
+              );
+            }
+
+            return {
+              range: sel,
+              text: insertText,
+              forceMoveMarkers: true,
+            };
+          });
+
           ed.pushUndoStop();
+          ed.executeEdits("paste", edits, newSelections);
+          if (newSelections.length > 0) {
+            ed.setSelections(newSelections);
+          }
+          ed.pushUndoStop();
+          ed.focus();
+        } else {
+          ed.focus();
+          ed.trigger("keyboard", "editor.action.clipboardPasteAction", null);
         }
       } catch (err) {
-        console.error('Failed to read clipboard:', err);
+        console.error("Failed to paste into editor:", err);
+        ed.focus();
       }
     };
 
     const handleEditorMount: OnMount = (editor, monaco) => {
       editorRef.current = editor;
       monacoRef.current = monaco;
+
+      // Track IME composition states (Vietnamese Telex/VNI, Japanese, etc.)
+      // so auto-uppercasing never mangles in-progress typing.
+      const domNode = editor.getDomNode();
+      const onCompStart = () => { isImeComposingRef.current = true; };
+      const onCompEnd = () => { isImeComposingRef.current = false; };
+      domNode?.addEventListener('compositionstart', onCompStart, true);
+      domNode?.addEventListener('compositionend', onCompEnd, true);
 
       // Register SQL snippets quick trigger (Ctrl + J)
       editor.addAction({
@@ -347,6 +483,7 @@ const SqlEditorInternal = ({
       let isAutoUppercasing = false;
       editor.onDidChangeModelContent((event) => {
         if (isAutoUppercasing) return;
+        if (isImeComposingRef.current) return;
         if (settingsRef.current.autocompleteKeywordCase === "lower") return;
 
         const model = editor.getModel();
@@ -407,6 +544,8 @@ const SqlEditorInternal = ({
       };
       window.addEventListener('tabularis:format-sql', handleFormatEvent);
       editor.onDidDispose(() => {
+        domNode?.removeEventListener('compositionstart', onCompStart, true);
+        domNode?.removeEventListener('compositionend', onCompEnd, true);
         window.removeEventListener('tabularis:format-sql', handleFormatEvent);
       });
 

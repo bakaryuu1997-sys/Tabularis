@@ -275,4 +275,31 @@ describe('SqlEditorWrapper', () => {
       );
     });
   });
+
+  describe('typing and debounced onChange', () => {
+    it('debounces onChange calls when typing', async () => {
+      vi.useFakeTimers();
+      render(
+        <SqlEditorWrapper
+          initialValue=""
+          onChange={mockOnChange}
+          onRun={mockOnRun}
+          editorKey="debounce-test"
+        />,
+        { wrapper }
+      );
+
+      const editor = screen.getByTestId('monaco-editor');
+      fireEvent.change(editor, { target: { value: 'SELECT 1' } });
+
+      // Before timer expires, onChange should not have been called
+      expect(mockOnChange).not.toHaveBeenCalled();
+
+      // Fast forward timers
+      vi.advanceTimersByTime(200);
+
+      expect(mockOnChange).toHaveBeenCalledWith('SELECT 1');
+      vi.useRealTimers();
+    });
+  });
 });
