@@ -383,4 +383,23 @@ describe('TableToolbar', () => {
       expect.objectContaining({ filter: 'id = 1', sort: 'id ASC', limit: 10 }),
     );
   });
+
+  it('calls onRefresh when clicking the refresh button', () => {
+    const mockOnRefresh = vi.fn();
+    render(<TableToolbar {...defaultProps} onRefresh={mockOnRefresh} />);
+
+    const refreshBtn = screen.getByTitle('toolbar.refresh');
+    expect(refreshBtn).toBeInTheDocument();
+    fireEvent.click(refreshBtn);
+
+    expect(mockOnRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables refresh button when isLoading is true', () => {
+    const mockOnRefresh = vi.fn();
+    render(<TableToolbar {...defaultProps} onRefresh={mockOnRefresh} isLoading={true} />);
+
+    const refreshBtn = screen.getByTitle('toolbar.refresh');
+    expect(refreshBtn).toBeDisabled();
+  });
 });

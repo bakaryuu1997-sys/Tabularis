@@ -7,6 +7,7 @@ import {
   toggleSplitOrientation,
   resolveSplitTab,
   resolvePinnedTabs,
+  resolveLeftTabs,
   togglePinnedTab,
   loadSplitState,
   saveSplitState,
@@ -96,6 +97,21 @@ describe("splitView utils", () => {
         "c",
         "a",
       ]);
+    });
+  });
+
+  describe("resolveLeftTabs", () => {
+    const tabs = [makeTab("a"), makeTab("b"), makeTab("c"), makeTab("d")];
+    it("returns all tabs when no tabs are split/pinned", () => {
+      expect(resolveLeftTabs(tabs, []).map((t) => t.id)).toEqual(["a", "b", "c", "d"]);
+    });
+
+    it("filters out any tabs that are pinned to the right pane", () => {
+      expect(resolveLeftTabs(tabs, ["b", "d"]).map((t) => t.id)).toEqual(["a", "c"]);
+    });
+
+    it("returns empty array if all tabs are moved to the right pane", () => {
+      expect(resolveLeftTabs(tabs, ["a", "b", "c", "d"])).toEqual([]);
     });
   });
 

@@ -10,6 +10,7 @@ import {
   Save,
   Columns2,
   Rows2,
+  RotateCcw,
 } from "lucide-react";
 import type { Tab } from "../../types/editor";
 import type { QueryResultEntry } from "../../types/editor";
@@ -301,6 +302,32 @@ export function SplitResultsPane({
               csvIncludeHeaders={csvIncludeHeaders}
               onPageChange={onPageChange}
             />
+          </div>
+        ) : tab.type === "table" ? (
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-surface-tertiary px-4 text-center">
+            <div className="p-2.5 bg-surface-secondary/50 rounded-xl border border-default/50">
+              <Table2 size={24} className="text-blue-400/80" />
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs text-primary font-medium">
+                {tab.activeTable ? (
+                  <>Bảng <span className="font-mono text-blue-400 font-semibold">{tab.activeTable}</span></>
+                ) : (
+                  t("editor.split.empty")
+                )}
+              </p>
+              <p className="text-[11px] text-muted max-w-[240px]">
+                {t("editor.tableLoadHint", { defaultValue: "Dữ liệu bảng chưa được tải hoặc kết nối vừa được khôi phục." })}
+              </p>
+            </div>
+            <button
+              onClick={() => onPageChange(1)}
+              disabled={tab.isLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-sm transition-all disabled:opacity-50"
+            >
+              <RotateCcw size={12} className={tab.isLoading ? "animate-spin" : ""} />
+              <span>{t("editor.loadTableData", { defaultValue: "Tải dữ liệu bảng" })}</span>
+            </button>
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-surface-tertiary text-sm px-4 text-center">

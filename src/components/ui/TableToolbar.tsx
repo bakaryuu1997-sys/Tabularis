@@ -10,6 +10,7 @@ import {
   Play,
   Search,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import type { TableColumn } from "../../types/editor";
 import {
@@ -48,6 +49,8 @@ interface TableToolbarProps {
   defaultLimit: number;
   columnMetadata?: TableColumn[];
   onUpdate: (update: TableToolbarUpdate) => void;
+  onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
 interface TableToolbarInternalProps extends TableToolbarProps {
@@ -86,6 +89,8 @@ const TableToolbarInternal = ({
   onResetApplied,
   onResetAllApplied,
   onUpdate,
+  onRefresh,
+  isLoading,
 }: TableToolbarInternalProps) => {
   const { t } = useTranslation();
   const { activeDriver } = useDatabase();
@@ -702,7 +707,27 @@ const TableToolbarInternal = ({
           </button>
         )}
 
-        {/* Apply button — commits WHERE/ORDER BY/LIMIT explicitly (simple mode).
+                {/* Refresh / Reload button */}
+        <button
+          type="button"
+          onClick={() => {
+            if (isDirty) {
+              commitSql(filterInput, sortInput, limitInput);
+            } else if (onRefresh) {
+              onRefresh();
+            } else {
+              commitSql(filterInput, sortInput, limitInput);
+            }
+          }}
+          disabled={isLoading}
+          title={t("toolbar.refresh", { defaultValue: "Tải lại dữ liệu bảng (Refresh)" })}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-default text-muted hover:text-primary hover:bg-surface-secondary transition-colors shrink-0 disabled:opacity-50"
+        >
+          <RotateCcw size={12} className={isLoading ? "animate-spin text-blue-400" : ""} />
+          <span>{t("toolbar.refreshLabel", { defaultValue: "Tải lại" })}</span>
+        </button>
+
+{/* Apply button — commits WHERE/ORDER BY/LIMIT explicitly (simple mode).
             Runs only on click/Enter so a half-typed clause never clears the
             currently shown table. Highlighted while there are unapplied edits. */}
         {!panelOpen && (

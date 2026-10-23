@@ -73,6 +73,16 @@ export function resolvePinnedTabs(tabs: Tab[], splitTabIds: string[]): Tab[] {
 }
 
 /**
+ * Resolve tabs visible in the left pane (excludes tabs currently pinned/split to the right pane).
+ * This ensures tabs moved to the right do not duplicate in the left tab strip.
+ */
+export function resolveLeftTabs(tabs: Tab[], splitTabIds: string[]): Tab[] {
+  if (!splitTabIds || splitTabIds.length === 0) return tabs;
+  const pinnedSet = new Set(splitTabIds);
+  return tabs.filter((t) => !pinnedSet.has(t.id));
+}
+
+/**
  * Toggle a tab's pin: removing it if already pinned, otherwise appending it.
  * Also resolves which pinned tab should be shown next.
  */

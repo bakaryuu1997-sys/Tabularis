@@ -73,6 +73,7 @@ import { SplitResultsPane } from "../components/ui/SplitResultsPane";
 import {
   resolveSplitTab,
   resolvePinnedTabs,
+  resolveLeftTabs,
   togglePinnedTab,
   splitRatioFromClientX,
   splitRatioFromClientY,
@@ -386,6 +387,21 @@ export const Editor = () => {
   );
   const workspaceRef = useRef<HTMLDivElement>(null);
 
+  // The tab pinned into the right-hand split pane (null if none / it was closed).
+  const pinnedTabs = resolvePinnedTabs(tabs, splitTabIds);
+  const splitTab =
+    resolveSplitTab(tabs, activeSplitTabId) ??
+    (pinnedTabs.length > 0 ? pinnedTabs[pinnedTabs.length - 1] : null);
+
+
+
+
+
+  // Tabs displayed on the left pane: all tabs excluding those currently pinned/split to the right pane
+  const leftTabs = useMemo(() => {
+    return resolveLeftTabs(tabs, splitTabIds);
+  }, [tabs, splitTabIds]);
+
   useEffect(() => {
     saveSplitState({
       splitTabIds,
@@ -395,14 +411,46 @@ export const Editor = () => {
     });
   }, [splitTabIds, activeSplitTabId, splitRatio, splitOrientation]);
 
+  // Ensure the left pane does not stay on a tab that has been moved to the right
+  useEffect(() => {
+    if (activeTabId && splitTabIds.includes(activeTabId)) {
+      const remainingLeft = tabs.filter((t) => !splitTabIds.includes(t.id));
+      if (remainingLeft.length > 0) {
+        setActiveTabId(remainingLeft[0].id);
+      }
+    }
+  }, [activeTabId, splitTabIds, tabs, setActiveTabId]);
+
   // Pin/unpin a tab into the split pane (toggles), updating the active pin.
   const togglePin = useCallback(
     (tabId: string) => {
+      const isCurrentlyPinned = splitTabIds.includes(tabId);
       const res = togglePinnedTab(splitTabIds, activeSplitTabId, tabId);
       setSplitTabIds(res.splitTabIds);
       setActiveSplitTabId(res.activeSplitTabId);
+
+      // If moving a tab to the right pane, ensure the left pane activates another remaining tab
+      if (!isCurrentlyPinned) {
+        const remainingLeft = tabsRef.current.filter(
+          (t) => !res.splitTabIds.includes(t.id),
+        );
+        if (remainingLeft.length > 0) {
+          if (
+            activeTabIdRef.current === tabId ||
+            res.splitTabIds.includes(activeTabIdRef.current || "")
+          ) {
+            const idx = tabsRef.current.findIndex((t) => t.id === tabId);
+            const nextTab =
+              remainingLeft[Math.min(Math.max(0, idx), remainingLeft.length - 1)];
+            setActiveTabId(nextTab.id);
+          }
+        } else {
+          // All tabs were moved to the right; create a fresh console tab for the left pane
+          addTab({ type: "console" });
+        }
+      }
     },
-    [splitTabIds, activeSplitTabId],
+    [splitTabIds, activeSplitTabId, setActiveTabId, addTab],
   );
   // Ids of tabs whose results are detached into their own separate windows (one
   // window per tab). Each window keeps showing its tab even when the user
@@ -543,9 +591,12 @@ export const Editor = () => {
   const handleCloseTab = useCallback(
     (tabId: string) => {
       delete editorsRef.current[tabId];
+      if (splitTabIds.includes(tabId)) {
+        setSplitTabIds((prev) => prev.filter((id) => id !== tabId));
+      }
       closeTab(tabId);
     },
-    [closeTab],
+    [closeTab, splitTabIds],
   );
 
   // Update window title when the active tab changes
@@ -626,11 +677,11 @@ export const Editor = () => {
   useEffect(() => {
     const el = tabScrollRef.current;
     if (!el || !activeTabId) return;
-    const idx = tabs.findIndex((t) => t.id === activeTabId);
+    const idx = leftTabs.findIndex((t) => t.id === activeTabId);
     if (idx === -1) return;
     const tabEl = el.children[idx] as HTMLElement | undefined;
     tabEl?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-  }, [activeTabId, tabs]);
+  }, [activeTabId, leftTabs]);
 
   const updateScrollArrows = useCallback(() => {
     const el = tabScrollRef.current;
@@ -642,14 +693,14 @@ export const Editor = () => {
 
   const scrollTabs = useCallback(
     (direction: "left" | "right") => {
-      const currentIndex = tabs.findIndex((t) => t.id === activeTabId);
+      const currentIndex = leftTabs.findIndex((t) => t.id === activeTabId);
       const targetIndex = getAdjacentTabIndex(
         currentIndex,
-        tabs.length,
+        leftTabs.length,
         direction,
       );
       if (targetIndex === null) return;
-      const targetTab = tabs[targetIndex];
+      const targetTab = leftTabs[targetIndex];
       setActiveTabId(targetTab.id);
       const el = tabScrollRef.current;
       if (!el) return;
@@ -660,7 +711,7 @@ export const Editor = () => {
         inline: "nearest",
       });
     },
-    [tabs, activeTabId, setActiveTabId],
+    [leftTabs, activeTabId, setActiveTabId],
   );
   const processingRef = useRef<string | null>(null);
   const pendingExecutionsRef = useRef<
@@ -1864,6 +1915,42 @@ export const Editor = () => {
     },
     [activeConnectionId, runQuery],
   );
+
+  // Auto-load table data for restored table tabs when connection is ready
+  const autoLoadedTabsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!activeConnectionId) return;
+    const currentTab = tabsRef.current.find(
+      (t) => t.id === activeTabIdRef.current,
+    );
+    if (
+      currentTab &&
+      currentTab.type === "table" &&
+      currentTab.activeTable &&
+      currentTab.connectionId === activeConnectionId &&
+      !currentTab.result &&
+      !currentTab.isLoading &&
+      !currentTab.error &&
+      !autoLoadedTabsRef.current.has(currentTab.id)
+    ) {
+      autoLoadedTabsRef.current.add(currentTab.id);
+      handleRefresh(currentTab.id);
+    }
+
+    if (
+      splitTab &&
+      splitTab.type === "table" &&
+      splitTab.activeTable &&
+      splitTab.connectionId === activeConnectionId &&
+      !splitTab.result &&
+      !splitTab.isLoading &&
+      !splitTab.error &&
+      !autoLoadedTabsRef.current.has(splitTab.id)
+    ) {
+      autoLoadedTabsRef.current.add(splitTab.id);
+      handleRefresh(splitTab.id);
+    }
+  }, [activeConnectionId, activeTabId, splitTab, handleRefresh]);
 
   const handleToolbarUpdate = useCallback(
     (
@@ -3307,12 +3394,6 @@ export const Editor = () => {
   // connection color when present, falling back to the default blue otherwise.
   const tabAccentColor = tabBarAccent ?? "#3b82f6";
 
-  // The tab pinned into the right-hand split pane (null if none / it was closed).
-  const pinnedTabs = resolvePinnedTabs(tabs, splitTabIds);
-  const splitTab =
-    resolveSplitTab(tabs, activeSplitTabId) ??
-    (pinnedTabs.length > 0 ? pinnedTabs[pinnedTabs.length - 1] : null);
-
   return (
     <div className="flex flex-col h-full bg-base">
       <div
@@ -3366,7 +3447,7 @@ export const Editor = () => {
           onScroll={updateScrollArrows}
           className="flex flex-1 overflow-x-auto no-scrollbar h-full"
         >
-          {tabs.map((tab) => (
+          {leftTabs.map((tab) => (
             <div
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
@@ -3733,7 +3814,7 @@ export const Editor = () => {
       </div>}
 
       {/* Render all non-table tabs to prevent Monaco remounting */}
-      {tabs.map((tab) => {
+      {leftTabs.map((tab) => {
         if (tab.type === "table") return null;
 
         const isActive = tab.id === activeTabId;
@@ -3948,6 +4029,8 @@ export const Editor = () => {
               defaultLimit={settings.resultPageSize || 100}
               columnMetadata={activeTab?.columnMetadata}
               onUpdate={handleToolbarUpdate}
+              onRefresh={() => handleRefresh(activeTab.id)}
+              isLoading={activeTab.isLoading}
             />
           ) : (
             <div
@@ -4619,11 +4702,51 @@ export const Editor = () => {
                   )}
                 </div>
               </div>
+            ) : activeTab.type === "table" ? (
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-surface-tertiary">
+                <div className="p-3 bg-surface-secondary/50 rounded-2xl border border-default/50">
+                  <TableIcon size={32} className="text-blue-400/80" />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-medium text-primary">
+                    {activeTab.activeTable ? (
+                      <>
+                        {t("editor.tablePrefix", { defaultValue: "Bảng" })}{" "}
+                        <span className="text-blue-400 font-mono font-semibold">
+                          {activeTab.activeTable}
+                        </span>
+                      </>
+                    ) : (
+                      t("editor.tableRunPrompt")
+                    )}
+                  </p>
+                  <p className="text-xs text-muted max-w-sm">
+                    {t("editor.tableLoadHint", {
+                      defaultValue:
+                        "Dữ liệu bảng chưa được tải hoặc kết nối vừa được khôi phục.",
+                    })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRefresh(activeTab.id)}
+                  disabled={!activeConnectionId || activeTab.isLoading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-md shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  <RotateCcw
+                    size={14}
+                    className={activeTab.isLoading ? "animate-spin" : ""}
+                  />
+                  <span>
+                    {t("editor.loadTableData", {
+                      defaultValue: "Tải dữ liệu bảng",
+                    })}
+                  </span>
+                </button>
+              </div>
             ) : (
               <div className="flex items-center justify-center h-full text-surface-tertiary text-sm">
-                {activeTab.type === "table"
-                  ? t("editor.tableRunPrompt")
-                  : t("editor.executePrompt")}
+                {t("editor.executePrompt")}
               </div>
             )}
           </div>
@@ -4706,7 +4829,10 @@ export const Editor = () => {
                   runQuery(splitTab.query, page, splitTab.id)
                 }
                 onClose={() => togglePin(splitTab.id)}
-                onFocusTab={() => setActiveTabId(splitTab.id)}
+                onFocusTab={() => {
+                  setSplitTabIds((ids) => ids.filter((id) => id !== splitTab.id));
+                  setActiveTabId(splitTab.id);
+                }}
                 onSwap={() => {
                   const previousActive = activeTabIdRef.current;
                   setActiveTabId(splitTab.id);
