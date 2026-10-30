@@ -16,9 +16,21 @@ Object.defineProperty(document, "execCommand", {
   value: vi.fn(),
 });
 
+// Mock ResizeObserver for TanStack Virtual & DataGrid
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // Mock Tauri APIs
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+}));
+
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn().mockResolvedValue(() => {}),
+  emit: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -153,6 +165,13 @@ vi.mock("lucide-react", () => ({
   ZoomOut: () => null,
   RotateCcw: () => null,
   Highlighter: () => null,
+  ToggleLeft: () => null,
+  Fingerprint: () => null,
+  Type: () => null,
+  Calendar: () => null,
+  Binary: () => null,
+  Palette: () => null,
+  TableProperties: () => null,
   Hash: () => null,
   Columns: () => null,
   Key: () => null,
@@ -188,7 +207,6 @@ vi.mock("lucide-react", () => ({
   Terminal: () => null,
   History: () => null,
   Clock: () => null,
-  Calendar: () => null,
   XCircle: () => null,
   ChevronsLeft: () => null,
   ChevronsRight: () => null,

@@ -102,7 +102,7 @@ export const DEFAULT_SETTINGS: Settings = {
   displayTimezone: "auto",
   fontFamily: "System",
   fontSize: 14,
-  resultColorByType: false,
+  resultColorByType: true,
   resultTypeColors: {},
   aiEnabled: false,
   aiProvider: null,

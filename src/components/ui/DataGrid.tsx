@@ -38,7 +38,10 @@ import {
   Eye,
   Key,
   Link2,
+  Plus,
+  TableProperties,
 } from "lucide-react";
+import { getColumnTypeVisual } from "../../utils/columnTypeBadge";
 import { buildColumnTooltip } from "../../utils/columnDetails";
 import {
   getCellValueFilterOperators,
@@ -123,6 +126,7 @@ interface DataGridProps {
   onForeignKeyHidePanel?: () => void;
   connectionId?: string | null;
   onRefresh?: () => void;
+  onAddRow?: () => void;
   pendingChanges?: Record<
     string,
     { pkOriginalValue: unknown; changes: Record<string, unknown> }
@@ -211,6 +215,7 @@ export const DataGrid = React.memo(
     onForeignKeyHidePanel,
     connectionId,
     onRefresh,
+    onAddRow,
     pendingChanges,
     pendingDeletions,
     pendingInsertions,
@@ -239,7 +244,7 @@ export const DataGrid = React.memo(
     const { activeSchema, activeDriver, connections } = useDatabase();
     const { showAlert } = useAlert();
     const { settings } = useSettings();
-    const colorByType = settings.resultColorByType ?? false;
+    const colorByType = settings.resultColorByType ?? true;
 
     // Client-side hidden columns (presentational only — never changes the SQL).
     const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() =>
@@ -1066,11 +1071,18 @@ export const DataGrid = React.memo(
                   >
                     {colName}
                   </span>
-                  {colType && (
-                    <span className="text-[10px] text-muted font-mono opacity-65 group-hover/header:opacity-100 select-none">
-                      {colType.length > 12 ? colType.slice(0, 10) + "…" : colType}
-                    </span>
-                  )}
+                  {colType && (() => {
+                    const visual = getColumnTypeVisual(colType);
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono border select-none shrink-0 ${visual.badgeClass}`}
+                        title={`${t("dataGrid.columnType", { defaultValue: "Kiểu dữ liệu" })}: ${colType}`}
+                      >
+                        {visual.icon}
+                        <span>{visual.shortName}</span>
+                      </span>
+                    );
+                  })()}
                   {onSort && (
                     <span
                       role="button"
@@ -1690,42 +1702,77 @@ export const DataGrid = React.memo(
                 ))}
               </thead>
               <tbody>
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const rowIndex = virtualRow.index;
-                  const row = tableRows[rowIndex];
-                  const rowOriginal = row.original as unknown[];
-                  const isSelected = selectedRowIndices.has(rowIndex);
-                  const mergedRow = mergedRows[rowIndex];
-                  const isInsertion = mergedRow?.type === "insertion";
-                  const pkVal =
-                    pkIndexMaps.length > 0 && pkColumns
-                      ? serializePkKey(buildPkMap(pkColumns, rowOriginal as unknown[], pkIndexMaps))
-                      : null;
-                  const isPendingDelete =
-                    !isInsertion && pkVal
-                      ? pendingDeletions?.[pkVal] !== undefined
-                      : false;
-                  const isRowEditing = editingCell?.rowIndex === rowIndex;
-                  const isRowFocused = focusedCell?.rowIndex === rowIndex;
-                  const isRowExpanded = expandedCell?.rowIndex === rowIndex;
-                  return (
-                    <MemoRow
-                      key={row.id}
-                      ctx={rowCtx}
-                      rowIndex={rowIndex}
-                      rowOriginal={rowOriginal}
-                      isSelected={isSelected}
-                      isInsertion={isInsertion}
-                      isPendingDelete={isPendingDelete}
-                      pkVal={pkVal}
-                      editingColIndex={isRowEditing ? editingCell!.colIndex : null}
-                      editingValue={isRowEditing ? editingCell!.value : undefined}
-                      focusedColIndex={isRowFocused ? focusedCell!.colIndex : null}
-                      expandedColIndex={isRowExpanded ? expandedCell!.colIndex : null}
-                      expandedKind={isRowExpanded ? expandedCell!.kind : null}
-                    />
-                  );
-                })}
+                {tableRows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={table.getVisibleLeafColumns().length || columns.length + 1}
+                      className="text-center py-16 px-4"
+                    >
+                      <div className="flex flex-col items-center justify-center max-w-sm mx-auto text-center space-y-3">
+                        <div className="w-12 h-12 rounded-xl bg-surface-secondary/80 border border-default flex items-center justify-center text-muted">
+                          <TableProperties size={24} className="opacity-60" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-medium text-primary">
+                            {t("dataGrid.noDataTitle", { defaultValue: "Bảng chưa có dữ liệu" })}
+                          </h4>
+                          <p className="text-xs text-muted leading-relaxed">
+                            {t("dataGrid.noDataDesc", {
+                              defaultValue: "Không có dòng dữ liệu nào hiển thị. Bạn có thể thêm dòng mới hoặc làm mới dữ liệu.",
+                            })}
+                          </p>
+                        </div>
+                        {onAddRow && !readonlyProp && (
+                          <button
+                            type="button"
+                            onClick={onAddRow}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white shadow-sm transition-colors"
+                          >
+                            <Plus size={14} />
+                            <span>{t("dataGrid.addFirstRow", { defaultValue: "Thêm dòng đầu tiên" })}</span>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const rowIndex = virtualRow.index;
+                    const row = tableRows[rowIndex];
+                    const rowOriginal = row.original as unknown[];
+                    const isSelected = selectedRowIndices.has(rowIndex);
+                    const mergedRow = mergedRows[rowIndex];
+                    const isInsertion = mergedRow?.type === "insertion";
+                    const pkVal =
+                      pkIndexMaps.length > 0 && pkColumns
+                        ? serializePkKey(buildPkMap(pkColumns, rowOriginal as unknown[], pkIndexMaps))
+                        : null;
+                    const isPendingDelete =
+                      !isInsertion && pkVal
+                        ? pendingDeletions?.[pkVal] !== undefined
+                        : false;
+                    const isRowEditing = editingCell?.rowIndex === rowIndex;
+                    const isRowFocused = focusedCell?.rowIndex === rowIndex;
+                    const isRowExpanded = expandedCell?.rowIndex === rowIndex;
+                    return (
+                      <MemoRow
+                        key={row.id}
+                        ctx={rowCtx}
+                        rowIndex={rowIndex}
+                        rowOriginal={rowOriginal}
+                        isSelected={isSelected}
+                        isInsertion={isInsertion}
+                        isPendingDelete={isPendingDelete}
+                        pkVal={pkVal}
+                        editingColIndex={isRowEditing ? editingCell!.colIndex : null}
+                        editingValue={isRowEditing ? editingCell!.value : undefined}
+                        focusedColIndex={isRowFocused ? focusedCell!.colIndex : null}
+                        expandedColIndex={isRowExpanded ? expandedCell!.colIndex : null}
+                        expandedKind={isRowExpanded ? expandedCell!.kind : null}
+                      />
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

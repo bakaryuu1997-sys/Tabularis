@@ -4707,6 +4707,11 @@ export const Editor = () => {
                       }
                       connectionId={activeConnectionId}
                       onRefresh={handleRefresh}
+                      onAddRow={
+                        activeTab.type === "table" && !driverReadonly && !isSafeModeReadonly
+                          ? handleNewRow
+                          : undefined
+                      }
                       pendingChanges={activeTab.pendingChanges}
                       pendingDeletions={activeTab.pendingDeletions}
                       pendingInsertions={activeTab.pendingInsertions}

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useContext } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Filter,
@@ -12,7 +12,9 @@ import {
   ChevronDown,
   RotateCcw,
   Highlighter,
+  Palette,
 } from "lucide-react";
+import { SettingsContext, DEFAULT_SETTINGS } from "../../contexts/SettingsContext";
 import type { TableColumn } from "../../types/editor";
 import {
   filterColumnSuggestions,
@@ -106,6 +108,10 @@ const TableToolbarInternal = ({
 }: TableToolbarInternalProps) => {
   const { t } = useTranslation();
   const { activeDriver } = useDatabase();
+  const settingsContext = useContext(SettingsContext);
+  const settings = settingsContext?.settings ?? DEFAULT_SETTINGS;
+  const updateSetting = settingsContext?.updateSetting ?? (() => {});
+  const colorByType = settings.resultColorByType ?? true;
 
   const [isHighlightModalOpen, setIsHighlightModalOpen] = useState(false);
   const [highlightRules, setHighlightRules] = useState<HighlightRule[]>(() =>
@@ -757,6 +763,27 @@ const TableToolbarInternal = ({
                 {activeHighlightCount}
               </span>
             )}
+          </button>
+        )}
+
+        {/* Data Type Color Quick Toggle */}
+        {hasColumns && (
+          <button
+            type="button"
+            onClick={() => updateSetting("resultColorByType", !colorByType)}
+            title={
+              colorByType
+                ? t("toolbar.colorByTypeActive", { defaultValue: "Đang bật tô màu theo kiểu dữ liệu (Nhấp để tắt)" })
+                : t("toolbar.colorByTypeInactive", { defaultValue: "Đang tắt tô màu theo kiểu dữ liệu (Nhấp để bật)" })
+            }
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border transition-colors shrink-0 ${
+              colorByType
+                ? "bg-purple-500/15 border-purple-500/40 text-purple-300 hover:bg-purple-500/25"
+                : "border-default text-muted hover:text-primary hover:bg-surface-secondary"
+            }`}
+          >
+            <Palette size={12} className={colorByType ? "text-purple-400" : ""} />
+            <span>{t("toolbar.colorByType", { defaultValue: "Màu kiểu" })}</span>
           </button>
         )}
 

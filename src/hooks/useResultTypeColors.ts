@@ -9,7 +9,7 @@ export function useResultTypeColors(): void {
   const { settings } = useSettings();
   const { currentTheme } = useTheme();
 
-  const colorByType = settings.resultColorByType ?? false;
+  const colorByType = settings.resultColorByType ?? true;
   const overrides = settings.resultTypeColors;
 
   useEffect(() => {
