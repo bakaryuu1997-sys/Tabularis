@@ -19,6 +19,14 @@ opt-level = 3
 panic = "abort"
 strip = true
 
+[profile.release.package.windows]
+opt-level = 1
+codegen-units = 16
+
+[profile.release.package."windows-sys"]
+opt-level = 1
+codegen-units = 16
+
 [build-dependencies]
 tauri-build = { version = "2.5.3", features = [] }
 
