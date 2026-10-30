@@ -93,6 +93,7 @@ import type {
   ForeignKey,
 } from "../../types/editor";
 import { MemoRow, type RowCtx } from "./DataGridRow";
+import { type HighlightRule, loadHighlightRules } from "../../utils/highlightRules";
 import {
   toggleHiddenColumn,
   computeColumnVisibility,
@@ -153,6 +154,8 @@ interface DataGridProps {
   isMaskingEnabled?: boolean;
   onToggleMasking?: () => void;
   scrollKey?: string;
+  highlightRules?: HighlightRule[];
+  highlightStorageKey?: string | null;
 }
 
 // SQL tag shown in the chip next to each "Filter by this value" entry.
@@ -229,9 +232,11 @@ export const DataGrid = React.memo(
     isMaskingEnabled: isMaskingEnabledProp,
     columnVisibilityKey,
     scrollKey,
+    highlightRules: highlightRulesProp,
+    highlightStorageKey,
   }: DataGridProps) => {
     const { t } = useTranslation();
-    const { activeSchema, connections } = useDatabase();
+    const { activeSchema, activeDriver, connections } = useDatabase();
     const { showAlert } = useAlert();
     const { settings } = useSettings();
     const colorByType = settings.resultColorByType ?? false;
@@ -1515,6 +1520,18 @@ export const DataGrid = React.memo(
       return () => document.removeEventListener("keydown", handleKeyDown);
     }, [editingCell, selectedRowIndices, focusedCell, copyCellValue, copySelectedCells, readonlyProp, deleteRowsByIndices]);
 
+
+    const columnNameToIndexMap = useMemo(() => {
+      const map = new Map<string, number>();
+      columns.forEach((col, idx) => map.set(col, idx));
+      return map;
+    }, [columns]);
+
+    const activeHighlightRules = useMemo(() => {
+      const rules = highlightRulesProp ?? (highlightStorageKey ? loadHighlightRules(highlightStorageKey) : []);
+      return rules.filter((r) => r.enabled);
+    }, [highlightRulesProp, highlightStorageKey]);
+
     // Stable per-row dependency bundle. Memoizing it lets React.memo on MemoRow
     // skip re-rendering rows that didn't change during scroll.
     const rowCtx: RowCtx = useMemo(
@@ -1536,6 +1553,11 @@ export const DataGrid = React.memo(
         pkIndexMaps,
         parentViewportWidth,
         isMaskingEnabled: isMaskingEnabledProp,
+        connectionId,
+        driver: activeDriver,
+        schema: activeSchema,
+        activeHighlightRules,
+        columnNameToIndexMap,
         readonly: readonlyProp,
         updateSelection,
         setFocusedCell,
@@ -1575,6 +1597,11 @@ export const DataGrid = React.memo(
         pkIndexMaps,
         parentViewportWidth,
         isMaskingEnabledProp,
+        connectionId,
+        activeDriver,
+        activeSchema,
+        activeHighlightRules,
+        columnNameToIndexMap,
         readonlyProp,
         updateSelection,
         setFocusedCell,

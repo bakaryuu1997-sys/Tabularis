@@ -67,6 +67,7 @@ import { exportQueryResultToExcel } from "../utils/excelExport";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
 import { TableToolbar } from "../components/ui/TableToolbar";
+import { buildHighlightStorageKey } from "../utils/highlightRules";
 import { DataGrid } from "../components/ui/DataGrid";
 import { MultiResultPanel } from "../components/ui/MultiResultPanel";
 import { SplitResultsPane } from "../components/ui/SplitResultsPane";
@@ -140,7 +141,8 @@ import { NotebookView } from "../components/notebook/NotebookView";
 import { useSqlAutocompleteRegistration } from "../hooks/useSqlAutocompleteRegistration";
 import { createNotebook, renameNotebook } from "../utils/notebookStore";
 import { type OnMount, type Monaco } from "@monaco-editor/react";
-import { save } from "@tauri-apps/plugin-dialog";
+import { save, ask } from "@tauri-apps/plugin-dialog";
+import { resolveSafeModeLevel, evaluateSafeMode } from "../utils/sqlSafety";
 import { useAlert } from "../hooks/useAlert";
 import { useDatabase } from "../hooks/useDatabase";
 import { useDrivers } from "../hooks/useDrivers";
@@ -982,6 +984,24 @@ export const Editor = () => {
       const historyDb = schema
         || (isMultiDb ? activeDatabaseName : undefined)
         || undefined;
+
+
+      // Safe Mode Guardrail Check
+      const safeCheck = evaluateSafeMode(textToRun, effectiveSafeModeLevel, activeConnectionObj?.name);
+      if (!safeCheck.allowed) {
+        showAlert(safeCheck.reason || "Bị chặn bởi Chế độ Chỉ đọc (Read-Only)", {
+          title: "Chế độ Chỉ đọc (Read-Only Safe Mode)",
+          kind: "error",
+        });
+        return;
+      }
+      if (safeCheck.requiresConfirmation) {
+        const confirmed = await ask(safeCheck.reason || "Xác nhận thực thi câu lệnh?", {
+          title: "Bảo vệ an toàn (Safe Mode)",
+          kind: "warning",
+        });
+        if (!confirmed) return;
+      }
 
       try {
         const start = performance.now();
@@ -4042,6 +4062,12 @@ export const Editor = () => {
               onUpdate={handleToolbarUpdate}
               onRefresh={() => handleRefresh(activeTab.id)}
               isLoading={activeTab.isLoading}
+              tableName={activeTab?.activeTable}
+              highlightStorageKey={
+                activeTab?.activeTable
+                  ? buildHighlightStorageKey(activeConnectionId, activeTab.schema, activeTab.activeTable)
+                  : null
+              }
             />
           ) : (
             <div
@@ -4694,11 +4720,16 @@ export const Editor = () => {
                           : undefined
                       }
                       isMaskingEnabled={isMaskingEnabled}
-                      readonly={driverReadonly || !!activeTab.materialized}
+                      readonly={driverReadonly || !!activeTab.materialized || isSafeModeReadonly}
                       columnVisibilityKey={
                         activeTab.activeTable
                           ? `${activeConnectionId ?? ""}:${activeTab.schema ?? ""}:${activeTab.activeTable}`
                           : undefined
+                      }
+                      highlightStorageKey={
+                        activeTab.activeTable
+                          ? buildHighlightStorageKey(activeConnectionId, activeTab.schema, activeTab.activeTable)
+                          : null
                       }
                     />
                   </div>

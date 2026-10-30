@@ -19,11 +19,13 @@ import { getDateInputMode } from "../../utils/dateInput";
 import { renderDefaultCellContent } from "../../utils/dataGridCell";
 import { GeometryInput } from "./GeometryInput";
 import { DateInput } from "./DateInput";
+import { ForeignKeyPicker } from "./ForeignKeyPicker";
 import { JsonCell } from "./JsonCell";
 import { JsonExpansionEditor } from "./JsonExpansionEditor";
 import { TextCell } from "./TextCell";
 import { TextExpansionEditor } from "./TextExpansionEditor";
 import type { ForeignKey } from "../../types/editor";
+import { type HighlightRule, evaluateRowHighlight, getHighlightStyle } from "../../utils/highlightRules";
 import { isSensitiveColumn, maskSensitiveValue } from "../../utils/dataMasking";
 
 /**
@@ -58,6 +60,11 @@ export interface RowCtx {
   pkIndexMaps: number[];
   parentViewportWidth: number;
   isMaskingEnabled?: boolean;
+  connectionId?: string | null;
+  driver?: string | null;
+  schema?: string | null;
+  activeHighlightRules?: HighlightRule[];
+  columnNameToIndexMap?: Map<string, number>;
   readonly: boolean | undefined;
   updateSelection: (s: Set<number>) => void;
   setFocusedCell: React.Dispatch<
@@ -176,6 +183,11 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
     pkIndexMaps,
     parentViewportWidth,
     isMaskingEnabled,
+    connectionId: rowConnectionId,
+    driver: rowDriver,
+    schema: rowSchema,
+    activeHighlightRules,
+    columnNameToIndexMap,
     readonly: readonlyProp,
     updateSelection,
     setFocusedCell,
@@ -217,6 +229,19 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
         }
       : null;
   const expansionMatchesRow = expandedColIndex !== null;
+
+  
+  const highlightEval = React.useMemo(() => {
+    if (!activeHighlightRules || activeHighlightRules.length === 0 || !columnNameToIndexMap) {
+      return null;
+    }
+    return evaluateRowHighlight(rowOriginal, columnNameToIndexMap, activeHighlightRules);
+  }, [rowOriginal, columnNameToIndexMap, activeHighlightRules]);
+
+  const rowHighlightClass =
+    !isSelected && !isInsertion && !isPendingDelete && highlightEval?.rowRule
+      ? getHighlightStyle(highlightEval.rowRule.colorScheme).rowClass
+      : "";
 
   return (
     <>
@@ -381,13 +406,54 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
               onContextMenu={(e) =>
                 handleContextMenu(e, rowOriginal, rowIndex, colIndex, colName)
               }
-              className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "relative" : "whitespace-nowrap truncate max-w-[300px]"} ${fkForPreview ? "cursor-pointer" : "cursor-text"} ${stateClass} ${isFocused ? "ring-2 ring-inset ring-blue-400" : ""}`}
+              className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "relative" : "whitespace-nowrap truncate max-w-[300px]"} ${fkForPreview ? "cursor-pointer" : "cursor-text"} ${stateClass} ${cellHighlightClass} ${isFocused ? "ring-2 ring-inset ring-blue-400" : ""}`}
               title={
                 !isEditing ? truncateCellPreview(formattedDisplay).text : ""
               }
             >
               {isEditing
                 ? (() => {
+
+                    const fkForColumn = fksByColumn.get(colName);
+                    if (fkForColumn) {
+                      return (
+                        <div className="relative">
+                          <span className="invisible whitespace-nowrap">
+                            {String(displayValue)}
+                          </span>
+                          <ForeignKeyPicker
+                            fk={fkForColumn}
+                            currentValue={editingCell.value}
+                            connectionId={rowConnectionId}
+                            driver={rowDriver}
+                            schema={rowSchema}
+                            nullable={nullableColumns?.includes(colName)}
+                            onSelect={(newVal) => {
+                              const mergedRow = mergedRows[rowIndex];
+                              if (mergedRow?.type === "insertion") {
+                                if (onPendingInsertionChange && mergedRow.tempId) {
+                                  onPendingInsertionChange(mergedRow.tempId, colName, newVal);
+                                }
+                              } else if (onPendingChange && pkColumns && pkIndexMaps.length > 0) {
+                                const row = mergedRow?.rowData;
+                                if (row) {
+                                  const pkMapVal = buildPkMap(pkColumns, row, pkIndexMaps);
+                                  const originalValue = row[colIndex];
+                                  const isUnchanged = String(newVal) === String(originalValue);
+                                  onPendingChange(pkMapVal, colName, isUnchanged ? undefined : newVal);
+                                }
+                              } else {
+                                setEditingCell((prev) => (prev ? { ...prev, value: newVal } : null));
+                                setTimeout(handleEditCommit, 0);
+                              }
+                              setEditingCell(null);
+                            }}
+                            onClose={() => setEditingCell(null)}
+                          />
+                        </div>
+                      );
+                    }
+
                     const colType = columnTypeMap?.get(colName);
                     if (colType && isGeometricType(colType)) {
                       return (

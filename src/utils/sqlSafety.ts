@@ -5,11 +5,33 @@ export type SafetyDangerType =
   | "update_no_where"
   | "production_target";
 
+export type SafeModeLevel = "silent" | "alert" | "strict" | "readonly";
+
 export interface SqlSafetyCheckResult {
   isDangerous: boolean;
   dangerTypes: SafetyDangerType[];
   reasons: string[];
   isProduction: boolean;
+}
+
+export interface SafeModeCheckResult {
+  allowed: boolean;
+  requiresConfirmation: boolean;
+  reason?: string;
+}
+
+/**
+ * Resolves effective Safe Mode level, falling back to environment presets if not explicitly configured.
+ */
+export function resolveSafeModeLevel(
+  safeMode?: SafeModeLevel | null,
+  environment?: string | null,
+): SafeModeLevel {
+  if (safeMode) return safeMode;
+  const env = environment?.toLowerCase();
+  if (env === "production") return "strict";
+  if (env === "staging") return "alert";
+  return "silent";
 }
 
 /**
@@ -91,6 +113,14 @@ export function stripCommentsAndLiterals(sql: string): string {
 }
 
 /**
+ * Returns true if the query statement mutates data or table/schema structure.
+ */
+export function isWriteQuery(sql: string): boolean {
+  const cleaned = stripCommentsAndLiterals(sql);
+  return /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|RENAME|REPLACE)\b/i.test(cleaned);
+}
+
+/**
  * Inspects a query string for destructive patterns and production guardrails.
  */
 export function checkSqlSafety(
@@ -161,4 +191,57 @@ export function checkSqlSafety(
     reasons,
     isProduction,
   };
+}
+
+/**
+ * Evaluates whether a query is allowed or requires user confirmation under the connection's Safe Mode level.
+ */
+export function evaluateSafeMode(
+  sql: string,
+  level: SafeModeLevel,
+  connectionName?: string,
+): SafeModeCheckResult {
+  const nameSuffix = connectionName ? ` trên kết nối "${connectionName}"` : "";
+
+  // 1. READONLY: Block any write operations immediately
+  if (level === "readonly") {
+    if (isWriteQuery(sql)) {
+      return {
+        allowed: false,
+        requiresConfirmation: false,
+        reason: `[Chế độ Chỉ đọc / Read-Only Safe Mode] Đã chặn câu lệnh ghi${nameSuffix}. Kết nối này được cấu hình không cho phép thay đổi dữ liệu hoặc cấu trúc.`,
+      };
+    }
+    return { allowed: true, requiresConfirmation: false };
+  }
+
+  // 2. STRICT: Require explicit confirmation for any write or DDL operations
+  if (level === "strict") {
+    if (isWriteQuery(sql)) {
+      const safety = checkSqlSafety(sql, "production");
+      const reasonsText = safety.reasons.length > 0 ? `\n• ${safety.reasons.join("\n• ")}` : "";
+      return {
+        allowed: true,
+        requiresConfirmation: true,
+        reason: `[Bảo vệ nghiêm ngặt / Strict Guard] Bạn đang chuẩn bị thực thi thao tác ghi dữ liệu/cấu trúc${nameSuffix}.${reasonsText}\n\nBạn có chắc chắn muốn tiếp tục thực thi?`,
+      };
+    }
+    return { allowed: true, requiresConfirmation: false };
+  }
+
+  // 3. ALERT: Warn only on high-risk operations (DROP, TRUNCATE, DELETE/UPDATE without WHERE)
+  if (level === "alert") {
+    const safety = checkSqlSafety(sql);
+    if (safety.isDangerous) {
+      return {
+        allowed: true,
+        requiresConfirmation: true,
+        reason: `[Cảnh báo an toàn / Alert Safe Mode] Phát hiện thao tác nguy hiểm${nameSuffix}:\n• ${safety.reasons.join("\n• ")}\n\nBạn có chắc chắn muốn thực thi câu lệnh này?`,
+      };
+    }
+    return { allowed: true, requiresConfirmation: false };
+  }
+
+  // 4. SILENT: Execute freely
+  return { allowed: true, requiresConfirmation: false };
 }

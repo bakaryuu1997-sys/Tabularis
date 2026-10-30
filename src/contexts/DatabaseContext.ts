@@ -1,3 +1,5 @@
+import type { SafeModeLevel } from "../utils/sqlSafety";
+export type { SafeModeLevel };
 import { createContext } from 'react';
 import type { DriverCapabilities } from '../types/plugins';
 
@@ -34,6 +36,7 @@ export interface ConnectionAppearance {
   icon?: IconOverride;
   accentColor?: string;
   environment?: ConnectionEnvironment;
+  safeMode?: SafeModeLevel;
 }
 
 export type ConnectionEnvironment = "production" | "staging" | "development" | "local";
@@ -60,6 +63,7 @@ export interface SavedConnection {
   /** Per-connection opt-in: detect JSON in plain text columns. */
   detect_json_in_text_columns?: boolean;
   appearance?: ConnectionAppearance;
+  safe_mode?: SafeModeLevel;
 }
 
 export interface ConnectionGroup {

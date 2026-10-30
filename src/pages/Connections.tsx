@@ -18,9 +18,16 @@ import {
   List,
   FolderPlus,
   Folder,
+  FolderOpen,
   Download,
   Upload,
+  Loader2,
 } from "lucide-react";
+import { useAlert } from "../hooks/useAlert";
+import { ProjectImportModal } from "../components/modals/ProjectImportModal";
+import { scanProjectDirectory, type DetectedConnection } from "../utils/projectScanner";
+import { parseDBeaverDataSources } from "../utils/importers/dbeaver";
+import { parseTablePlusExport } from "../utils/importers/tableplus";
 import { useDatabase } from "../hooks/useDatabase";
 import { useDrivers } from "../hooks/useDrivers";
 import { useSettings } from "../hooks/useSettings";
@@ -38,6 +45,11 @@ let autoConnectAttempted = false;
 export const Connections = () => {
   const { t } = useTranslation();
   const { settings } = useSettings();
+  const { showAlert } = useAlert();
+  const [detectedConnections, setDetectedConnections] = useState<DetectedConnection[]>([]);
+  const [isProjectImportOpen, setIsProjectImportOpen] = useState(false);
+  const [importSourceTitle, setImportSourceTitle] = useState("");
+  const [isScanningFolder, setIsScanningFolder] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -237,17 +249,74 @@ export const Connections = () => {
     });
   };
 
+  const handleScanProjectFolder = async () => {
+    try {
+      setIsScanningFolder(true);
+      const selected = await open({
+        directory: true,
+        multiple: false,
+      });
+      if (selected && typeof selected === "string") {
+        const found = await scanProjectDirectory(selected, (p) => readTextFile(p));
+        if (found.length > 0) {
+          setDetectedConnections(found);
+          const folderName = selected.split(/[/\\]/).filter(Boolean).pop() || selected;
+          setImportSourceTitle(`Kết nối từ dự án: ${folderName}`);
+          setIsProjectImportOpen(true);
+        } else {
+          showAlert(
+            "Không tìm thấy cấu hình cơ sở dữ liệu (.env, docker-compose.yml hoặc prisma/schema.prisma) trong thư mục này.",
+            { kind: "warning" },
+          );
+        }
+      }
+    } catch (e) {
+      console.error("Project folder scan failed:", e);
+      setError(toErrorMessage(e));
+    } finally {
+      setIsScanningFolder(false);
+    }
+  };
+
   const handleImport = async () => {
     try {
       const selected = await open({
-        filters: [{ name: "JSON", extensions: ["json"] }],
+        filters: [
+          { name: "Cấu hình / Sao lưu (*.json)", extensions: ["json"] },
+          { name: "Tất cả tệp", extensions: ["*"] },
+        ],
         multiple: false,
       });
       if (selected && !Array.isArray(selected)) {
         const content = await readTextFile(selected);
+
+        // 1. DBeaver data-sources.json
+        if (content.includes('"connections"') && (content.includes('"provider"') || content.includes('"driver"'))) {
+          const dbeaverConns = parseDBeaverDataSources(content);
+          if (dbeaverConns.length > 0) {
+            setDetectedConnections(dbeaverConns);
+            setImportSourceTitle("Nhập kết nối từ DBeaver");
+            setIsProjectImportOpen(true);
+            return;
+          }
+        }
+
+        // 2. TablePlus export JSON
+        if (content.includes('"ConnectionName"') && content.includes('"Driver"')) {
+          const tablePlusConns = parseTablePlusExport(content);
+          if (tablePlusConns.length > 0) {
+            setDetectedConnections(tablePlusConns);
+            setImportSourceTitle("Nhập kết nối từ TablePlus");
+            setIsProjectImportOpen(true);
+            return;
+          }
+        }
+
+        // 3. Native Tabularis format
         const payload = JSON.parse(content);
         await invoke("import_connections_payload", { payload });
         await loadConnections();
+        showAlert("Đã nhập thành công cấu hình Tabularis!", { kind: "info" });
       }
     } catch (e) {
       console.error("Import failed:", e);
@@ -556,16 +625,37 @@ export const Connections = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingConnection(null);
-            setIsModalOpen(true);
-          }}
-          className="relative flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:-translate-y-px"
-        >
-          <Plus size={15} />
-          {t("connections.addConnection")}
-        </button>
+        <div className="relative flex items-center gap-2.5">
+          <button
+            onClick={handleScanProjectFolder}
+            disabled={isScanningFolder}
+            title="Tự động quét cấu hình CSDL từ thư mục dự án (.env, docker-compose, prisma)"
+            className="flex items-center gap-2 bg-surface-secondary/70 hover:bg-surface-secondary text-secondary hover:text-primary border border-default hover:border-strong px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all shadow-xs hover:-translate-y-px"
+          >
+            {isScanningFolder ? <Loader2 size={14} className="animate-spin text-blue-400" /> : <FolderOpen size={14} className="text-amber-400" />}
+            <span>Mở từ thư mục dự án</span>
+          </button>
+
+          <button
+            onClick={handleImport}
+            title="Nhập kết nối từ Tabularis, DBeaver hoặc TablePlus"
+            className="flex items-center gap-2 bg-surface-secondary/70 hover:bg-surface-secondary text-secondary hover:text-primary border border-default hover:border-strong px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all shadow-xs hover:-translate-y-px"
+          >
+            <Upload size={14} className="text-blue-400" />
+            <span>{t("connections.import")}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setEditingConnection(null);
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition-all duration-150 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:-translate-y-px"
+          >
+            <Plus size={15} />
+            {t("connections.addConnection")}
+          </button>
+        </div>
       </div>
 
       {/* ── Error banner ──────────────────────────────────────────────────── */}
@@ -603,7 +693,7 @@ export const Connections = () => {
             <p className="text-sm text-muted mb-6 max-w-xs leading-relaxed">
               {t("connections.noConnectionsHint")}
             </p>
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
               <button
                 onClick={() => {
                   setEditingConnection(null);
@@ -615,10 +705,17 @@ export const Connections = () => {
                 {t("connections.createFirst")}
               </button>
               <button
+                onClick={handleScanProjectFolder}
+                className="flex items-center gap-2 bg-elevated border border-strong hover:border-amber-500/50 text-secondary hover:text-amber-300 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all hover:-translate-y-px"
+              >
+                <FolderOpen size={14} className="text-amber-400" />
+                <span>Mở từ thư mục dự án</span>
+              </button>
+              <button
                 onClick={handleImport}
                 className="flex items-center gap-2 bg-elevated border border-strong hover:border-blue-500/50 text-secondary hover:text-blue-400 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all hover:-translate-y-px"
               >
-                <Upload size={14} />
+                <Upload size={14} className="text-blue-400" />
                 {t("connections.import")}
               </button>
             </div>
@@ -889,6 +986,13 @@ export const Connections = () => {
         }}
         onSave={handleSave}
         initialConnection={editingConnection}
+      />
+      <ProjectImportModal
+        isOpen={isProjectImportOpen}
+        onClose={() => setIsProjectImportOpen(false)}
+        connections={detectedConnections}
+        sourceTitle={importSourceTitle}
+        onImportSuccess={() => void loadConnections()}
       />
       <ConfirmModal
         isOpen={confirmModal !== null}

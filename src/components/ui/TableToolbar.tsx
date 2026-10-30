@@ -11,6 +11,7 @@ import {
   Search,
   ChevronDown,
   RotateCcw,
+  Highlighter,
 } from "lucide-react";
 import type { TableColumn } from "../../types/editor";
 import {
@@ -29,6 +30,8 @@ import { formatSortClause } from "../../utils/tableToolbar";
 import { FilterRow } from "./FilterRow";
 import { SlotAnchor } from "./SlotAnchor";
 import { useDatabase } from "../../hooks/useDatabase";
+import { HighlightRulesModal } from "../modals/HighlightRulesModal";
+import { type HighlightRule, loadHighlightRules, saveHighlightRules } from "../../utils/highlightRules";
 
 export interface TableToolbarUpdate {
   filter: string;
@@ -51,6 +54,9 @@ interface TableToolbarProps {
   onUpdate: (update: TableToolbarUpdate) => void;
   onRefresh?: () => void;
   isLoading?: boolean;
+  highlightStorageKey?: string | null;
+  tableName?: string | null;
+  onHighlightRulesChange?: (rules: HighlightRule[]) => void;
 }
 
 interface TableToolbarInternalProps extends TableToolbarProps {
@@ -64,6 +70,9 @@ interface TableToolbarInternalProps extends TableToolbarProps {
   onTriggerApplied: (filterId: string) => void;
   onResetApplied: (filterId: string) => void;
   onResetAllApplied: () => void;
+  highlightStorageKey?: string | null;
+  tableName?: string | null;
+  onHighlightRulesChange?: (rules: HighlightRule[]) => void;
 }
 
 // ─── Internal toolbar ─────────────────────────────────────────────────────────
@@ -91,9 +100,30 @@ const TableToolbarInternal = ({
   onUpdate,
   onRefresh,
   isLoading,
+  highlightStorageKey,
+  tableName,
+  onHighlightRulesChange,
 }: TableToolbarInternalProps) => {
   const { t } = useTranslation();
   const { activeDriver } = useDatabase();
+
+  const [isHighlightModalOpen, setIsHighlightModalOpen] = useState(false);
+  const [highlightRules, setHighlightRules] = useState<HighlightRule[]>(() =>
+    loadHighlightRules(highlightStorageKey ?? null)
+  );
+
+  useEffect(() => {
+    setHighlightRules(loadHighlightRules(highlightStorageKey ?? null));
+  }, [highlightStorageKey]);
+
+  const activeHighlightCount = highlightRules.filter((r) => r.enabled).length;
+
+  const handleRulesChange = (newRules: HighlightRule[]) => {
+    setHighlightRules(newRules);
+    saveHighlightRules(highlightStorageKey ?? null, newRules);
+    onHighlightRulesChange?.(newRules);
+  };
+
   const [filterInput, setFilterInput] = useState(initialFilter || "");
   const [sortInput, setSortInput] = useState(initialSort || "");
   const [limitInput, setLimitInput] = useState(
@@ -707,7 +737,30 @@ const TableToolbarInternal = ({
           </button>
         )}
 
-                {/* Refresh / Reload button */}
+                
+        {/* Conditional Highlight Rules Button */}
+        {hasColumns && (
+          <button
+            type="button"
+            onClick={() => setIsHighlightModalOpen(true)}
+            title={t("highlight.buttonTitle", { defaultValue: "Quy tắc tô màu dữ liệu (Highlight Rules)" })}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border transition-colors shrink-0 ${
+              activeHighlightCount > 0
+                ? "bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25"
+                : "border-default text-muted hover:text-primary hover:bg-surface-secondary"
+            }`}
+          >
+            <Highlighter size={12} className={activeHighlightCount > 0 ? "text-amber-400" : ""} />
+            <span>{t("highlight.buttonLabel", { defaultValue: "Tô màu" })}</span>
+            {activeHighlightCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500/25 text-amber-200 text-[10px] font-semibold">
+                {activeHighlightCount}
+              </span>
+            )}
+          </button>
+        )}
+
+        {/* Refresh / Reload button */}
         <button
           type="button"
           onClick={() => {

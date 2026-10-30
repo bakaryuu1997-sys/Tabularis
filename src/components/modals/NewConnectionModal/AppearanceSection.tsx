@@ -89,6 +89,15 @@ export function AppearanceSection({
     onChange(isEmpty ? {} : next);
   }
 
+
+  function setSafeMode(mode: ConnectionAppearance["safeMode"]) {
+    const next: ConnectionAppearance = { ...value };
+    if (mode) next.safeMode = mode;
+    else delete next.safeMode;
+    const isEmpty = !next.accentColor && !next.icon && !next.environment && !next.safeMode;
+    onChange(isEmpty ? {} : next);
+  }
+
   function setEnvironment(env: ConnectionAppearance["environment"]) {
     const next: ConnectionAppearance = { ...value };
     if (env) {
@@ -187,6 +196,23 @@ export function AppearanceSection({
                   PROD
                 </span>
               )}
+
+              {value.safeMode === "readonly" && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-red-700 text-white shrink-0">
+                  READ-ONLY
+                </span>
+              )}
+              {value.safeMode === "strict" && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-orange-600 text-white shrink-0">
+                  STRICT
+                </span>
+              )}
+              {value.safeMode === "alert" && (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-600 text-white shrink-0">
+                  ALERT
+                </span>
+              )}
+
               {value.environment === "staging" && (
                 <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-600 text-white shrink-0">
                   STG
@@ -221,6 +247,37 @@ export function AppearanceSection({
                 )}
               >
                 {env.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+
+      {/* Safe Mode Guardrail Selection */}
+      <div className="flex flex-col gap-2">
+        <label className="text-[10px] uppercase font-semibold tracking-wider text-muted">
+          {t("connectionAppearance.safeMode", { defaultValue: "Cấp độ an toàn (Safe Mode)" })}
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[
+            { id: "silent", label: "Silent (Tự do)", color: "bg-slate-500/15 border-slate-500/40 text-slate-300 hover:bg-slate-500/25", active: "bg-slate-600 text-white border-slate-600 shadow-sm shadow-slate-600/30" },
+            { id: "alert", label: "Alert (Cảnh báo)", color: "bg-amber-500/15 border-amber-500/40 text-amber-400 hover:bg-amber-500/25", active: "bg-amber-600 text-white border-amber-600 shadow-sm shadow-amber-600/30" },
+            { id: "strict", label: "Strict Guard (Nghiêm ngặt)", color: "bg-orange-500/15 border-orange-500/40 text-orange-400 hover:bg-orange-500/25", active: "bg-orange-600 text-white border-orange-600 shadow-sm shadow-orange-600/30" },
+            { id: "readonly", label: "Read-Only (Chỉ đọc)", color: "bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/25", active: "bg-red-600 text-white border-red-600 shadow-sm shadow-red-600/30" },
+          ].map((mode) => {
+            const isSelected = value.safeMode === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setSafeMode(isSelected ? undefined : (mode.id as any))}
+                className={clsx(
+                  "px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all text-center",
+                  isSelected ? mode.active : mode.color
+                )}
+              >
+                {mode.label}
               </button>
             );
           })}
