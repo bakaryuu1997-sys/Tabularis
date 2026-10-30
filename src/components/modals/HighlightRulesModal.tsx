@@ -7,7 +7,6 @@ import {
   Highlighter,
   Sliders,
   Check,
-  AlertCircle,
 } from "lucide-react";
 import {
   type HighlightRule,

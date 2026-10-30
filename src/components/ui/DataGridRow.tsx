@@ -254,7 +254,7 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
               ? "bg-green-500/8 border-l-4 border-green-400"
               : isPendingDelete
                 ? "bg-red-900/20 opacity-60"
-                : "hover:bg-surface-secondary/50"
+                : rowHighlightClass ? (rowHighlightClass + " hover:opacity-90") : "hover:bg-surface-secondary/50"
         }`}
       >
         <td
@@ -348,6 +348,11 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
               `rcell-${getResultValueType(rawCellValue, colTypeForCell)}`;
           }
 
+          const cellRule = highlightEval?.cellRules.get(colIndex);
+          const cellHighlightClass =
+            !isSelected && !isInsertion && !isPendingDelete && cellRule
+              ? getHighlightStyle(cellRule.colorScheme).cellClass
+              : "";
           const isFocused =
             focusedCell?.rowIndex === rowIndex &&
             focusedCell?.colIndex === colIndex;

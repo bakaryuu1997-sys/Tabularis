@@ -244,6 +244,16 @@ export const Editor = () => {
   const driverReadonly = isReadonly(activeCapabilities);
   const activeDialect = activeCapabilities?.sql_dialect;
 
+  const activeConnectionObj = useMemo(() => {
+    return connections.find((c) => c.id === activeConnectionId);
+  }, [connections, activeConnectionId]);
+
+  const effectiveSafeModeLevel = useMemo(() => {
+    return resolveSafeModeLevel(activeConnectionObj?.safe_mode, activeConnectionObj?.appearance?.safeMode);
+  }, [activeConnectionObj]);
+
+  const isSafeModeReadonly = effectiveSafeModeLevel === "readonly";
+
   const [tabContextMenu, setTabContextMenu] = useState<{
     x: number;
     y: number;

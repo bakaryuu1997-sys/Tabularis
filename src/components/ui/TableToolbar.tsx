@@ -983,6 +983,16 @@ const TableToolbarInternal = ({
           </div>
         </div>
       )}
+
+      {/* Conditional Highlight Rules Modal */}
+      <HighlightRulesModal
+        isOpen={isHighlightModalOpen}
+        onClose={() => setIsHighlightModalOpen(false)}
+        columns={columns.map((c) => c.name)}
+        rules={highlightRules}
+        onRulesChange={handleRulesChange}
+        tableName={tableName ?? undefined}
+      />
     </div>
   );
 };
