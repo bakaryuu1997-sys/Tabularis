@@ -91,4 +91,27 @@ describe("DataGrid Visuals & Smart Empty State", () => {
     expect(screen.getByText("dataGrid.noDataTitle")).toBeInTheDocument();
     expect(screen.queryByText("dataGrid.addFirstRow")).not.toBeInTheDocument();
   });
+
+  it("opens quick statistics popover when clicking on a column type badge", () => {
+    render(
+      <DataGrid
+        columns={["id", "score"]}
+        data={[
+          [1, 100],
+          [2, 200],
+        ]}
+        columnMetadata={[
+          { name: "id", data_type: "bigint", is_nullable: false, is_primary_key: true },
+          { name: "score", data_type: "integer", is_nullable: false, is_primary_key: false },
+        ]}
+      />
+    );
+
+    const scoreBadge = screen.getByText("INT");
+    expect(scoreBadge).toBeInTheDocument();
+
+    fireEvent.click(scoreBadge);
+
+    expect(screen.getByText("columnProfile.viewFullReport")).toBeInTheDocument();
+  });
 });

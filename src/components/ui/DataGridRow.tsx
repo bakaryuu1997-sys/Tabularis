@@ -26,7 +26,7 @@ import { TextCell } from "./TextCell";
 import { TextExpansionEditor } from "./TextExpansionEditor";
 import type { ForeignKey } from "../../types/editor";
 import { type HighlightRule, evaluateRowHighlight, getHighlightStyle } from "../../utils/highlightRules";
-import { isSensitiveColumn, maskSensitiveValue } from "../../utils/dataMasking";
+import { isSensitiveColumn, maskSensitiveValue, type MaskingProfile } from "../../utils/dataMasking";
 
 /**
  * Stable, per-grid dependencies shared by every row. Bundled into a single
@@ -60,6 +60,9 @@ export interface RowCtx {
   pkIndexMaps: number[];
   parentViewportWidth: number;
   isMaskingEnabled?: boolean;
+  maskingProfile?: MaskingProfile;
+  showCellDataBars?: boolean;
+  colNumericBoundsMap?: Map<string, { min: number; max: number }>;
   connectionId?: string | null;
   driver?: string | null;
   schema?: string | null;
@@ -183,6 +186,9 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
     pkIndexMaps,
     parentViewportWidth,
     isMaskingEnabled,
+    maskingProfile,
+    showCellDataBars,
+    colNumericBoundsMap,
     connectionId: rowConnectionId,
     driver: rowDriver,
     schema: rowSchema,
@@ -368,13 +374,32 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
           // the rendered content (previously formatted twice).
           const formattedDisplay =
             isMaskingEnabled && isSensitiveColumn(colName)
-              ? maskSensitiveValue(displayValue, colName)
+              ? maskSensitiveValue(displayValue, colName, maskingProfile)
               : formatCellValue(
                   displayValue,
                   t("dataGrid.null"),
                   colTypeForCell,
                   columnLengthMap?.get(colName),
                 );
+
+          // Calculate subtle cell data bar for numeric distribution
+          const numBounds = showCellDataBars ? colNumericBoundsMap?.get(colName) : undefined;
+          let numericBarWidth: number | undefined;
+          if (
+            numBounds &&
+            numBounds.max > numBounds.min &&
+            rawCellValue !== null &&
+            rawCellValue !== undefined &&
+            !isEditing &&
+            !isPendingDelete &&
+            !isInsertion
+          ) {
+            const num = Number(rawCellValue);
+            if (!isNaN(num)) {
+              const ratio = Math.max(0, Math.min(1, (num - numBounds.min) / (numBounds.max - numBounds.min)));
+              numericBarWidth = Math.round(ratio * 100);
+            }
+          }
 
           return (
             <td
@@ -411,11 +436,17 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
               onContextMenu={(e) =>
                 handleContextMenu(e, rowOriginal, rowIndex, colIndex, colName)
               }
-              className={`px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "relative" : "whitespace-nowrap truncate max-w-[300px]"} ${fkForPreview ? "cursor-pointer" : "cursor-text"} ${stateClass} ${cellHighlightClass} ${isFocused ? "ring-2 ring-inset ring-blue-400" : ""}`}
+              className={`relative px-4 py-1.5 text-sm border-b border-r border-default last:border-r-0 font-mono ${isEditing ? "" : "whitespace-nowrap truncate max-w-[300px]"} ${fkForPreview ? "cursor-pointer" : "cursor-text"} ${stateClass} ${cellHighlightClass} ${isFocused ? "ring-2 ring-inset ring-blue-400" : ""}`}
               title={
                 !isEditing ? truncateCellPreview(formattedDisplay).text : ""
               }
             >
+              {numericBarWidth !== undefined && numericBarWidth > 0 && (
+                <div
+                  style={{ width: `${numericBarWidth}%` }}
+                  className="absolute inset-y-0 left-0 bg-blue-500/10 pointer-events-none rounded-r transition-all"
+                />
+              )}
               {isEditing
                 ? (() => {
 

@@ -1,6 +1,6 @@
 [package]
 name = "tabularis"
-version = "0.13.26"
+version = "0.13.27"
 description = "tabularis - A database manager for developers"
 authors = ["Debba"]
 edition = "2021"
@@ -13,8 +13,8 @@ name = "tabularis_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [profile.release]
-codegen-units = 1
-lto = "thin"
+codegen-units = 16
+lto = false
 opt-level = 3
 panic = "abort"
 strip = true

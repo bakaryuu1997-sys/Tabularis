@@ -42,6 +42,8 @@ import {
   TableProperties,
 } from "lucide-react";
 import { getColumnTypeVisual } from "../../utils/columnTypeBadge";
+import { ColumnQuickStatsPopover } from "./ColumnQuickStatsPopover";
+import type { MaskingProfile } from "../../utils/dataMasking";
 import { buildColumnTooltip } from "../../utils/columnDetails";
 import {
   getCellValueFilterOperators,
@@ -156,6 +158,8 @@ interface DataGridProps {
    * (e.g. `${connectionId}:${tableName}`). Omit for session-only visibility. */
   columnVisibilityKey?: string;
   isMaskingEnabled?: boolean;
+  maskingProfile?: MaskingProfile;
+  showCellDataBars?: boolean;
   onToggleMasking?: () => void;
   scrollKey?: string;
   highlightRules?: HighlightRule[];
@@ -235,6 +239,8 @@ export const DataGrid = React.memo(
     onSort,
     readonly: readonlyProp,
     isMaskingEnabled: isMaskingEnabledProp,
+    maskingProfile: maskingProfileProp,
+    showCellDataBars: showCellDataBarsProp,
     columnVisibilityKey,
     scrollKey,
     highlightRules: highlightRulesProp,
@@ -245,6 +251,8 @@ export const DataGrid = React.memo(
     const { showAlert } = useAlert();
     const { settings } = useSettings();
     const colorByType = settings.resultColorByType ?? true;
+    const maskingProfile = maskingProfileProp ?? settings.maskingProfile ?? "smart";
+    const showCellDataBars = showCellDataBarsProp ?? settings.showCellDataBars ?? true;
 
     // Client-side hidden columns (presentational only — never changes the SQL).
     const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(() =>
@@ -408,6 +416,103 @@ export const DataGrid = React.memo(
       }
       return map;
     }, [colorByType, columns, columnTypeMap]);
+
+    // Precompute column data distribution (valid vs null) for header mini-bar
+    const columnDistributionMap = useMemo(() => {
+      const map = new Map<string, { validRatio: number; validCount: number; nullCount: number }>();
+      const total = data.length;
+      if (total === 0) return map;
+
+      columns.forEach((colName, colIdx) => {
+        let validCount = 0;
+        for (let i = 0; i < total; i++) {
+          const val = data[i]?.[colIdx];
+          if (val !== null && val !== undefined) {
+            validCount++;
+          }
+        }
+        map.set(colName, {
+          validRatio: validCount / total,
+          validCount,
+          nullCount: total - validCount,
+        });
+      });
+      return map;
+    }, [columns, data]);
+
+    // Precompute numeric bounds (min, max) per column for cell data bars
+    const colNumericBoundsMap = useMemo(() => {
+      const map = new Map<string, { min: number; max: number }>();
+      if (!showCellDataBars || data.length === 0) return map;
+
+      columns.forEach((colName, colIdx) => {
+        const colType = columnTypeMap?.get(colName) || "";
+        const isNumType = /int|float|double|decimal|num|real/i.test(colType);
+
+        let min = Infinity;
+        let max = -Infinity;
+        let count = 0;
+
+        for (let i = 0; i < data.length; i++) {
+          const val = data[i]?.[colIdx];
+          if (val !== null && val !== undefined && val !== "") {
+            const num = Number(val);
+            if (!isNaN(num)) {
+              if (num < min) min = num;
+              if (num > max) max = num;
+              count++;
+            }
+          }
+        }
+
+        if (count > 0 && max > min && (isNumType || count === data.length)) {
+          map.set(colName, { min, max });
+        }
+      });
+      return map;
+    }, [columns, data, columnTypeMap, showCellDataBars]);
+
+    const [quickStatsState, setQuickStatsState] = useState<{
+      isOpen: boolean;
+      colName: string;
+      anchorRect: { top: number; left: number; bottom: number; right: number } | null;
+      profile: ColumnProfileResult | null;
+      declaredType?: string;
+    }>({
+      isOpen: false,
+      colName: "",
+      anchorRect: null,
+      profile: null,
+    });
+
+    const handleOpenQuickStats = useCallback(
+      (colName: string, event: React.MouseEvent<HTMLElement>) => {
+        event.stopPropagation();
+        const rect = event.currentTarget.getBoundingClientRect();
+        const colType = columnTypeMap?.get(colName);
+        const rowObjects = data.map((r) => {
+          const obj: Record<string, unknown> = {};
+          columns.forEach((col, idx) => {
+            obj[col] = r[idx];
+          });
+          return obj;
+        });
+        const prof = profileColumn(colName, rowObjects, colType);
+        setQuickStatsState({
+          isOpen: true,
+          colName,
+          anchorRect: {
+            top: rect.top,
+            left: rect.left,
+            bottom: rect.bottom,
+            right: rect.right,
+          },
+          profile: prof,
+          declaredType: colType,
+        });
+      },
+      [columnTypeMap, columns, data],
+    );
 
     const isJsonCellTarget = useCallback(
       (colType: string | undefined, value: unknown): boolean => {
@@ -1042,75 +1147,97 @@ export const DataGrid = React.memo(
 
               return (
                 <div
-                  className="flex items-center gap-1.5 select-none group/header min-w-0"
+                  className="flex flex-col gap-1 select-none group/header min-w-0"
                   title={tooltipText}
                 >
-                  {isPk && (
-                    <span title="Khóa chính (Primary Key)" className="inline-flex items-center">
-                      <Key
-                        size={12}
-                        className="text-amber-400 shrink-0"
-                      />
-                    </span>
-                  )}
-                  {fk && (
-                    <span title={`Khóa ngoại ➔ ${fk.ref_table}.${fk.ref_column}`} className="inline-flex items-center">
-                      <Link2
-                        size={12}
-                        className="text-cyan-400 shrink-0"
-                      />
-                    </span>
-                  )}
-                  <span
-                    className="select-text cursor-text font-medium text-primary hover:text-white"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      // Allow selecting text without triggering sort
-                      e.stopPropagation();
-                    }}
-                  >
-                    {colName}
-                  </span>
-                  {colType && (() => {
-                    const visual = getColumnTypeVisual(colType);
-                    return (
-                      <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono border select-none shrink-0 ${visual.badgeClass}`}
-                        title={`${t("dataGrid.columnType", { defaultValue: "Kiểu dữ liệu" })}: ${colType}`}
-                      >
-                        {visual.icon}
-                        <span>{visual.shortName}</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {isPk && (
+                      <span title="Khóa chính (Primary Key)" className="inline-flex items-center">
+                        <Key
+                          size={12}
+                          className="text-amber-400 shrink-0"
+                        />
                       </span>
+                    )}
+                    {fk && (
+                      <span title={`Khóa ngoại ➔ ${fk.ref_table}.${fk.ref_column}`} className="inline-flex items-center">
+                        <Link2
+                          size={12}
+                          className="text-cyan-400 shrink-0"
+                        />
+                      </span>
+                    )}
+                    <span
+                      className="select-text cursor-text font-medium text-primary hover:text-white"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        // Allow selecting text without triggering sort
+                        e.stopPropagation();
+                      }}
+                    >
+                      {colName}
+                    </span>
+                    {colType && (() => {
+                      const visual = getColumnTypeVisual(colType);
+                      return (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => handleOpenQuickStats(colName, e)}
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono border select-none shrink-0 cursor-pointer hover:brightness-125 active:scale-95 transition-all ${visual.badgeClass}`}
+                          title={`${t("dataGrid.columnType", { defaultValue: "Kiểu dữ liệu" })}: ${colType} • ${t("dataGrid.quickStatsHint", { defaultValue: "Nhấp để xem thống kê nhanh" })}`}
+                        >
+                          {visual.icon}
+                          <span>{visual.shortName}</span>
+                        </span>
+                      );
+                    })()}
+                    {onSort && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        aria-label={sortPrompt}
+                        onClick={() => handleColumnSort(colName)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onSort(colName);
+                          }
+                        }}
+                        className="flex flex-col items-center justify-center p-0.5 rounded hover:bg-surface-secondary transition-colors cursor-pointer ml-auto"
+                      >
+                        {displaySortState === "asc" && (
+                          <ArrowUp size={14} className="text-blue-400" />
+                        )}
+                        {displaySortState === "desc" && (
+                          <ArrowDown size={14} className="text-blue-400" />
+                        )}
+                        {displaySortState === "none" && (
+                          <ArrowUpDown
+                            size={14}
+                            className="text-secondary/60 opacity-50 group-hover/header:opacity-100 transition-opacity"
+                          />
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  {/* Header Distribution Mini-Bar */}
+                  {data.length > 0 && (() => {
+                    const dist = columnDistributionMap.get(colName);
+                    if (!dist) return null;
+                    const validPct = Math.round(dist.validRatio * 100);
+                    return (
+                      <div
+                        className="w-full h-[2.5px] bg-surface-secondary/70 rounded-full overflow-hidden flex"
+                        title={`Hợp lệ: ${dist.validCount} dòng (${validPct}%) | NULL: ${dist.nullCount} dòng (${100 - validPct}%)`}
+                      >
+                        <div style={{ width: `${validPct}%` }} className="bg-emerald-500/80 h-full" />
+                        {dist.nullCount > 0 && (
+                          <div style={{ width: `${100 - validPct}%` }} className="bg-amber-500/60 h-full" />
+                        )}
+                      </div>
                     );
                   })()}
-                  {onSort && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      aria-label={sortPrompt}
-                      onClick={() => handleColumnSort(colName)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          onSort(colName);
-                        }
-                      }}
-                      className="flex flex-col items-center justify-center p-0.5 rounded hover:bg-surface-secondary transition-colors cursor-pointer ml-auto"
-                    >
-                      {displaySortState === "asc" && (
-                        <ArrowUp size={14} className="text-blue-400" />
-                      )}
-                      {displaySortState === "desc" && (
-                        <ArrowDown size={14} className="text-blue-400" />
-                      )}
-                      {displaySortState === "none" && (
-                        <ArrowUpDown
-                          size={14}
-                          className="text-secondary/60 opacity-50 group-hover/header:opacity-100 transition-opacity"
-                        />
-                      )}
-                    </span>
-                  )}
                 </div>
               );
             },
@@ -1565,6 +1692,9 @@ export const DataGrid = React.memo(
         pkIndexMaps,
         parentViewportWidth,
         isMaskingEnabled: isMaskingEnabledProp,
+        maskingProfile,
+        showCellDataBars,
+        colNumericBoundsMap,
         connectionId,
         driver: activeDriver,
         schema: activeSchema,
@@ -1609,6 +1739,9 @@ export const DataGrid = React.memo(
         pkIndexMaps,
         parentViewportWidth,
         isMaskingEnabledProp,
+        maskingProfile,
+        showCellDataBars,
+        colNumericBoundsMap,
         connectionId,
         activeDriver,
         activeSchema,
@@ -2167,7 +2300,21 @@ export const DataGrid = React.memo(
             />
           )}
 
-                    {isProfileModalOpen && selectedColumnProfile && (
+          {quickStatsState.isOpen && quickStatsState.profile && (
+            <ColumnQuickStatsPopover
+              isOpen={quickStatsState.isOpen}
+              onClose={() => setQuickStatsState((prev) => ({ ...prev, isOpen: false }))}
+              anchorRect={quickStatsState.anchorRect}
+              profile={quickStatsState.profile}
+              declaredType={quickStatsState.declaredType}
+              onOpenFullModal={() => {
+                setSelectedColumnProfile(quickStatsState.profile);
+                setIsProfileModalOpen(true);
+              }}
+            />
+          )}
+
+          {isProfileModalOpen && selectedColumnProfile && (
             <ColumnProfileModal
               isOpen={isProfileModalOpen}
               onClose={() => setIsProfileModalOpen(false)}
