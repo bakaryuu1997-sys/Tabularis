@@ -1871,7 +1871,15 @@
     "downloaded": "Đã tải file tabularis-workspace.json",
     "emptyImport": "Vui lòng dán nội dung file bundle JSON.",
     "importInvalid": "Dữ liệu bundle không hợp lệ.",
-    "importError": "Lỗi phân tích:"
+    "importError": "Lỗi phân tích:",
+    "errors": {
+      "unsupported_version": "Phiên bản bundle workspace này không được hỗ trợ.",
+      "passphrase_required": "Bundle này đã được mã hóa. Hãy nhập passphrase để giải mã.",
+      "missing_cipher_fields": "Bundle mã hóa thiếu salt, IV hoặc dữ liệu.",
+      "decrypt_failed": "Giải mã thất bại: sai passphrase hoặc dữ liệu bị hỏng.",
+      "invalid_kdf": "Bundle dùng thiết lập dẫn xuất khóa không hỗ trợ hoặc quá yếu nên bị từ chối.",
+      "parse_failed": "Bundle không phải JSON hợp lệ."
+    }
   },
   "explainDiff": {
     "title": "Tư vấn chỉ mục (phân tích what-if)",

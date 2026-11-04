@@ -142,7 +142,7 @@ import { useSqlAutocompleteRegistration } from "../hooks/useSqlAutocompleteRegis
 import { createNotebook, renameNotebook } from "../utils/notebookStore";
 import { type OnMount, type Monaco } from "@monaco-editor/react";
 import { save, ask } from "@tauri-apps/plugin-dialog";
-import { resolveSafeModeLevel, evaluateSafeMode } from "../utils/sqlSafety";
+import { resolveConnectionSafeMode, evaluateSafeMode } from "../utils/sqlSafety";
 import { useAlert } from "../hooks/useAlert";
 import { useDatabase } from "../hooks/useDatabase";
 import { useDrivers } from "../hooks/useDrivers";
@@ -249,7 +249,7 @@ export const Editor = () => {
   }, [connections, activeConnectionId]);
 
   const effectiveSafeModeLevel = useMemo(() => {
-    return resolveSafeModeLevel(activeConnectionObj?.safe_mode, activeConnectionObj?.appearance?.safeMode);
+    return resolveConnectionSafeMode(activeConnectionObj);
   }, [activeConnectionObj]);
 
   const isSafeModeReadonly = effectiveSafeModeLevel === "readonly";

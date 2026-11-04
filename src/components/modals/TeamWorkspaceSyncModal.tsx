@@ -111,7 +111,12 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
       );
       setImportResult(result);
       if (!result.valid) {
-        showAlert(result.error || t("teamSync.importInvalid", "Dữ liệu bundle không hợp lệ."), { kind: "error" });
+        showAlert(
+          result.errorCode
+            ? t(`teamSync.errors.${result.errorCode}`)
+            : t("teamSync.importInvalid"),
+          { kind: "error" },
+        );
       }
     } catch (err) {
       showAlert(`${t("teamSync.importError", "Lỗi phân tích:")} ${String(err)}`, { kind: "error" });
@@ -275,7 +280,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
                       />
                     </div>
                     <p className="text-[11px] text-muted">
-                      Mật khẩu sẽ được mã hóa bằng thuật toán PBKDF2 (100k rounds) + AES-GCM 256-bit an toàn khi commit lên Git repository.
+                      Mật khẩu sẽ được mã hóa bằng thuật toán PBKDF2 (600k rounds) + AES-GCM 256-bit an toàn khi commit lên Git repository.
                     </p>
                   </div>
                 ) : (

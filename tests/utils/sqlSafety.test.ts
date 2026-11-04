@@ -4,6 +4,7 @@ import {
   stripCommentsAndLiterals,
   isWriteQuery,
   resolveSafeModeLevel,
+  resolveConnectionSafeMode,
   evaluateSafeMode,
 } from "../../src/utils/sqlSafety";
 
@@ -135,5 +136,26 @@ describe("checkSqlSafety", () => {
     const res = checkSqlSafety("UPDATE users SET is_active = false WHERE id = 1;", "production");
     expect(res.isDangerous).toBe(true);
     expect(res.dangerTypes).toContain("production_target");
+  });
+});
+
+describe("resolveConnectionSafeMode", () => {
+  it("uses the level chosen in the connection appearance", () => {
+    expect(resolveConnectionSafeMode({ appearance: { safeMode: "readonly" } })).toBe("readonly");
+    expect(resolveConnectionSafeMode({ appearance: { safeMode: "strict" }, environment: "local" })).toBe("strict");
+  });
+
+  it("falls back to the legacy top-level safe_mode", () => {
+    expect(resolveConnectionSafeMode({ safe_mode: "alert" })).toBe("alert");
+  });
+
+  it("defaults from the environment when nothing was chosen", () => {
+    expect(resolveConnectionSafeMode({ environment: "production" })).toBe("strict");
+    expect(resolveConnectionSafeMode({ appearance: { environment: "staging" } })).toBe("alert");
+    expect(resolveConnectionSafeMode(undefined)).toBe("silent");
+  });
+
+  it("an explicit silent level overrides a production environment", () => {
+    expect(resolveConnectionSafeMode({ appearance: { safeMode: "silent" }, environment: "production" })).toBe("silent");
   });
 });

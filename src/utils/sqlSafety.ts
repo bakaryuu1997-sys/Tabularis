@@ -34,6 +34,25 @@ export function resolveSafeModeLevel(
   return "silent";
 }
 
+/** The connection fields that decide which Safe Mode level applies. */
+export interface SafeModeSource {
+  safe_mode?: SafeModeLevel | null;
+  environment?: string | null;
+  appearance?: { safeMode?: SafeModeLevel | null; environment?: string | null } | null;
+}
+
+/**
+ * Effective Safe Mode level for a saved connection. The level picked in the connection
+ * dialog lives in `appearance.safeMode`; without an explicit choice the environment
+ * (production/staging) decides the default.
+ */
+export function resolveConnectionSafeMode(conn: SafeModeSource | null | undefined): SafeModeLevel {
+  return resolveSafeModeLevel(
+    conn?.appearance?.safeMode ?? conn?.safe_mode,
+    conn?.environment ?? conn?.appearance?.environment,
+  );
+}
+
 /**
  * Strips comments and string literals from SQL text to allow safe lexical inspection.
  */

@@ -1871,7 +1871,15 @@
     "downloaded": "Downloaded tabularis-workspace.json",
     "emptyImport": "Please paste bundle JSON content.",
     "importInvalid": "Invalid workspace bundle data.",
-    "importError": "Parse error:"
+    "importError": "Parse error:",
+    "errors": {
+      "unsupported_version": "This workspace bundle version is not supported.",
+      "passphrase_required": "This bundle is encrypted. Enter the passphrase to decrypt it.",
+      "missing_cipher_fields": "The encrypted bundle is missing its salt, IV or payload.",
+      "decrypt_failed": "Decryption failed: wrong passphrase or corrupted data.",
+      "invalid_kdf": "The bundle uses unsupported or too weak key-derivation settings and was rejected.",
+      "parse_failed": "The bundle is not valid JSON."
+    }
   },
   "explainDiff": {
     "title": "Index Advisor (what-if analysis)",

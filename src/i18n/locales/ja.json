@@ -1807,7 +1807,15 @@
     "downloaded": "tabularis-workspace.jsonをダウンロードしました",
     "emptyImport": "バンドルのJSON内容を貼り付けてください。",
     "importInvalid": "無効なバンドルデータです。",
-    "importError": "解析エラー:"
+    "importError": "解析エラー:",
+    "errors": {
+      "unsupported_version": "このワークスペースバンドルのバージョンには対応していません。",
+      "passphrase_required": "このバンドルは暗号化されています。復号するにはパスフレーズを入力してください。",
+      "missing_cipher_fields": "暗号化バンドルにソルト、IV、またはペイロードがありません。",
+      "decrypt_failed": "復号に失敗しました。パスフレーズが違うか、データが破損しています。",
+      "invalid_kdf": "このバンドルは未対応、または強度が不十分な鍵導出設定のため拒否されました。",
+      "parse_failed": "バンドルが有効なJSONではありません。"
+    }
   },
   "explainDiff": {
     "title": "インデックスアドバイザー（仮想インデックス分析）",
