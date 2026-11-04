@@ -203,6 +203,10 @@ pub struct ConnectionAppearance {
     pub accent_color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub environment: Option<String>,
+    /// Safe Mode level chosen in the UI ("silent" | "alert" | "strict" | "readonly").
+    /// Must be declared here, otherwise serde drops it when the connection is saved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub safe_mode: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -419,6 +423,27 @@ pub struct ExplainNode {
     pub children: Vec<ExplainNode>,
 }
 
+/// An index that does not exist yet, used to ask the planner "what if this index existed?".
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct HypotheticalIndex {
+    pub table: String,
+    pub columns: Vec<String>,
+}
+
+/// Result of a what-if EXPLAIN. The frontend never needs to know which driver
+/// produced it: unsupported drivers and missing server extensions are reported
+/// as plain statuses instead of fabricated numbers.
+#[derive(Debug, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum WhatIfExplainOutcome {
+    /// The driver cannot evaluate hypothetical indexes.
+    Unsupported,
+    /// The driver can, but a required server-side extension is not installed.
+    ExtensionMissing { extension: String },
+    /// The plan the planner chose with the hypothetical indexes in place.
+    Plan { plan: ExplainPlan },
+}
+
 /// The complete result of an EXPLAIN query, including the plan tree and metadata.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ExplainPlan {
@@ -540,8 +565,28 @@ mod appearance_tests {
 
     #[test]
     fn connection_appearance_with_only_color_serializes_compactly() {
-        let a = ConnectionAppearance { icon: None, accent_color: Some("#ff0000".into()) };
+        let a = ConnectionAppearance { icon: None, accent_color: Some("#ff0000".into()), environment: None, safe_mode: None };
         let s = serde_json::to_string(&a).unwrap();
         assert_eq!(s, r##"{"accentColor":"#ff0000"}"##);
+    }
+}
+
+#[cfg(test)]
+mod connection_appearance_safe_mode_tests {
+    use super::ConnectionAppearance;
+
+    #[test]
+    fn safe_mode_survives_a_serde_round_trip() {
+        let parsed: ConnectionAppearance =
+            serde_json::from_str(r#"{"environment":"production","safeMode":"strict"}"#).unwrap();
+        assert_eq!(parsed.safe_mode.as_deref(), Some("strict"));
+        let json = serde_json::to_string(&parsed).unwrap();
+        assert!(json.contains(r#""safeMode":"strict""#));
+    }
+
+    #[test]
+    fn missing_safe_mode_is_omitted_when_serializing() {
+        let json = serde_json::to_string(&ConnectionAppearance::default()).unwrap();
+        assert_eq!(json, "{}");
     }
 }

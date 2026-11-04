@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   X,
@@ -104,10 +104,12 @@ export function CellValueInspector({
   }, [cellValue]);
 
   // Initialize edited text when cell changes
-  useEffect(() => {
+  const [syncedRawString, setSyncedRawString] = useState<string | null>(null);
+  if (syncedRawString !== rawString) {
+    setSyncedRawString(rawString);
     setEditedText(rawString);
     setApplied(false);
-  }, [rawString]);
+  }
 
   if (!isOpen) return null;
 

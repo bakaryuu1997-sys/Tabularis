@@ -2390,7 +2390,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   try {
                                     await copyTextToClipboard((contextMenu.data as SavedQuery).sql);
                                     showAlert(t("common.copied"), { kind: "info" });
-                                  } catch (error) {
+                                  } catch {
                                     showAlert(t("common.error"), { kind: "error" });
                                   }
                                 },
@@ -2405,7 +2405,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   try {
                                     await saveQuery(copyName, sq.sql, sq.database);
                                     showAlert(t("common.copied"), { kind: "info" });
-                                  } catch (error) {
+                                  } catch {
                                     showAlert(t("common.error"), { kind: "error" });
                                   }
                                 },

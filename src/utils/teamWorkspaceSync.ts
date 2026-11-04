@@ -110,7 +110,7 @@ export async function exportTeamWorkspaceBundle(
     ? connections.filter((c) => options.selectedConnectionIds!.includes(c.id))
     : [...connections];
 
-  let targetQueries = options.selectedQueryIds
+  const targetQueries = options.selectedQueryIds
     ? savedQueries.filter((q) => options.selectedQueryIds!.includes(q.id))
     : [...savedQueries];
 

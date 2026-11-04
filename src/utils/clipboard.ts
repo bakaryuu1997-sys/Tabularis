@@ -164,7 +164,7 @@ export async function copyTextToClipboard(
   try {
     await writeText(text);
     copied = true;
-  } catch (_e) {
+  } catch {
     // Non-tauri or permission fallback
   }
 

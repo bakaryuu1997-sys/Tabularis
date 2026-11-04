@@ -31,7 +31,6 @@ const SAMPLE_STATUSES = ["active", "pending", "completed", "inactive"];
 export function generateMockValue(
   col: TableColumn,
   index: number,
-  _totalCount?: number,
 ): unknown {
   const name = col.name.toLowerCase();
   const type = (col.data_type || col.type || "").toLowerCase();
@@ -148,7 +147,7 @@ export function generateMockRows(
   for (let i = 0; i < count; i++) {
     const row: Record<string, unknown> = {};
     for (const col of columns) {
-      row[col.name] = generateMockValue(col, i, count);
+      row[col.name] = generateMockValue(col, i);
     }
     rows.push(row);
   }

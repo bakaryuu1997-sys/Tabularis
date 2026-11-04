@@ -40,7 +40,7 @@ function normalizeDriver(raw: string): string | null {
  */
 function parseUrl(urlStr: string, sourceName: string): DetectedConnection | null {
   try {
-    let cleaned = urlStr.trim().replace(/^["']|["']$/g, "");
+    const cleaned = urlStr.trim().replace(/^["']|["']$/g, "");
     if (cleaned.startsWith("file:")) {
       const dbPath = cleaned.replace(/^file:/, "");
       return {

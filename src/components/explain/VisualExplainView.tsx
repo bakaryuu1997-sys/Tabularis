@@ -27,6 +27,10 @@ export interface VisualExplainViewProps {
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
   aiEnabled: boolean;
+  /** Optional: lets the Diff tab verify index suggestions against a live connection. */
+  connectionId?: string | null;
+  schema?: string | null;
+  onInsertSql?: (sql: string) => void;
 }
 
 /**
@@ -42,6 +46,9 @@ export const VisualExplainView = ({
   selectedNodeId,
   onSelectNode,
   aiEnabled,
+  connectionId,
+  schema,
+  onInsertSql,
 }: VisualExplainViewProps) => {
   const { t } = useTranslation();
   const editorTheme = useEditorTheme();
@@ -111,7 +118,12 @@ export const VisualExplainView = ({
           ) : viewMode === "ai" ? (
             <ExplainAiAnalysis plan={plan} />
           ) : viewMode === "diff" ? (
-            <ExplainDiffView plan={plan} />
+            <ExplainDiffView
+              plan={plan}
+              connectionId={connectionId}
+              schema={schema}
+              onInsertSql={onInsertSql}
+            />
           ) : viewMode === "table" ? (
             <ExplainTableView
               plan={plan}

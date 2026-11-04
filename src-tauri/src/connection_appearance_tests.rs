@@ -127,6 +127,7 @@ mod tests {
         let appearance = ConnectionAppearance {
             icon: Some(IconOverride::Image { path: "connection-icons/foo.png".into() }),
             accent_color: None,
+            ..Default::default()
         };
         crate::connection_appearance::cascade_delete_if_image(&dir, Some(&appearance)).unwrap();
         assert!(!file.exists());
@@ -140,6 +141,7 @@ mod tests {
         let appearance = ConnectionAppearance {
             icon: Some(IconOverride::Pack { id: "server".into() }),
             accent_color: Some("#ff0000".into()),
+            ..Default::default()
         };
         crate::connection_appearance::cascade_delete_if_image(&dir, Some(&appearance)).unwrap();
         // No-op cases also: appearance is None, or icon is None.
@@ -153,6 +155,7 @@ mod tests {
         let appearance = ConnectionAppearance {
             icon: Some(IconOverride::Image { path: "connection-icons/does-not-exist.png".into() }),
             accent_color: None,
+            ..Default::default()
         };
         // Should NOT return an error — deleting a connection should not fail just because its icon vanished.
         crate::connection_appearance::cascade_delete_if_image(&dir, Some(&appearance)).unwrap();
@@ -173,6 +176,7 @@ mod tests {
         let appearance = ConnectionAppearance {
             icon: Some(IconOverride::Image { path: "../victim.txt".into() }),
             accent_color: None,
+            ..Default::default()
         };
         cascade_delete_if_image(&dir, Some(&appearance)).unwrap();
         // Victim must still exist — path-traversal attack must be blocked

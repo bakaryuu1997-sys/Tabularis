@@ -3,7 +3,8 @@ import type { Monaco } from "@monaco-editor/react";
 import { loader } from "@monaco-editor/react";
 import { useDatabase } from "./useDatabase";
 import { SettingsContext } from "../contexts/SettingsContext";
-import type { TableInfo } from "../contexts/DatabaseContext";
+import type { TableInfo, SchemaData } from "../contexts/DatabaseContext";
+import type { DriverCapabilities } from "../types/plugins";
 import {
   registerSqlAutocomplete,
   disposeSqlAutocomplete,
@@ -24,10 +25,10 @@ type Options = {
  */
 export function getEffectiveTables(
   tables: TableInfo[],
-  activeCapabilities: any,
+  activeCapabilities: DriverCapabilities | null | undefined,
   schema: string | null | undefined,
-  schemaDataMap: Record<string, any>,
-  databaseDataMap: Record<string, any>,
+  schemaDataMap: Record<string, SchemaData>,
+  databaseDataMap: Record<string, SchemaData>,
 ): TableInfo[] {
   // 1. PostgreSQL schema-scoped tables
   if (activeCapabilities?.schemas && schema && schemaDataMap[schema]?.tables?.length) {

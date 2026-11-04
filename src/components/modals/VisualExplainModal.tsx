@@ -27,6 +27,8 @@ interface VisualExplainModalProps {
   /// database context (e.g. opened from the AI Activity panel). Falls back
   /// to the live connection name if available, then to `connectionId`.
   connectionLabel?: string;
+  /** Opens generated SQL (e.g. suggested index DDL) in an editor tab. */
+  onInsertSql?: (sql: string) => void;
 }
 
 export const VisualExplainModal = ({
@@ -36,6 +38,7 @@ export const VisualExplainModal = ({
   connectionId,
   schema,
   connectionLabel,
+  onInsertSql,
 }: VisualExplainModalProps) => {
   const { t } = useTranslation();
   const { settings } = useSettings();
@@ -150,6 +153,9 @@ export const VisualExplainModal = ({
           selectedNodeId={selectedNodeId}
           onSelectNode={setSelectedNodeId}
           aiEnabled={!!settings.aiEnabled}
+          connectionId={connectionId}
+          schema={schema}
+          onInsertSql={onInsertSql}
         />
 
         <div className="p-4 border-t border-default bg-base/50 flex items-center gap-4">

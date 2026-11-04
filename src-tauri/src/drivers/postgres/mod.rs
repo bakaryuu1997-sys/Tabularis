@@ -18,7 +18,7 @@ use crate::models::{
 use crate::pool_manager::get_postgres_pool;
 use binding::{PgValueOptions, bind_pg_value, build_pk_map_predicate};
 use client::{execute, execute_typed, format_pg_error, get_client, query_all, query_one, query_one_typed};
-pub use explain::explain_query;
+pub use explain::{explain_query, explain_with_hypothetical_indexes};
 use extract::extract_value;
 use helpers::{escape_identifier, extract_base_type, is_implicit_cast_compatible};
 use tokio_postgres::types::{ToSql, Type};
@@ -1867,6 +1867,16 @@ impl DatabaseDriver for PostgresDriver {
         schema: Option<&str>,
     ) -> Result<crate::models::ExplainPlan, String> {
         explain_query(params, query, analyze, schema).await
+    }
+
+    async fn explain_with_hypothetical_indexes(
+        &self,
+        params: &crate::models::ConnectionParams,
+        query: &str,
+        indexes: &[crate::models::HypotheticalIndex],
+        schema: Option<&str>,
+    ) -> Result<crate::models::WhatIfExplainOutcome, String> {
+        explain_with_hypothetical_indexes(params, query, indexes, schema).await
     }
 
     async fn insert_record(

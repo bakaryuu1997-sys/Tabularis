@@ -930,7 +930,8 @@
       "unsaved": "未保存 {{count}} 件",
       "save": "変更を保存",
       "saveHint": "未保存の編集 — メインペインに入れ替えて保存",
-      "empty": "このタブを実行すると結果がここに表示されます"
+      "empty": "このタブを実行すると結果がここに表示されます",
+      "tableLabel": "テーブル"
     },
     "tableRunPrompt": "Run (Ctrl/Command+F5) を押してテーブルデータを読み込んでください",
     "closeTab": "タブを閉じる",
@@ -1198,7 +1199,9 @@
     "maskSensitiveData": {
       "button": "PIIマスク",
       "tooltip": "機密データ（メール、電話番号、パスワード、給与等）をマスク保護"
-    }
+    },
+    "tableLoadHint": "テーブルデータがまだ読み込まれていないか、接続が復元されたばかりです。",
+    "loadTableData": "テーブルデータを読み込む"
   },
   "createTable": {
     "title": "新規テーブルを作成",
@@ -1792,22 +1795,6 @@
     "copySql": "SQLをコピー",
     "openEditor": "エディタで開く"
   },
-  "explainDiff": {
-    "title": "AI実行計画Diff＆インデックス最適化",
-    "subtitle": "インデックス適用前後のクエリ実行計画を比較・最適化",
-    "currentCost": "現在の計画コスト",
-    "projectedCost": "予測計画コスト",
-    "improvement": "推定改善率",
-    "recommendedIndexes": "推奨インデックス",
-    "applyIndex": "今すぐインデックス作成",
-    "planComparison": "実行計画ツリーの比較",
-    "currentPlan": "現在の計画 (Before)",
-    "projectedPlan": "最適化後の計画 (After)",
-    "note": "データベースエンジンのオプティマイザ統計に基づくシミュレーションです",
-    "noConnection": "アクティブな接続が見つかりません。",
-    "indexSuccess": "インデックスが正常に作成されました！",
-    "indexFailed": "インデックス作成エラー:"
-  },
   "teamSync": {
     "title": "Git連携チームワークスペース同期",
     "subtitle": "接続設定、クエリライブラリ、チーム資産を安全に共有",
@@ -1821,5 +1808,36 @@
     "emptyImport": "バンドルのJSON内容を貼り付けてください。",
     "importInvalid": "無効なバンドルデータです。",
     "importError": "解析エラー:"
+  },
+  "explainDiff": {
+    "title": "インデックスアドバイザー（仮想インデックス分析）",
+    "subtitle": "仮想インデックスを使い、データベースのプランナーで検証した提案",
+    "currentCost": "現在のプランのコスト",
+    "projectedCost": "提案インデックス適用時のコスト",
+    "improvement": "プランナーコストの削減",
+    "costRatio": "（コスト約 1/{{ratio}}）",
+    "cost": "コスト",
+    "nodeType": "ノード種別",
+    "relation": "テーブル",
+    "filter": "フィルター",
+    "indexCondition": "インデックス条件",
+    "recommendedIndexes": "推奨インデックス",
+    "reasonFullScan": "{{table}} の全件スキャン（フィルター列: {{columns}}、プランナーコスト {{cost}}）。",
+    "noCandidates": "このプランにはコストのしきい値を超えるフィルター付き全件スキャンはありません。",
+    "verifiedUsed": "検証済み: プランナーはこのインデックスを使用します。",
+    "verifiedIgnored": "このクエリでもプランナーはこのインデックスを使用しません。",
+    "statusLoading": "データベースのプランナーに問い合わせ中…",
+    "statusNoConnection": "提案を検証するには、接続中のデータベースからこのプランを開いてください。検証なしではコストは表示されません。",
+    "statusUnsupported": "このデータベースは仮想インデックスの評価に対応していないため、以下の提案は未検証です。",
+    "statusExtensionMissing": "このサーバーには {{extension}} 拡張がインストールされていません。検証済みコストを得るには CREATE EXTENSION {{extension}} を実行してください。以下の提案は未検証です。",
+    "statusError": "プランナーでの検証に失敗しました:",
+    "analyzeFailed": "実行計画を分析できませんでした:",
+    "copySql": "SQLをコピー",
+    "openInEditor": "エディターで開く",
+    "reviewNote": "インデックスのDDLはここからは実行されません。まずエディターで確認してください。本番の大きなテーブルでは、書き込みをブロックしないよう、データベースのオンライン/並行インデックス作成オプションを使用してください。",
+    "planComparison": "プラン比較（プランナーの出力）",
+    "currentPlan": "現在のプラン",
+    "projectedPlan": "提案インデックス適用時のプラン",
+    "note": "コストは仮想インデックスを使ったデータベースのプランナーによる値です。何も作成されず、クエリも実行されません。"
   }
 }

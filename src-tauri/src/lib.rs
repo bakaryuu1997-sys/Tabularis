@@ -345,6 +345,7 @@ pub fn run() {
             commands::execute_query_batch,
             commands::get_server_now,
             commands::explain_query_plan,
+            commands::explain_query_what_if,
             commands::count_query,
             commands::cancel_query,
             commands::get_views,

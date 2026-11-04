@@ -311,13 +311,13 @@ export function SplitResultsPane({
             <div className="space-y-0.5">
               <p className="text-xs text-primary font-medium">
                 {tab.activeTable ? (
-                  <>Bảng <span className="font-mono text-blue-400 font-semibold">{tab.activeTable}</span></>
+                  <>{t("editor.split.tableLabel")} <span className="font-mono text-blue-400 font-semibold">{tab.activeTable}</span></>
                 ) : (
                   t("editor.split.empty")
                 )}
               </p>
               <p className="text-[11px] text-muted max-w-[240px]">
-                {t("editor.tableLoadHint", { defaultValue: "Dữ liệu bảng chưa được tải hoặc kết nối vừa được khôi phục." })}
+                {t("editor.tableLoadHint")}
               </p>
             </div>
             <button
@@ -326,7 +326,7 @@ export function SplitResultsPane({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow-sm transition-all disabled:opacity-50"
             >
               <RotateCcw size={12} className={tab.isLoading ? "animate-spin" : ""} />
-              <span>{t("editor.loadTableData", { defaultValue: "Tải dữ liệu bảng" })}</span>
+              <span>{t("editor.loadTableData")}</span>
             </button>
           </div>
         ) : (

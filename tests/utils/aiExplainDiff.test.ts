@@ -1,104 +1,184 @@
 import { describe, it, expect } from "vitest";
 import {
+  buildIndexName,
+  compareWhatIf,
+  extractFilterColumnGroups,
   extractFilterColumns,
-  cloneExplainNode,
-  analyzePlanForOptimization,
+  findIndexCandidates,
+  isFullScanNode,
+  MIN_SCAN_COST_FOR_SUGGESTION,
 } from "../../src/utils/aiExplainDiff";
-import type { ExplainPlan, ExplainNode } from "../../src/types/explain";
+import type { ExplainNode, ExplainPlan } from "../../src/types/explain";
 
-describe("aiExplainDiff", () => {
-  describe("extractFilterColumns", () => {
-    it("extracts single filter column", () => {
-      const cols = extractFilterColumns("(user_id = 42)");
-      expect(cols).toEqual(["user_id"]);
-    });
+function node(overrides: Partial<ExplainNode> = {}): ExplainNode {
+  return {
+    id: "n",
+    node_type: "Result",
+    relation: null,
+    startup_cost: 0,
+    total_cost: 0,
+    plan_rows: null,
+    actual_rows: null,
+    actual_time_ms: null,
+    actual_loops: null,
+    buffers_hit: null,
+    buffers_read: null,
+    filter: null,
+    index_condition: null,
+    join_type: null,
+    hash_condition: null,
+    extra: {},
+    children: [],
+    ...overrides,
+  };
+}
 
-    it("extracts multiple columns with AND/OR", () => {
-      const cols = extractFilterColumns(
-        "((status = 'active'::text) AND (created_at > '2026-01-01'::date))"
-      );
-      expect(cols).toContain("status");
-      expect(cols).toContain("created_at");
-      expect(cols).not.toContain("and");
-    });
+function plan(root: ExplainNode): ExplainPlan {
+  return {
+    root,
+    planning_time_ms: null,
+    execution_time_ms: null,
+    original_query: "SELECT 1",
+    driver: "any",
+    has_analyze_data: false,
+    raw_output: null,
+  };
+}
 
-    it("handles null and empty input gracefully", () => {
-      expect(extractFilterColumns(null)).toEqual([]);
-      expect(extractFilterColumns("")).toEqual([]);
+const seqScan = (overrides: Partial<ExplainNode> = {}) =>
+  node({
+    node_type: "Seq Scan",
+    relation: "orders",
+    total_cost: 1200,
+    filter: "(user_id = 42)",
+    ...overrides,
+  });
+
+describe("extractFilterColumnGroups", () => {
+  it("splits equality and range predicates", () => {
+    const groups = extractFilterColumnGroups(
+      "((created_at > '2026-01-01'::date) AND (status = 'active'::text) AND (user_id = 7))",
+    );
+    expect(groups.equality).toEqual(["status", "user_id"]);
+    expect(groups.range).toEqual(["created_at"]);
+  });
+
+  it("ignores operators that only appear inside string literals", () => {
+    expect(extractFilterColumns("(name = 'a = b AND c > 1')")).toEqual(["name"]);
+  });
+
+  it("ignores type casts instead of treating them as columns", () => {
+    expect(extractFilterColumns("((status)::text = 'x'::text)")).toEqual(["status"]);
+    expect(extractFilterColumns("(ts > now()::timestamp without time zone)")).toEqual(["ts"]);
+  });
+
+  it("keeps the case of quoted identifiers and unwraps them", () => {
+    expect(extractFilterColumns('("UserId" = 1)')).toEqual(["UserId"]);
+  });
+
+  it("skips expressions such as lower(email)", () => {
+    expect(extractFilterColumns("(lower(email) = 'a')")).toEqual([]);
+  });
+
+  it("does not report a column twice", () => {
+    expect(extractFilterColumns("((a = 1) OR (a = 2))")).toEqual(["a"]);
+  });
+
+  it("handles empty input", () => {
+    expect(extractFilterColumns(null)).toEqual([]);
+    expect(extractFilterColumns("")).toEqual([]);
+  });
+});
+
+describe("isFullScanNode", () => {
+  it.each(["Seq Scan", "Sequential Scan", "Full Table Scan", "Table Scan", "TABLE ACCESS FULL"])(
+    "recognises %s",
+    (type) => expect(isFullScanNode(type)).toBe(true),
+  );
+  it.each(["Index Scan", "Index Only Scan", "Bitmap Heap Scan", "Hash Join"])(
+    "does not treat %s as a full scan",
+    (type) => expect(isFullScanNode(type)).toBe(false),
+  );
+});
+
+describe("buildIndexName", () => {
+  it("sanitises and truncates to 63 characters", () => {
+    expect(buildIndexName("my table", ["a-b"])).toBe("idx_my_table_a_b");
+    expect(buildIndexName("t".repeat(80), ["c"])).toHaveLength(63);
+  });
+});
+
+describe("findIndexCandidates", () => {
+  it("proposes an index for an expensive filtered full scan", () => {
+    const candidates = findIndexCandidates(plan(seqScan()));
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).toMatchObject({
+      tableName: "orders",
+      columns: ["user_id"],
+      indexName: "idx_orders_user_id",
+      scanCost: 1200,
     });
   });
 
-  describe("analyzePlanForOptimization", () => {
-    const mockPlan: ExplainPlan = {
-      original_query: "SELECT * FROM orders WHERE user_id = 99;",
-      driver: "postgres",
-      has_analyze_data: true,
-      planning_time_ms: 1.2,
-      execution_time_ms: 450.0,
-      raw_output: "",
-      root: {
-        id: "node-1",
-        node_type: "Seq Scan",
-        relation: "orders",
-        startup_cost: 0.0,
-        total_cost: 4500.0,
-        plan_rows: 150000,
-        actual_rows: 1,
-        actual_time_ms: 440.0,
-        actual_loops: 1,
-        buffers_hit: 12,
-        buffers_read: 850,
-        filter: "(user_id = 99)",
-        index_condition: null,
-        join_type: null,
-        hash_condition: null,
-        extra: {},
-        children: [],
-      },
-    };
+  it("puts equality columns before range columns and caps the width", () => {
+    const candidates = findIndexCandidates(
+      plan(seqScan({ filter: "((a > 1) AND (b = 2) AND (c = 3) AND (d = 4))" })),
+    );
+    expect(candidates[0].columns).toEqual(["b", "c", "d"]);
+  });
 
-    it("detects Seq Scan bottleneck and suggests CREATE INDEX", () => {
-      const analysis = analyzePlanForOptimization(mockPlan);
+  it("never invents a column when the scan has no usable filter", () => {
+    expect(findIndexCandidates(plan(seqScan({ filter: null })))).toEqual([]);
+    expect(findIndexCandidates(plan(seqScan({ filter: "(lower(x) = 'a')" })))).toEqual([]);
+  });
 
-      expect(analysis.hasBottlenecks).toBe(true);
-      expect(analysis.bottleneckCount).toBe(1);
-      expect(analysis.suggestedIndexes).toHaveLength(1);
-      expect(analysis.suggestedIndexes[0].tableName).toBe("orders");
-      expect(analysis.suggestedIndexes[0].columns).toEqual(["user_id"]);
-      expect(analysis.suggestedIndexes[0].ddl).toBe(
-        "CREATE INDEX idx_orders_user_id ON orders (user_id);"
-      );
-      expect(analysis.costReductionPercent).toBeGreaterThan(95);
-      expect(analysis.simulatedAfterPlan.root.node_type).toBe("Index Scan");
+  it("skips cheap scans and index scans", () => {
+    expect(
+      findIndexCandidates(plan(seqScan({ total_cost: MIN_SCAN_COST_FOR_SUGGESTION - 1 }))),
+    ).toEqual([]);
+    expect(findIndexCandidates(plan(seqScan({ node_type: "Index Scan" })))).toEqual([]);
+  });
+
+  it("finds nested scans and de-duplicates identical suggestions", () => {
+    const root = node({
+      node_type: "Hash Join",
+      total_cost: 5000,
+      children: [seqScan({ id: "a" }), seqScan({ id: "b" }), seqScan({ id: "c", relation: "users", filter: "(id = 1)" })],
     });
+    const candidates = findIndexCandidates(plan(root));
+    expect(candidates.map((c) => c.tableName)).toEqual(["orders", "users"]);
+  });
+});
 
-    it("returns clean result when no bottlenecks exist", () => {
-      const optimalPlan: ExplainPlan = {
-        ...mockPlan,
-        root: {
-          id: "node-2",
-          node_type: "Index Scan",
-          relation: "orders",
-          startup_cost: 0.25,
-          total_cost: 8.5,
-          plan_rows: 1,
-          actual_rows: 1,
-          actual_time_ms: 0.8,
-          actual_loops: 1,
-          buffers_hit: 4,
-          buffers_read: 0,
-          filter: null,
-          index_condition: "(user_id = 99)",
-          join_type: null,
-          hash_condition: null,
-          extra: {},
-          children: [],
-        },
-      };
+describe("compareWhatIf", () => {
+  const before = plan(node({ node_type: "Hash Join", total_cost: 2000, children: [seqScan()] }));
+  const candidates = findIndexCandidates(before);
 
-      const analysis = analyzePlanForOptimization(optimalPlan);
-      expect(analysis.hasBottlenecks).toBe(false);
-      expect(analysis.suggestedIndexes).toHaveLength(0);
-    });
+  it("reports the planner cost reduction from the two real plans", () => {
+    const after = plan(node({ node_type: "Hash Join", total_cost: 500, children: [seqScan({ node_type: "Index Scan", total_cost: 8 })] }));
+    const result = compareWhatIf(before, after, candidates);
+    expect(result.beforeCost).toBe(2000);
+    expect(result.afterCost).toBe(500);
+    expect(result.costReductionPercent).toBe(75);
+    expect(result.costRatio).toBe(4);
+    expect(result.resolvedTables).toEqual(["orders"]);
+  });
+
+  it("does not claim a win when the planner keeps the full scan", () => {
+    const after = plan(node({ node_type: "Hash Join", total_cost: 2000, children: [seqScan()] }));
+    const result = compareWhatIf(before, after, candidates);
+    expect(result.costReductionPercent).toBe(0);
+    expect(result.resolvedTables).toEqual([]);
+  });
+
+  it("clamps negative improvements to zero", () => {
+    const after = plan(node({ total_cost: 3000 }));
+    expect(compareWhatIf(before, after, candidates).costReductionPercent).toBe(0);
+  });
+
+  it("returns nulls when costs are unknown", () => {
+    const result = compareWhatIf(plan(node({ total_cost: null })), plan(node({ total_cost: null })), []);
+    expect(result.costReductionPercent).toBeNull();
+    expect(result.costRatio).toBeNull();
   });
 });

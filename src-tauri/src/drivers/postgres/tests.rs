@@ -832,3 +832,46 @@ mod live_pg_temporal_and_uuid_regression {
         // clause uses the same uuid-cast binding path.
     }
 }
+
+mod hypopg_index_ddl_tests {
+    use super::super::explain::hypopg_index_ddl;
+    use crate::models::HypotheticalIndex;
+
+    fn idx(table: &str, columns: &[&str]) -> HypotheticalIndex {
+        HypotheticalIndex {
+            table: table.into(),
+            columns: columns.iter().map(|c| c.to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn quotes_table_and_columns_without_schema() {
+        assert_eq!(
+            hypopg_index_ddl(None, &idx("orders", &["user_id", "status"])).unwrap(),
+            "CREATE INDEX ON \"orders\" (\"user_id\", \"status\")"
+        );
+    }
+
+    #[test]
+    fn qualifies_with_schema_when_given() {
+        assert_eq!(
+            hypopg_index_ddl(Some("sales"), &idx("orders", &["id"])).unwrap(),
+            "CREATE INDEX ON \"sales\".\"orders\" (\"id\")"
+        );
+    }
+
+    #[test]
+    fn escapes_embedded_quotes() {
+        let ddl = hypopg_index_ddl(None, &idx("we\"ird", &["c\"ol"])).unwrap();
+        assert_eq!(ddl, "CREATE INDEX ON \"we\"\"ird\" (\"c\"\"ol\")");
+    }
+
+    #[test]
+    fn rejects_empty_and_oversized_input() {
+        assert!(hypopg_index_ddl(None, &idx("", &["a"])).is_err());
+        assert!(hypopg_index_ddl(None, &idx("t", &[])).is_err());
+        assert!(hypopg_index_ddl(None, &idx("t", &["a", " "])).is_err());
+        let many: Vec<&str> = vec!["c"; 9];
+        assert!(hypopg_index_ddl(None, &idx("t", &many)).is_err());
+    }
+}

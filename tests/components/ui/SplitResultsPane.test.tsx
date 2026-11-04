@@ -48,8 +48,8 @@ const defaultProps = {
 describe("SplitResultsPane", () => {
   it("shows the pinned tab title and an empty prompt when there is no result", () => {
     render(<SplitResultsPane {...defaultProps} tab={baseTab()} />);
-    expect(screen.getByText("students")).toBeInTheDocument();
-    expect(screen.getByText("editor.split.empty")).toBeInTheDocument();
+    expect(screen.getByTitle("editor.split.focusTab")).toHaveTextContent("students");
+    expect(screen.getByText("editor.tableLoadHint")).toBeInTheDocument();
     expect(screen.queryByTestId("entry")).not.toBeInTheDocument();
   });
 
@@ -92,7 +92,7 @@ describe("SplitResultsPane", () => {
         onFocusTab={onFocusTab}
       />,
     );
-    fireEvent.click(screen.getByText("students"));
+    fireEvent.click(screen.getByTitle("editor.split.focusTab"));
     expect(onFocusTab).toHaveBeenCalled();
     fireEvent.click(screen.getByTitle("editor.split.close"));
     expect(onClose).toHaveBeenCalled();

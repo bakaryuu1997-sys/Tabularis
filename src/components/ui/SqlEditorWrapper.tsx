@@ -108,7 +108,7 @@ const SqlEditorInternal = ({
     if (editorRef.current && monacoRef.current && tables && tables.length > 0) {
       const model = editorRef.current.getModel();
       if (model) {
-        validateSqlSchema(monacoRef.current as any, model as any, tables, {
+        validateSqlSchema(monacoRef.current, model, tables, {
           connectionId,
           schema,
         });
@@ -196,7 +196,7 @@ const SqlEditorInternal = ({
           if (editorRef.current && monacoRef.current && tablesRef.current && tablesRef.current.length > 0) {
             const model = editorRef.current.getModel();
             if (model) {
-              validateSqlSchema(monacoRef.current as any, model as any, tablesRef.current, {
+              validateSqlSchema(monacoRef.current, model, tablesRef.current, {
                 connectionId: connectionIdRef.current,
                 schema: schemaRef.current,
               });
@@ -220,7 +220,7 @@ const SqlEditorInternal = ({
         if (typeof tauriText === "string" && tauriText.length > 0) {
           return tauriText;
         }
-      } catch (_tauriErr) {
+      } catch {
         // Tauri clipboard read may fail on some OS/webview states, fallback to navigator.clipboard
       }
 
@@ -236,7 +236,7 @@ const SqlEditorInternal = ({
             return navText;
           }
         }
-      } catch (_navErr) {
+      } catch {
         // Navigator clipboard may fail if window not focused
       }
 

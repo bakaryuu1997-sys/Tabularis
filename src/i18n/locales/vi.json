@@ -941,7 +941,8 @@
       "unsaved": "{{count}} chưa lưu",
       "save": "Lưu thay đổi",
       "saveHint": "Có thay đổi chưa lưu — chuyển sang khung chính để lưu",
-      "empty": "Chạy tab này để xem kết quả ở đây"
+      "empty": "Chạy tab này để xem kết quả ở đây",
+      "tableLabel": "Bảng"
     },
     "closeTab": "Đóng tab",
     "reopenClosedTab": "Mở lại tab vừa đóng",
@@ -1229,7 +1230,9 @@
     "maskSensitiveData": {
       "button": "Che mờ PII",
       "tooltip": "Bảo vệ & che mờ dữ liệu nhạy cảm (Email, Phone, Password, Salary)"
-    }
+    },
+    "tableLoadHint": "Dữ liệu bảng chưa được tải hoặc kết nối vừa được khôi phục.",
+    "loadTableData": "Tải dữ liệu bảng"
   },
   "createTable": {
     "title": "Tạo bảng mới",
@@ -1856,22 +1859,6 @@
     "copySql": "Sao chép SQL Migration",
     "openEditor": "Mở trong Editor"
   },
-  "explainDiff": {
-    "title": "AI Explain Plan Diff & Tối Ưu Chỉ Mục",
-    "subtitle": "So sánh kế hoạch thực thi trước và sau khi đánh index tối ưu",
-    "currentCost": "Chi phí Kế hoạch Hiện tại",
-    "projectedCost": "Chi phí Kế hoạch Đề xuất",
-    "improvement": "Mức độ Tối ưu Ước tính",
-    "recommendedIndexes": "Đề xuất Chỉ Mục (Index Suggestions)",
-    "applyIndex": "Tạo Index Ngay",
-    "planComparison": "So sánh Cây Kế hoạch Thực thi",
-    "currentPlan": "Kế hoạch Hiện tại (Trước)",
-    "projectedPlan": "Kế hoạch Tối ưu (Sau)",
-    "note": "Mô phỏng dựa trên thống kê chi phí tối ưu hóa truy vấn của database engine",
-    "noConnection": "Không tìm thấy kết nối CSDL hiện tại.",
-    "indexSuccess": "Đã tạo chỉ mục thành công!",
-    "indexFailed": "Lỗi tạo chỉ mục:"
-  },
   "teamSync": {
     "title": "Đồng Bộ Workspace Nhóm Qua Git (Team Workspace Sync)",
     "subtitle": "Chia sẻ cấu hình kết nối, thư viện truy vấn và tài liệu nội bộ an toàn",
@@ -1885,5 +1872,36 @@
     "emptyImport": "Vui lòng dán nội dung file bundle JSON.",
     "importInvalid": "Dữ liệu bundle không hợp lệ.",
     "importError": "Lỗi phân tích:"
+  },
+  "explainDiff": {
+    "title": "Tư vấn chỉ mục (phân tích what-if)",
+    "subtitle": "Gợi ý được kiểm chứng bằng planner của CSDL với chỉ mục giả định",
+    "currentCost": "Chi phí kế hoạch hiện tại",
+    "projectedCost": "Chi phí khi có chỉ mục đề xuất",
+    "improvement": "Mức giảm chi phí planner",
+    "costRatio": "(chi phí thấp hơn ~{{ratio}} lần)",
+    "cost": "Chi phí",
+    "nodeType": "Loại node",
+    "relation": "Bảng",
+    "filter": "Bộ lọc",
+    "indexCondition": "Điều kiện chỉ mục",
+    "recommendedIndexes": "Chỉ mục đề xuất",
+    "reasonFullScan": "Quét toàn bộ bảng {{table}} với bộ lọc trên ({{columns}}), chi phí planner {{cost}}.",
+    "noCandidates": "Không tìm thấy phép quét toàn bộ có bộ lọc vượt ngưỡng chi phí trong kế hoạch này.",
+    "verifiedUsed": "Đã kiểm chứng: planner sẽ dùng chỉ mục này.",
+    "verifiedIgnored": "Planner vẫn sẽ không dùng chỉ mục này cho truy vấn này.",
+    "statusLoading": "Đang hỏi planner của CSDL…",
+    "statusNoConnection": "Hãy mở kế hoạch này từ một kết nối đang hoạt động để kiểm chứng. Không có kiểm chứng thì không hiển thị chi phí.",
+    "statusUnsupported": "CSDL này không hỗ trợ chỉ mục giả định nên các gợi ý bên dưới chưa được kiểm chứng.",
+    "statusExtensionMissing": "Máy chủ chưa cài extension {{extension}}. Hãy cài (CREATE EXTENSION {{extension}}) để có chi phí đã kiểm chứng; các gợi ý bên dưới chưa được kiểm chứng.",
+    "statusError": "Không thể kiểm chứng với planner:",
+    "analyzeFailed": "Không thể phân tích kế hoạch thực thi:",
+    "copySql": "Chép SQL",
+    "openInEditor": "Mở trong trình soạn thảo",
+    "reviewNote": "DDL tạo chỉ mục không bao giờ được chạy từ đây. Hãy xem lại trong trình soạn thảo; với bảng production lớn, nên dùng tùy chọn tạo chỉ mục online/đồng thời của CSDL để không chặn ghi.",
+    "planComparison": "So sánh kế hoạch (kết quả từ planner)",
+    "currentPlan": "Kế hoạch hiện tại",
+    "projectedPlan": "Kế hoạch khi có chỉ mục đề xuất",
+    "note": "Chi phí lấy từ planner của CSDL với chỉ mục giả định. Không tạo gì và không chạy truy vấn."
   }
 }

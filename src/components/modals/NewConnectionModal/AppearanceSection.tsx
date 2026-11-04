@@ -240,7 +240,7 @@ export function AppearanceSection({
               <button
                 key={env.id}
                 type="button"
-                onClick={() => setEnvironment(isSelected ? undefined : (env.id as any))}
+                onClick={() => setEnvironment(isSelected ? undefined : (env.id as NonNullable<ConnectionAppearance["environment"]>))}
                 className={clsx(
                   "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all text-center",
                   isSelected ? env.active : env.color
@@ -271,7 +271,7 @@ export function AppearanceSection({
               <button
                 key={mode.id}
                 type="button"
-                onClick={() => setSafeMode(isSelected ? undefined : (mode.id as any))}
+                onClick={() => setSafeMode(isSelected ? undefined : (mode.id as NonNullable<ConnectionAppearance["safeMode"]>))}
                 className={clsx(
                   "px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all text-center",
                   isSelected ? mode.active : mode.color

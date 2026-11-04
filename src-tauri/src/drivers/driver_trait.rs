@@ -8,8 +8,8 @@ use std::str::FromStr;
 
 use crate::models::{
     BatchStatementResult, ColumnDefinition, ConnectionParams, DataTypeInfo, ExplainPlan,
-    ForeignKey, Index, QueryResult, RoutineInfo, RoutineParameter, TableColumn, TableInfo,
-    TableSchema, TriggerInfo, ViewInfo,
+    ForeignKey, HypotheticalIndex, Index, QueryResult, RoutineInfo, RoutineParameter, TableColumn,
+    TableInfo, TableSchema, TriggerInfo, ViewInfo, WhatIfExplainOutcome,
 };
 
 /// Callback invoked the moment each statement in a batch finishes, with the
@@ -463,6 +463,20 @@ pub trait DatabaseDriver: Send + Sync {
         _schema: Option<&str>,
     ) -> Result<ExplainPlan, String> {
         Err("EXPLAIN not supported by this driver".into())
+    }
+
+    /// Plans `query` as if the given indexes existed, without creating them and
+    /// without executing the query. Drivers that cannot do this return
+    /// `WhatIfExplainOutcome::Unsupported` (the default), so callers never have to
+    /// guess or simulate the numbers.
+    async fn explain_with_hypothetical_indexes(
+        &self,
+        _params: &ConnectionParams,
+        _query: &str,
+        _indexes: &[HypotheticalIndex],
+        _schema: Option<&str>,
+    ) -> Result<WhatIfExplainOutcome, String> {
+        Ok(WhatIfExplainOutcome::Unsupported)
     }
 
     // --- CRUD ---------------------------------------------------------------

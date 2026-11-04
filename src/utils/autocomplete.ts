@@ -1,4 +1,5 @@
 import type { Monaco } from "@monaco-editor/react";
+import type { editor as MonacoEditorNs, Position as MonacoPosition } from "monaco-editor";
 import { invoke } from "@tauri-apps/api/core";
 import type { TableInfo } from "../contexts/DatabaseContext";
 import { formatSqlIdentifier, getQuoteChar, quoteIdentifier } from "./identifiers";
@@ -563,7 +564,7 @@ export const registerSqlHover = (
   if (!connectionId || !tables.length) return null;
 
   const provider = monaco.languages.registerHoverProvider("sql", {
-    provideHover: async (model: any, position: any) => {
+    provideHover: async (model: MonacoEditorNs.ITextModel, position: MonacoPosition) => {
       const word = model.getWordAtPosition(position);
       if (!word) return null;
 
@@ -708,7 +709,7 @@ export function validateSqlSchema(
     endColumn: number;
   }> = [];
 
-  const markerSeverity = (monaco as any)?.MarkerSeverity?.Error ?? 8;
+  const markerSeverity = monaco.MarkerSeverity?.Error ?? 8;
 
   // 1. Table Validation
   const checkedTableNames = new Set<string>();

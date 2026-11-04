@@ -22,10 +22,16 @@ export function ProductionSafetyModal({
 }: ProductionSafetyModalProps) {
   const { t } = useTranslation();
   const [secondsLeft, setSecondsLeft] = useState(5);
+  const [wasOpen, setWasOpen] = useState(isOpen);
+
+  // Restart the countdown whenever the modal transitions from closed to open.
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    if (isOpen) setSecondsLeft(5);
+  }
 
   useEffect(() => {
     if (!isOpen) return;
-    setSecondsLeft(5);
 
     const timer = setInterval(() => {
       setSecondsLeft((prev) => {

@@ -1,156 +1,180 @@
-import type { ExplainPlan, ExplainNode } from "../types/explain";
+import type { ExplainNode, ExplainPlan } from "../types/explain";
 
-export interface SuggestedIndex {
+/**
+ * Index advisor helpers.
+ *
+ * Everything here is derived from a plan the database planner actually produced.
+ * Nothing is simulated: cost figures for a "with index" plan must come from a
+ * what-if EXPLAIN executed by the backend (see `explain_query_what_if`).
+ */
+
+/** Full scans cheaper than this (planner cost units) are not worth indexing. */
+export const MIN_SCAN_COST_FOR_SUGGESTION = 100;
+
+/** Composite index suggestions are capped at this many columns. */
+export const MAX_SUGGESTED_INDEX_COLUMNS = 3;
+
+/** PostgreSQL's identifier limit; also a safe ceiling for the other engines. */
+const MAX_INDEX_NAME_LENGTH = 63;
+
+export interface IndexCandidate {
   tableName: string;
+  /** Equality columns first, then range columns. */
   columns: string[];
   indexName: string;
-  ddl: string;
-  reason: string;
-  estimatedCostReductionPercent: number;
+  /** Planner cost of the scan node that motivated this suggestion. */
+  scanCost: number;
 }
 
-export interface ExplainOptimizationAnalysis {
-  hasBottlenecks: boolean;
-  bottleneckCount: number;
-  originalCost: number;
-  projectedCost: number;
-  costReductionPercent: number;
-  estimatedSpeedupFactor: number;
-  suggestedIndexes: SuggestedIndex[];
-  simulatedAfterPlan: ExplainPlan;
-  summary: string;
+export interface FilterColumnGroups {
+  equality: string[];
+  range: string[];
+}
+
+export interface WhatIfComparison {
+  beforeCost: number | null;
+  afterCost: number | null;
+  /** Percent reduction of the plan's total planner cost, null when unknown. */
+  costReductionPercent: number | null;
+  /** beforeCost / afterCost in planner cost units. This is NOT wall-clock speedup. */
+  costRatio: number | null;
+  /** Tables whose full scan disappeared once the hypothetical indexes existed. */
+  resolvedTables: string[];
+}
+
+const RESERVED_WORDS = new Set([
+  "and", "or", "not", "case", "when", "then", "else", "end", "where", "select",
+  "null", "true", "false", "any", "all", "some", "array", "like", "ilike", "in", "is",
+]);
+
+const FILTER_TOKEN =
+  /("(?:[^"]|"")+"|[A-Za-z_][A-Za-z0-9_$]*)\s*(<=|>=|<>|!=|=|<|>|~~\*|~~|\bILIKE\b|\bLIKE\b|\bIN\b|\bIS\b)/gi;
+
+function unquoteIdentifier(token: string): string {
+  return token.startsWith('"') ? token.slice(1, -1).replace(/""/g, '"') : token;
 }
 
 /**
- * Extracts candidate column names from a SQL filter condition.
- * e.g. "(user_id = 42)" -> ["user_id"]
- * e.g. "((status = 'active'::text) AND (created_at > '2026-01-01'::date))" -> ["status", "created_at"]
+ * Removes string literals and type casts so only identifiers and operators remain,
+ * and unwraps `(column)` left behind by casts such as `((status)::text = 'x')`.
+ * A parenthesis directly after a word character is a function call and is kept,
+ * so `lower(email)` is never mistaken for a plain column.
  */
-export function extractFilterColumns(filterStr: string | null): string[] {
-  if (!filterStr) return [];
-  const columns: string[] = [];
-  const regex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=|!=|<>|>=|<=|>|<|LIKE|ILIKE|IN\s*\(|IS\s+NULL|IS\s+NOT\s+NULL)/gi;
+function stripLiteralsAndCasts(filter: string): string {
+  const withoutCasts = filter
+    .replace(/'(?:[^']|'')*'/g, "''")
+    .replace(/::[A-Za-z_][A-Za-z0-9_]*(?:\s+(?:with|without)\s+time\s+zone|\s+varying)?(?:\(\d+(?:,\s*\d+)?\))?(?:\[\])?/gi, "");
+  return withoutCasts.replace(
+    /\(\s*("(?:[^"]|"")+"|[A-Za-z_][A-Za-z0-9_$]*)\s*\)/g,
+    (match, token: string, offset: number) =>
+      offset > 0 && /[\w$"]/.test(withoutCasts[offset - 1]) ? match : token,
+  );
+}
+
+/**
+ * Extracts the columns a filter compares, split into equality and range predicates.
+ * Case is preserved for quoted identifiers; expressions such as `lower(email)` are ignored.
+ */
+export function extractFilterColumnGroups(filter: string | null | undefined): FilterColumnGroups {
+  const groups: FilterColumnGroups = { equality: [], range: [] };
+  if (!filter) return groups;
+
+  const cleaned = stripLiteralsAndCasts(filter);
+  FILTER_TOKEN.lastIndex = 0;
   let match: RegExpExecArray | null;
-
-  const reserved = new Set([
-    "and", "or", "not", "case", "when", "then", "else", "end", "where", "select", "null", "true", "false"
-  ]);
-
-  while ((match = regex.exec(filterStr)) !== null) {
-    const col = match[1].toLowerCase();
-    if (!reserved.has(col) && !columns.includes(col)) {
-      columns.push(col);
+  while ((match = FILTER_TOKEN.exec(cleaned)) !== null) {
+    const rawToken = match[1];
+    const column = unquoteIdentifier(rawToken);
+    if (!rawToken.startsWith('"') && RESERVED_WORDS.has(column.toLowerCase())) continue;
+    const operator = match[2].toUpperCase();
+    const isEquality = operator === "=" || operator === "IN" || operator === "IS";
+    const target = isEquality ? groups.equality : groups.range;
+    if (!groups.equality.includes(column) && !groups.range.includes(column)) {
+      target.push(column);
     }
   }
+  return groups;
+}
 
-  return columns;
+/** Flat list of filter columns (equality first). Kept for callers that only need names. */
+export function extractFilterColumns(filter: string | null | undefined): string[] {
+  const { equality, range } = extractFilterColumnGroups(filter);
+  return [...equality, ...range];
+}
+
+/** True for node types that read a whole table, in any engine's wording. */
+export function isFullScanNode(nodeType: string): boolean {
+  return /\b(seq(?:uential)? scan|full (?:table )?scan|table scan|table access full)\b/i.test(nodeType);
+}
+
+function walk(node: ExplainNode, visit: (n: ExplainNode) => void): void {
+  visit(node);
+  for (const child of node.children) walk(child, visit);
+}
+
+/** Builds a deterministic index name, truncated to the identifier limit. */
+export function buildIndexName(tableName: string, columns: string[]): string {
+  const safe = (s: string) => s.replace(/[^A-Za-z0-9_]/g, "_");
+  return `idx_${safe(tableName)}_${columns.map(safe).join("_")}`.slice(0, MAX_INDEX_NAME_LENGTH);
 }
 
 /**
- * Deep clones an ExplainNode tree.
+ * Finds filtered full scans in a real plan and proposes an index for each.
+ * A scan with no usable filter column is skipped instead of guessing a column.
  */
-export function cloneExplainNode(node: ExplainNode): ExplainNode {
-  return {
-    ...node,
-    extra: { ...node.extra },
-    children: node.children.map(cloneExplainNode),
-  };
+export function findIndexCandidates(plan: ExplainPlan): IndexCandidate[] {
+  const candidates: IndexCandidate[] = [];
+  const seen = new Set<string>();
+
+  walk(plan.root, (node) => {
+    if (!node.relation || !isFullScanNode(node.node_type)) return;
+    const scanCost = node.total_cost ?? 0;
+    if (scanCost < MIN_SCAN_COST_FOR_SUGGESTION) return;
+
+    const columns = extractFilterColumns(node.filter).slice(0, MAX_SUGGESTED_INDEX_COLUMNS);
+    if (columns.length === 0) return;
+
+    const key = `${node.relation}\u0000${columns.join("\u0000")}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    candidates.push({
+      tableName: node.relation,
+      columns,
+      indexName: buildIndexName(node.relation, columns),
+      scanCost,
+    });
+  });
+
+  return candidates;
 }
 
-/**
- * Analyzes an ExplainPlan, identifies Sequential Scans and high-cost bottlenecks,
- * suggests optimal indexes, and generates a simulated "After" plan.
- */
-export function analyzePlanForOptimization(plan: ExplainPlan): ExplainOptimizationAnalysis {
-  const suggestedIndexes: SuggestedIndex[] = [];
-  let bottleneckCount = 0;
+function hasFullScanOn(plan: ExplainPlan, table: string): boolean {
+  let found = false;
+  walk(plan.root, (n) => {
+    if (n.relation === table && isFullScanNode(n.node_type)) found = true;
+  });
+  return found;
+}
 
-  const originalCost = plan.root.total_cost ?? 100.0;
-  const clonedRoot = cloneExplainNode(plan.root);
+/** Compares the original plan with the planner's plan using hypothetical indexes. */
+export function compareWhatIf(
+  before: ExplainPlan,
+  after: ExplainPlan,
+  candidates: IndexCandidate[],
+): WhatIfComparison {
+  const beforeCost = before.root.total_cost;
+  const afterCost = after.root.total_cost;
 
-  function inspectAndSimulate(node: ExplainNode) {
-    const isSeqScan =
-      node.node_type.toLowerCase().includes("seq scan") ||
-      node.node_type.toLowerCase().includes("sequential scan") ||
-      node.node_type.toLowerCase().includes("full scan") ||
-      node.node_type.toLowerCase().includes("table access full");
-
-    const relation = node.relation || "table";
-    const filter = node.filter || node.index_condition || "";
-    const filterCols = extractFilterColumns(filter);
-
-    if (isSeqScan || (node.total_cost && node.total_cost > 100 && filterCols.length > 0)) {
-      bottleneckCount++;
-
-      const cols = filterCols.length > 0 ? filterCols : ["id"];
-      const cleanCols = cols.slice(0, 3);
-      const indexName = `idx_${relation.replace(/[^a-zA-Z0-9_]/g, "_")}_${cleanCols.join("_")}`;
-      const ddl = `CREATE INDEX ${indexName} ON ${relation} (${cleanCols.join(", ")});`;
-
-      const reductionPct = 99.2;
-      suggestedIndexes.push({
-        tableName: relation,
-        columns: cleanCols,
-        indexName,
-        ddl,
-        reason: `Quét tuần tự toàn bộ bảng '${relation}' do thiếu chỉ mục trên cột lọc (${cleanCols.join(", ")}).`,
-        estimatedCostReductionPercent: reductionPct,
-      });
-
-      // Transform node to simulated Index Scan
-      const beforeNodeCost = node.total_cost ?? 100;
-      node.node_type = "Index Scan";
-      node.index_condition = node.filter ?? `(${cleanCols[0]} = ?)`;
-      node.total_cost = Math.max(1.0, Math.round(beforeNodeCost * 0.005 * 100) / 100);
-      node.startup_cost = Math.min(0.25, node.startup_cost ?? 0.25);
-
-      if (node.actual_time_ms != null) {
-        node.actual_time_ms = Math.max(0.1, Math.round(node.actual_time_ms * 0.01 * 100) / 100);
-      }
-    }
-
-    for (const child of node.children) {
-      inspectAndSimulate(child);
-    }
+  let costReductionPercent: number | null = null;
+  let costRatio: number | null = null;
+  if (beforeCost != null && afterCost != null && beforeCost > 0) {
+    costReductionPercent = Math.max(0, Math.round(((beforeCost - afterCost) / beforeCost) * 1000) / 10);
+    if (afterCost > 0) costRatio = Math.round((beforeCost / afterCost) * 10) / 10;
   }
 
-  inspectAndSimulate(clonedRoot);
+  const tables = [...new Set(candidates.map((c) => c.tableName))];
+  const resolvedTables = tables.filter((t) => hasFullScanOn(before, t) && !hasFullScanOn(after, t));
 
-  const projectedCost = clonedRoot.total_cost ?? Math.max(1.0, originalCost * 0.01);
-  const costReduction = originalCost > projectedCost ? originalCost - projectedCost : 0;
-  const costReductionPercent =
-    originalCost > 0
-      ? Math.min(99.9, Math.max(0, Math.round((costReduction / originalCost) * 1000) / 10))
-      : 0;
-
-  const estimatedSpeedupFactor =
-    projectedCost > 0
-      ? Math.max(1, Math.round((originalCost / projectedCost) * 10) / 10)
-      : 1;
-
-  const simulatedAfterPlan: ExplainPlan = {
-    ...plan,
-    root: clonedRoot,
-    planning_time_ms: plan.planning_time_ms != null ? Math.max(0.5, plan.planning_time_ms * 0.9) : null,
-    execution_time_ms:
-      plan.execution_time_ms != null
-        ? Math.max(0.5, Math.round((plan.execution_time_ms / estimatedSpeedupFactor) * 100) / 100)
-        : null,
-  };
-
-  const summary = suggestedIndexes.length > 0
-    ? `Phát hiện ${bottleneckCount} điểm nghẽn hiệu năng. Đánh chỉ mục đề xuất có thể giảm chi phí truy vấn tới ${costReductionPercent}%.`
-    : `Kế hoạch truy vấn đã tối ưu tốt hoặc không có điểm nghẽn quét tuần tự rõ ràng.`;
-
-  return {
-    hasBottlenecks: suggestedIndexes.length > 0,
-    bottleneckCount,
-    originalCost,
-    projectedCost,
-    costReductionPercent,
-    estimatedSpeedupFactor,
-    suggestedIndexes,
-    simulatedAfterPlan,
-    summary,
-  };
+  return { beforeCost, afterCost, costReductionPercent, costRatio, resolvedTables };
 }

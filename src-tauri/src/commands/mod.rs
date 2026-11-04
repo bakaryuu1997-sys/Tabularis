@@ -11,9 +11,9 @@ use crate::credential_cache;
 use crate::keychain_utils;
 use crate::models::{
     BatchStatementResult, ColumnDefinition, ConnectionGroup, ConnectionParams, ConnectionsFile,
-    ExplainPlan, ExportPayload, ForeignKey, Index, K8sConnection, K8sConnectionInput, QueryResult,
+    ExplainPlan, ExportPayload, ForeignKey, HypotheticalIndex, Index, K8sConnection, K8sConnectionInput, QueryResult,
     RoutineInfo, RoutineParameter, SavedConnection, SshConnection, SshConnectionInput, SshTestParams,
-    TableColumn, TableInfo, TestConnectionRequest,
+    TableColumn, TableInfo, TestConnectionRequest, WhatIfExplainOutcome,
 };
 use crate::persistence;
 use crate::ssh_tunnel::{get_tunnels, SshTunnel};
@@ -2137,6 +2137,7 @@ mod tests {
                 accent_color: Some("#ff0000".to_string()),
                 icon: Some(IconOverride::Emoji { value: "🐘".to_string() }),
                 environment: None,
+                safe_mode: None,
             }),
         };
 
@@ -2185,6 +2186,8 @@ mod tests {
         let new_appearance = ConnectionAppearance {
             accent_color: Some("#00ff00".to_string()),
             icon: Some(IconOverride::Emoji { value: "🦀".to_string() }),
+            environment: None,
+            safe_mode: None,
         };
 
         set_appearance_impl(&mut file, "conn-1", Some(new_appearance)).unwrap();
@@ -2201,6 +2204,8 @@ mod tests {
         let existing_appearance = ConnectionAppearance {
             accent_color: Some("#ff0000".to_string()),
             icon: Some(IconOverride::Pack { id: "server".to_string() }),
+            environment: None,
+            safe_mode: None,
         };
         let mut file = one_conn_file("conn-2", Some(existing_appearance));
 
@@ -3593,6 +3598,55 @@ pub async fn explain_query_plan<R: Runtime>(
             log::warn!("Explain query was cancelled");
             Err("Explain query cancelled".into())
         }
+    }
+}
+
+// --- What-if Explain (hypothetical indexes) ---
+
+/// Plans `query` as if the given indexes existed. Never executes the query and
+/// never creates anything on the server; unsupported drivers and missing server
+/// extensions are reported through the returned status.
+#[tauri::command]
+pub async fn explain_query_what_if<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, QueryCancellationState>,
+    connection_id: String,
+    query: String,
+    indexes: Vec<HypotheticalIndex>,
+    schema: Option<String>,
+) -> Result<WhatIfExplainOutcome, String> {
+    let sanitized_query = sanitize_user_query(&query);
+
+    if !crate::drivers::common::is_explainable_query(&sanitized_query) {
+        return Err("What-if EXPLAIN is only supported for DML statements (SELECT, INSERT, UPDATE, DELETE, REPLACE).".into());
+    }
+
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let expanded_params = expand_k8s_connection_params(&app, &expanded_params).await?;
+    let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    let task = tokio::spawn(async move {
+        drv.explain_with_hypothetical_indexes(
+            &params,
+            &sanitized_query,
+            &indexes,
+            schema.as_deref(),
+        )
+        .await
+    });
+
+    let abort_handle = Arc::new(task.abort_handle());
+    register_abort_handle(&state.handles, connection_id.clone(), abort_handle.clone());
+
+    let result = task.await;
+
+    unregister_abort_handle(&state.handles, &connection_id, &abort_handle);
+
+    match result {
+        Ok(outcome) => outcome,
+        Err(_) => Err("What-if explain cancelled".into()),
     }
 }
 

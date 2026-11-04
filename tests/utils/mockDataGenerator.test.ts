@@ -16,19 +16,19 @@ describe("mockDataGenerator", () => {
   ];
 
   it("generates appropriate values based on column definitions", () => {
-    const idVal = generateMockValue(sampleColumns[0], 0, 10);
+    const idVal = generateMockValue(sampleColumns[0], 0);
     expect(idVal).toBe(1);
 
-    const emailVal = generateMockValue(sampleColumns[1], 0, 10) as string;
+    const emailVal = generateMockValue(sampleColumns[1], 0) as string;
     expect(emailVal).toContain("@");
 
-    const nameVal = generateMockValue(sampleColumns[2], 0, 10) as string;
+    const nameVal = generateMockValue(sampleColumns[2], 0) as string;
     expect(nameVal.split(" ").length).toBeGreaterThanOrEqual(2);
 
-    const boolVal = generateMockValue(sampleColumns[3], 0, 10);
+    const boolVal = generateMockValue(sampleColumns[3], 0);
     expect(typeof boolVal).toBe("boolean");
 
-    const priceVal = generateMockValue(sampleColumns[4], 0, 10);
+    const priceVal = generateMockValue(sampleColumns[4], 0);
     expect(typeof priceVal).toBe("number");
   });
 

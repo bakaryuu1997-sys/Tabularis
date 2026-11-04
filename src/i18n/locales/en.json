@@ -941,7 +941,8 @@
       "unsaved": "{{count}} unsaved",
       "save": "Save changes",
       "saveHint": "Unsaved edits — swap to the main pane to save",
-      "empty": "Run this tab to see results here"
+      "empty": "Run this tab to see results here",
+      "tableLabel": "Table"
     },
     "closeTab": "Close Tab",
     "reopenClosedTab": "Reopen Closed Tab",
@@ -1229,7 +1230,9 @@
     "maskSensitiveData": {
       "button": "Mask PII",
       "tooltip": "Protect & mask sensitive data (Email, Phone, Password, Salary)"
-    }
+    },
+    "tableLoadHint": "Table data has not been loaded yet, or the connection was just restored.",
+    "loadTableData": "Load table data"
   },
   "createTable": {
     "title": "Create New Table",
@@ -1856,22 +1859,6 @@
     "copySql": "Copy Migration SQL",
     "openEditor": "Open in Editor"
   },
-  "explainDiff": {
-    "title": "AI Explain Plan Diff & Index Optimization",
-    "subtitle": "Compare query execution plan before and after index optimization",
-    "currentCost": "Current Plan Cost",
-    "projectedCost": "Projected Plan Cost",
-    "improvement": "Estimated Improvement",
-    "recommendedIndexes": "Recommended Indexes",
-    "applyIndex": "Create Index Now",
-    "planComparison": "Execution Plan Tree Comparison",
-    "currentPlan": "Current Plan (Before)",
-    "projectedPlan": "Optimized Plan (After)",
-    "note": "Simulated based on database engine query optimization statistics",
-    "noConnection": "No active database connection found.",
-    "indexSuccess": "Index created successfully!",
-    "indexFailed": "Failed to create index:"
-  },
   "teamSync": {
     "title": "Git-Backed Team Workspace Sync",
     "subtitle": "Securely share connections, query library, and workspace assets",
@@ -1885,5 +1872,36 @@
     "emptyImport": "Please paste bundle JSON content.",
     "importInvalid": "Invalid workspace bundle data.",
     "importError": "Parse error:"
+  },
+  "explainDiff": {
+    "title": "Index Advisor (what-if analysis)",
+    "subtitle": "Suggestions checked against the database planner using hypothetical indexes",
+    "currentCost": "Current plan cost",
+    "projectedCost": "Cost with suggested indexes",
+    "improvement": "Planner cost reduction",
+    "costRatio": "(~{{ratio}}x lower cost)",
+    "cost": "Cost",
+    "nodeType": "Node type",
+    "relation": "Table",
+    "filter": "Filter",
+    "indexCondition": "Index condition",
+    "recommendedIndexes": "Suggested indexes",
+    "reasonFullScan": "Full scan of {{table}} filtered on ({{columns}}), planner cost {{cost}}.",
+    "noCandidates": "No filtered full scan above the cost threshold was found in this plan.",
+    "verifiedUsed": "Verified: the planner would use this index.",
+    "verifiedIgnored": "The planner still would not use this index for this query.",
+    "statusLoading": "Asking the database planner…",
+    "statusNoConnection": "Open this plan from a live connection to verify the suggestions. Costs are not shown without verification.",
+    "statusUnsupported": "This database cannot evaluate hypothetical indexes, so the suggestions below are unverified.",
+    "statusExtensionMissing": "The {{extension}} extension is not installed on this server. Install it (CREATE EXTENSION {{extension}}) to get verified costs; the suggestions below are unverified.",
+    "statusError": "Could not verify with the planner:",
+    "analyzeFailed": "Could not analyze the explain plan:",
+    "copySql": "Copy SQL",
+    "openInEditor": "Open in editor",
+    "reviewNote": "Index DDL is never run from here. Review it in the editor first; on large production tables use your database's online or concurrent index option to avoid blocking writes.",
+    "planComparison": "Plan comparison (planner output)",
+    "currentPlan": "Current plan",
+    "projectedPlan": "Plan with suggested indexes",
+    "note": "Costs come from the database planner with hypothetical indexes. Nothing is created and the query is not executed."
   }
 }

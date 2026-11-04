@@ -27,3 +27,15 @@ export interface ExplainPlan {
   has_analyze_data: boolean;
   raw_output: string | null;
 }
+
+/** An index that does not exist yet, evaluated by the planner as a "what if". */
+export interface HypotheticalIndex {
+  table: string;
+  columns: string[];
+}
+
+/** Result of `explain_query_what_if`. Mirrors the Rust `WhatIfExplainOutcome` enum. */
+export type WhatIfExplainOutcome =
+  | { status: "unsupported" }
+  | { status: "extension_missing"; extension: string }
+  | { status: "plan"; plan: ExplainPlan };

@@ -518,14 +518,14 @@ export const Editor = () => {
         connectionId: activeConnectionId,
         query: queryToExplain,
         analyze: false,
-        schema: null,
+        schema: activeTab?.schema ?? activeSchema ?? null,
       });
       setExplainDiffPlan(plan);
       setIsExplainDiffOpen(true);
     } catch (err) {
-      showAlert(`Không thể phân tích Explain Plan: ${String(err)}`, { kind: "warning" });
+      showAlert(`${t("explainDiff.analyzeFailed")} ${String(err)}`, { kind: "warning" });
     }
-  }, [activeTab?.query, activeConnectionId, showAlert]);
+  }, [activeTab?.query, activeTab?.schema, activeSchema, activeConnectionId, showAlert, t]);
 
   useEffect(() => {
     if (!isLiveTailActive || !activeTab || !activeConnectionId) return;
@@ -5037,10 +5037,8 @@ export const Editor = () => {
         onClose={() => setIsExplainDiffOpen(false)}
         plan={explainDiffPlan}
         connectionId={activeConnectionId}
-        onIndexCreated={() => {
-          setIsExplainDiffOpen(false);
-          if (activeTab?.query) runQuery(activeTab.query, 1);
-        }}
+        schema={activeTab?.schema ?? activeSchema ?? null}
+        onInsertSql={(sql) => addTab({ type: "console", query: sql })}
       />
       <TeamWorkspaceSyncModal
         isOpen={isTeamSyncOpen}
@@ -5095,6 +5093,7 @@ export const Editor = () => {
         query={visualExplainQuery ?? activeTab?.query ?? ""}
         connectionId={activeConnectionId ?? ""}
         schema={activeTab?.schema ?? activeSchema ?? undefined}
+        onInsertSql={(sql) => addTab({ type: "console", query: sql })}
       />
       <ExplainSelectionModal
         isOpen={isExplainSelectionOpen}

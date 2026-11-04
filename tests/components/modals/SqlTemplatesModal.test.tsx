@@ -1,10 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import {
-  SqlTemplatesModal,
-  resolveSql,
-  DEFAULT_TEMPLATES,
-} from "../../../src/components/modals/SqlTemplatesModal";
+import { SqlTemplatesModal } from "../../../src/components/modals/SqlTemplatesModal";
+import { resolveSql, DEFAULT_TEMPLATES } from "../../../src/utils/sqlTemplates";
 
 describe("SqlTemplatesModal", () => {
   it("renders templates and filters by search query", () => {
@@ -40,7 +37,7 @@ describe("SqlTemplatesModal", () => {
       />,
     );
 
-    const insertBtns = screen.getAllByRole("button", { name: /Chèn vào code/ });
+    const insertBtns = screen.getAllByText(/Chèn vào code/);
     fireEvent.click(insertBtns[0]);
 
     expect(onInsert).toHaveBeenCalledTimes(1);
@@ -63,7 +60,7 @@ describe("SqlTemplatesModal", () => {
     );
 
     // Click "Điền tham số" on the first template (SELECT ... FROM ... WHERE)
-    const paramBtns = screen.getAllByRole("button", { name: /Điền tham số/ });
+    const paramBtns = screen.getAllByText(/Điền tham số/);
     expect(paramBtns.length).toBeGreaterThan(0);
     fireEvent.click(paramBtns[0]);
 
@@ -78,7 +75,7 @@ describe("SqlTemplatesModal", () => {
     expect(screen.getByText(/Đã tùy biến/)).toBeInTheDocument();
 
     // Click "Chèn vào code"
-    const insertBtns = screen.getAllByRole("button", { name: /Chèn vào code/ });
+    const insertBtns = screen.getAllByText(/Chèn vào code/);
     fireEvent.click(insertBtns[0]);
 
     expect(onInsert).toHaveBeenCalledWith(expect.stringContaining("my_custom_table"));

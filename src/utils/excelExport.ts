@@ -1,4 +1,5 @@
-import * as XLSX from "xlsx";
+import { buildXlsx } from "./xlsxWriter";
+import { bytesToBase64 } from "./base64";
 import { save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -72,25 +73,19 @@ export async function exportQueryResultToExcel({
 
   if (!filePath) return null;
 
-  // Format header row and data rows
+  // Format data rows (the header row is written separately by the XLSX writer)
   const formattedRows = rows.map((row) =>
     columns.map((_, colIdx) => formatCellForExcel(row[colIdx])),
   );
-  const sheetData = [columns, ...formattedRows];
 
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-
-  // Set column widths
-  worksheet["!cols"] = calculateColumnWidths(columns, rows);
-
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));
-
-  // Write as base64 string
-  const base64Data = XLSX.write(workbook, {
-    bookType: "xlsx",
-    type: "base64",
-  }) as string;
+  const base64Data = bytesToBase64(
+    buildXlsx({
+      name: sheetName,
+      columns,
+      rows: formattedRows,
+      columnWidths: calculateColumnWidths(columns, rows).map((w) => w.wch),
+    }),
+  );
 
   await invoke("write_binary_file", {
     path: filePath,

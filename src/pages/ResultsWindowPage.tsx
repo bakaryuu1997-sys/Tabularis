@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
+import type { Monaco } from "@monaco-editor/react";
+import type { editor as MonacoEditorNs } from "monaco-editor";
 import { emit, listen } from "@tauri-apps/api/event";
 import {
   Play,
@@ -48,7 +50,9 @@ export const ResultsWindowPage = () => {
   // Local query state to enable active typing in the detached console
   const [query, setQuery] = useState("");
   const queryRef = useRef("");
-  queryRef.current = query;
+  useEffect(() => {
+    queryRef.current = query;
+  }, [query]);
   const isQueryInitializedRef = useRef(false);
 
   // View mode: both (console + results), editor only, or results only
@@ -62,8 +66,8 @@ export const ResultsWindowPage = () => {
   const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
 
   // Editor and Monaco references
-  const editorRef = useRef<any>(null);
-  const [monacoInstance, setMonacoInstance] = useState<any>(null);
+  const editorRef = useRef<MonacoEditorNs.IStandaloneCodeEditor | null>(null);
+  const [monacoInstance, setMonacoInstance] = useState<Monaco | null>(null);
 
   // Driver dialect
   const driverDialect = (payload?.driver as SqlDialect) || "postgres";
