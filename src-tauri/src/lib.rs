@@ -62,6 +62,7 @@ pub mod saved_queries;
 pub mod saved_queries_tests;
 pub mod ssh_tunnel;
 pub mod task_manager;
+pub mod team_sync_git;
 pub mod theme_commands;
 pub mod theme_models;
 pub mod updater;
@@ -346,6 +347,10 @@ pub fn run() {
             commands::get_server_now,
             commands::explain_query_plan,
             commands::explain_query_what_if,
+            team_sync_git::team_git_status,
+            team_sync_git::team_git_pull,
+            team_sync_git::team_git_read_bundle,
+            team_sync_git::team_git_publish,
             commands::count_query,
             commands::cancel_query,
             commands::get_views,

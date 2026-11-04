@@ -19,6 +19,7 @@ import { useSavedQueries } from "../../hooks/useSavedQueries";
 import { invoke } from "@tauri-apps/api/core";
 import { useAlert } from "../../hooks/useAlert";
 import { copyTextToClipboard } from "../../utils/clipboard";
+import { GitSyncPanel } from "./team-sync/GitSyncPanel";
 import {
   exportTeamWorkspaceBundle,
   parseAndReconcileWorkspaceBundle,
@@ -418,30 +419,15 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
           )}
 
           {activeTab === "git" && (
-            <div className="space-y-4 text-xs text-muted leading-relaxed">
-              <div className="p-4 rounded-lg bg-surface-secondary border border-default space-y-3">
-                <h3 className="font-semibold text-sm text-primary flex items-center gap-2">
-                  <GitBranch className="w-4 h-4 text-blue-400" />
-                  Quy Trình Đồng Bộ Nhóm Chuẩn (Git Workflow)
-                </h3>
-                <ol className="list-decimal list-inside space-y-2 text-muted">
-                  <li>
-                    <strong className="text-primary">Tạo file bundle:</strong> Chuyển sang tab "Xuất Bundle", bật mã hóa Master Passphrase và tải file về máy.
-                  </li>
-                  <li>
-                    <strong className="text-primary">Commit vào repository Git:</strong> Lưu file vào thư mục dự án:
-                    <pre className="mt-1 p-2 rounded bg-base text-primary font-mono text-[11px]">
-                      git add .tabularis/workspace.json{"\n"}
-                      git commit -m "chore: sync database connections and query library"{"\n"}
-                      git push origin main
-                    </pre>
-                  </li>
-                  <li>
-                    <strong className="text-primary">Thành viên khác kéo về:</strong> Mỗi khi có bạn dev mới vào team hoặc pull code mới, mở Tabularis ➔ Chọn "Nhập & Hợp Nhất" ➔ Nhập Passphrase chung để cập nhật toàn bộ thư viện query và kết nối chuẩn ngay tức thì.
-                  </li>
-                </ol>
-              </div>
-            </div>
+            <GitSyncPanel
+              connections={savedConnections}
+              queries={savedQueries}
+              onBundleLoaded={(json) => {
+                setImportJson(json);
+                setImportResult(null);
+                setActiveTab("import");
+              }}
+            />
           )}
         </div>
 
