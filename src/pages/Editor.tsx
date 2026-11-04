@@ -90,7 +90,7 @@ import { MockDataModal } from "../components/modals/MockDataModal";
 import { SchemaDiffModal } from "../components/modals/SchemaDiffModal";
 import { VisualExplainDiffModal } from "../components/modals/VisualExplainDiffModal";
 import { TeamWorkspaceSyncModal } from "../components/modals/TeamWorkspaceSyncModal";
-import { detectRowDeltas } from "../utils/liveTableTail";
+import { useLiveTail } from "../hooks/useLiveTail";
 import type { ExplainPlan } from "../types/explain";
 import { SqlTemplatesModal } from "../components/modals/SqlTemplatesModal";
 import { QueryHistoryModal } from "../components/modals/QueryHistoryModal";
@@ -506,9 +506,6 @@ export const Editor = () => {
   const [explainDiffPlan, setExplainDiffPlan] = useState<ExplainPlan | null>(null);
   const [isLiveTailActive, setIsLiveTailActive] = useState(false);
   const [liveTailInterval, setLiveTailInterval] = useState(3);
-  const [liveTailNewRowCount, setLiveTailNewRowCount] = useState(0);
-  const lastSeenRowsRef = useRef<unknown[][] | null>(null);
-
   const handleOpenExplainDiff = useCallback(async (overrideQuery?: string) => {
     const queryToExplain = overrideQuery || activeTab?.query;
     if (!queryToExplain || !activeConnectionId) return;
@@ -527,31 +524,16 @@ export const Editor = () => {
     }
   }, [activeTab?.query, activeTab?.schema, activeSchema, activeConnectionId, showAlert, t]);
 
-  useEffect(() => {
-    if (!isLiveTailActive || !activeTab || !activeConnectionId) return;
-
-    const intervalMs = liveTailInterval * 1000;
-    const timer = setInterval(() => {
-      if (!activeTab.isLoading) {
-        runQueryRef.current(activeTab.query, 1, activeTab.id);
-      }
-    }, intervalMs);
-
-    return () => clearInterval(timer);
-  }, [isLiveTailActive, liveTailInterval, activeTab?.id, activeTab?.query, activeTab?.isLoading, activeConnectionId]);
-
-  useEffect(() => {
-    if (!isLiveTailActive || !activeTab?.result?.rows) return;
-    const currentRows = activeTab.result.rows;
-    const prevRows = lastSeenRowsRef.current;
-    if (prevRows && prevRows.length > 0) {
-      const delta = detectRowDeltas(prevRows, currentRows);
-      if (delta.newRowCount > 0) {
-        setLiveTailNewRowCount((prev) => prev + delta.newRowCount);
-      }
-    }
-    lastSeenRowsRef.current = currentRows;
-  }, [isLiveTailActive, activeTab?.result?.rows]);
+  const liveTail = useLiveTail({
+    enabled: isLiveTailActive,
+    intervalSeconds: liveTailInterval,
+    connectionId: activeConnectionId,
+    driver: activeCapabilities,
+    tab: activeTab ?? undefined,
+    refresh: () => {
+      if (activeTab) return runQueryRef.current(activeTab.query, 1, activeTab.id);
+    },
+  });
 
   const [transactionMode, setTransactionMode] = useState<"auto" | "manual">("auto");
   const [isTransactionActive, setIsTransactionActive] = useState(false);
@@ -4340,22 +4322,42 @@ export const Editor = () => {
                           type="button"
                           onClick={() => {
                             setIsLiveTailActive((prev) => !prev);
-                            setLiveTailNewRowCount(0);
+                            liveTail.clearNewRows();
                           }}
                           className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border ${
                             isLiveTailActive
                               ? "bg-emerald-950/60 text-emerald-300 border-emerald-500/50 hover:bg-emerald-950/80"
                               : "bg-surface text-secondary border-default hover:text-primary hover:bg-surface-secondary"
                           }`}
-                          title={t("editor.liveTail.tooltip", {
-                            defaultValue: "Theo dõi dữ liệu bảng thời gian thực (Live Table Tail)",
-                          })}
+                          title={
+                            liveTail.error && liveTail.status === "error"
+                              ? t("editor.liveTail.stoppedAfterErrors", { error: liveTail.error })
+                              : liveTail.strategy === "keyset"
+                                ? t("editor.liveTail.tooltipKeyset")
+                                : liveTail.strategy === "snapshot"
+                                  ? t("editor.liveTail.tooltipSnapshot")
+                                  : t("editor.liveTail.tooltip")
+                          }
                         >
-                          <Radio size={12} className={isLiveTailActive ? "text-emerald-400 animate-pulse" : "text-muted shrink-0"} />
-                          <span>Live Tail{isLiveTailActive ? ` (${liveTailInterval}s)` : ""}</span>
-                          {isLiveTailActive && liveTailNewRowCount > 0 && (
+                          <Radio
+                            size={12}
+                            className={
+                              !isLiveTailActive
+                                ? "text-muted shrink-0"
+                                : liveTail.status === "error"
+                                  ? "text-red-400"
+                                  : liveTail.status === "paused"
+                                    ? "text-amber-400"
+                                    : "text-emerald-400 animate-pulse"
+                            }
+                          />
+                          <span>
+                            {t("editor.liveTail.label")}
+                            {isLiveTailActive ? ` (${liveTailInterval}s)` : ""}
+                          </span>
+                          {isLiveTailActive && liveTail.newRowCount > 0 && (
                             <span className="ml-0.5 px-1 rounded-full bg-emerald-500 text-black text-[10px] font-bold">
-                              +{liveTailNewRowCount}
+                              +{liveTail.newRowCount}
                             </span>
                           )}
                         </button>
@@ -4368,6 +4370,7 @@ export const Editor = () => {
                             <option value={2}>2s</option>
                             <option value={5}>5s</option>
                             <option value={10}>10s</option>
+                            <option value={30}>30s</option>
                           </select>
                         )}
                       </div>

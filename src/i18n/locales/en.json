@@ -1232,7 +1232,14 @@
       "tooltip": "Protect & mask sensitive data (Email, Phone, Password, Salary)"
     },
     "tableLoadHint": "Table data has not been loaded yet, or the connection was just restored.",
-    "loadTableData": "Load table data"
+    "loadTableData": "Load table data",
+    "liveTail": {
+      "label": "Live Tail",
+      "tooltip": "Watch this result for new rows",
+      "tooltipKeyset": "Checks the table's primary key with a lightweight query and only reloads the grid when new rows arrive. Inserts only; edits and deletes are not detected.",
+      "tooltipSnapshot": "Re-runs this query on every interval and compares the results. Use a table tab with a single integer primary key for a lighter check.",
+      "stoppedAfterErrors": "Live Tail stopped after repeated errors: {{error}}"
+    }
   },
   "createTable": {
     "title": "Create New Table",

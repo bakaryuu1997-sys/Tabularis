@@ -1232,7 +1232,14 @@
       "tooltip": "Bảo vệ & che mờ dữ liệu nhạy cảm (Email, Phone, Password, Salary)"
     },
     "tableLoadHint": "Dữ liệu bảng chưa được tải hoặc kết nối vừa được khôi phục.",
-    "loadTableData": "Tải dữ liệu bảng"
+    "loadTableData": "Tải dữ liệu bảng",
+    "liveTail": {
+      "label": "Live Tail",
+      "tooltip": "Theo dõi dòng mới của kết quả này",
+      "tooltipKeyset": "Kiểm tra khóa chính bằng truy vấn nhẹ và chỉ tải lại bảng khi có dòng mới. Chỉ phát hiện thêm mới; sửa và xóa không được phát hiện.",
+      "tooltipSnapshot": "Chạy lại truy vấn này theo chu kỳ và so sánh kết quả. Dùng tab bảng có khóa chính số nguyên đơn để kiểm tra nhẹ hơn.",
+      "stoppedAfterErrors": "Live Tail đã dừng sau nhiều lỗi liên tiếp: {{error}}"
+    }
   },
   "createTable": {
     "title": "Tạo bảng mới",
