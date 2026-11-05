@@ -29,7 +29,9 @@
     "selectForApplyAll": "Select for Apply All",
     "valuePlaceholder": "value",
     "fromPlaceholder": "from",
-    "toPlaceholder": "to"
+    "toPlaceholder": "to",
+    "refresh": "Reload table data",
+    "refreshLabel": "Reload"
   },
   "common": {
     "save": "Save",
@@ -45,7 +47,18 @@
     "noResults": "No results found",
     "error": "Error",
     "success": "Success",
-    "ok": "OK"
+    "ok": "OK",
+    "apply": "Apply",
+    "copied": "Copied!",
+    "deselectAll": "Deselect all",
+    "done": "Done",
+    "run": "Run (Ctrl+Enter)",
+    "running": "Running...",
+    "saved": "Excel file exported successfully!",
+    "selectAll": "Select all",
+    "clear": "Clear",
+    "refresh": "Refresh",
+    "untitled": "SQL Console"
   },
   "sidebar": {
     "connections": "Connections",
@@ -202,7 +215,9 @@
       "renamePlaceholder": "Notebook name"
     },
     "mockData": "Generate Mock Data",
-    "schemaDiff": "Schema Compare & Sync"
+    "schemaDiff": "Schema Compare & Sync",
+    "teamWorkspaceSync": "Team workspace sync (Git)",
+    "actions": "Actions"
   },
   "mcp": {
     "title": "MCP Server Integration",
@@ -280,7 +295,17 @@
     "export": "Export Connections",
     "import": "Import Connections",
     "exportTitle": "Export Connections",
-    "exportWarning": "The exported file will contain your database and SSH passwords in plaintext. Please store it securely."
+    "exportWarning": "The exported file will contain your database and SSH passwords in plaintext. Please store it securely.",
+    "importFromProject": "Connections from project: {{folder}}",
+    "noProjectConfig": "No database configuration (.env, docker-compose.yml or prisma/schema.prisma) was found in this folder.",
+    "fileFilterConfig": "Configuration / Backup (*.json)",
+    "fileFilterAll": "All files",
+    "importFromDbeaver": "Import connections from DBeaver",
+    "importFromTableplus": "Import connections from TablePlus",
+    "importedConfig": "Tabularis configuration imported successfully!",
+    "scanProjectTooltip": "Automatically scan database configuration from a project folder (.env, docker-compose, prisma)",
+    "openFromProject": "Open from project folder",
+    "importMenuTooltip": "Import connections from Tabularis, DBeaver or TablePlus"
   },
   "connectionAppearance": {
     "section": "Appearance",
@@ -311,7 +336,19 @@
     "errors": {
       "invalidEmoji": "Please enter exactly one emoji",
       "invalidHex": "Please enter a valid hex color like #1a2b3c"
-    }
+    },
+    "safeMode": "Safety level (Safe Mode)",
+    "safeModes": {
+      "silent": "Silent (no checks)",
+      "alert": "Alert (warn)",
+      "strict": "Strict Guard (confirm)",
+      "readonly": "Read-Only"
+    },
+    "emojiSearch": "Search emoji…",
+    "iconNoResults": "No icons match.",
+    "iconResultsTruncated": "Showing {{shown}} of {{total}} — refine your search to narrow it down.",
+    "iconSearch": "Search icons…",
+    "noPreview": "No preview"
   },
   "settings": {
     "title": "Settings",
@@ -473,7 +510,15 @@
       "endpointUrlDesc": "The base URL of your OpenAI-compatible API. Examples: https://api.groq.com/openai/v1, http://localhost:8000/v1",
       "customOpenaiModelPlaceholder": "e.g., llama3-70b-8192, mixtral-8x7b",
       "customOpenaiModelDesc": "Enter the model name provided by your OpenAI-compatible service.",
-      "customOpenaiModelHelp": "Enter the exact model name for your OpenAI-compatible provider."
+      "customOpenaiModelHelp": "Enter the exact model name for your OpenAI-compatible provider.",
+      "activeModelsFilter": "Filtering: {{count}} active model(s)",
+      "modelTestFailed": "Test failed: {{message}}",
+      "modelTestOk": "Model responded well ({{ms}}ms)",
+      "showAllTooltip": "Restore the full list",
+      "showAll": "(Show all)",
+      "testModelTooltip": "Send a test prompt to check the model's response",
+      "testingModel": "Testing...",
+      "testModel": "Test model"
     },
     "updates": "Updates",
     "openSourceLibraries": "Open Source Libraries",
@@ -758,7 +803,12 @@
       "prefer": "Prefer",
       "require": "Require",
       "verify-ca": "Verify CA",
-      "verify-full": "Verify Full"
+      "verify-full": "Verify Full",
+      "disabled": "Disabled",
+      "preferred": "Preferred",
+      "required": "Required",
+      "verify_ca": "Verify CA",
+      "verify_identity": "Verify identity"
     },
     "advanced": "Advanced",
     "pipesAsConcat": "Set PIPES_AS_CONCAT sql_mode on connect",
@@ -789,7 +839,20 @@
     "startupScriptDescription": "SQL run on every new connection to this data source. Use it for session settings such as SET / set_config (e.g. bypassing RLS). Separate statements with semicolons.",
     "startupScriptPlaceholder": "SELECT set_config('app.bypass_rls', 'on', false);",
     "scrollTabsLeft": "Scroll tabs left",
-    "scrollTabsRight": "Scroll tabs right"
+    "scrollTabsRight": "Scroll tabs right",
+    "connectionString": "Connection string",
+    "connectionStringPlaceholder": "e.g. mysql://user:pass@localhost:3306/db",
+    "general": "General",
+    "loadDatabasesHint": "Click \"Load databases\" to fetch the available databases.",
+    "noGeneralSettings": "No general settings are available for this driver.",
+    "selectDatabasesHint": "Select the databases to include in this connection.",
+    "sshNotAvailable": "SSH is not available for this driver.",
+    "sslCa": "CA certificate",
+    "sslCert": "Client certificate",
+    "sslCertificatesOptional": "Certificate paths are optional. Leave them empty to use the system defaults.",
+    "sslDescription": "Configure SSL/TLS for secure database connections (optional).",
+    "sslKey": "Client key",
+    "unnamedConnection": "Unnamed connection"
   },
   "sshConnections": {
     "title": "SSH Connections",
@@ -870,7 +933,10 @@
     "openReferenced": "Open referenced row in {{table}}",
     "copyAs": "Copy As...",
     "inspectCell": "Inspect Cell Value (Value Inspector)",
-    "profileColumn": "Column Profile"
+    "profileColumn": "Column Profile",
+    "foreignKeyTooltip": "Foreign key ➔ {{table}}.{{column}}",
+    "primaryKeyTooltip": "Primary key",
+    "copyCsvWithHeader": "CSV (with header)"
   },
   "editRow": {
     "title": "Edit Row",
@@ -923,15 +989,6 @@
     "rowCount": "{{total}} rows",
     "executePrompt": "Execute a query to see results",
     "tableRunPrompt": "Press Run (Ctrl/Command+F5) to load table data",
-    "results": {
-      "minimize": "Minimize",
-      "maximize": "Maximize (hide editor)",
-      "restore": "Restore editor",
-      "close": "Close",
-      "detach": "Detach to a separate window",
-      "detached": "Results detached to a separate window",
-      "reattach": "Re-attach"
-    },
     "split": {
       "pin": "Open in split (right)",
       "unpin": "Close split view",
@@ -942,7 +999,11 @@
       "save": "Save changes",
       "saveHint": "Unsaved edits — swap to the main pane to save",
       "empty": "Run this tab to see results here",
-      "tableLabel": "Table"
+      "tableLabel": "Table",
+      "splitRight": "Split Right",
+      "splitDown": "Split down",
+      "switchToHorizontal": "Switch to horizontal split (side by side)",
+      "switchToVertical": "Switch to vertical split (stacked)"
     },
     "closeTab": "Close Tab",
     "reopenClosedTab": "Reopen Closed Tab",
@@ -976,7 +1037,8 @@
       "empty": "No matching SQL templates found.",
       "insert": "Insert into editor",
       "copy": "Copy SQL",
-      "copied": "Copied"
+      "copied": "Copied",
+      "subtitle": "Pick a ready-made SQL template, fill in the parameters or insert it straight into the editor."
     },
     "showErrorDetails": "Show details",
     "hideErrorDetails": "Hide details",
@@ -1015,6 +1077,17 @@
         "countRows": "Count rows",
         "query": "Run SELECT query",
         "copyName": "Copy name"
+      },
+      "commands": {
+        "formatSql": "Format SQL query",
+        "newTab": "New tab / query console",
+        "openConnections": "Manage connections",
+        "openSettings": "Open settings",
+        "pasteImport": "Paste & import from clipboard",
+        "reopenClosedTab": "Reopen closed tab",
+        "runQuery": "Run statement / query",
+        "showSqlSnippets": "Show SQL snippets",
+        "toggleSidebar": "Toggle left sidebar"
       }
     },
     "submitChanges": "Submit Changes",
@@ -1104,7 +1177,8 @@
       "aiAnalysis": "AI Analysis",
       "aiAnalysisTitle": "AI Query Plan Analysis",
       "aiAnalyzing": "Analyzing query plan with AI...",
-      "aiConfigRequired": "AI Provider not configured. Please go to Settings > AI."
+      "aiConfigRequired": "AI Provider not configured. Please go to Settings > AI.",
+      "diffView": "Plan Diff & Index Advisor"
     },
     "notebook": {
       "addSqlCell": "Add SQL Cell",
@@ -1186,7 +1260,8 @@
           "stopOnError": "Toggled stop on error",
           "other": "Edited notebook"
         }
-      }
+      },
+      "exportError": "Export failed"
     },
     "querySelection": {
       "title": "Select Query to Execute",
@@ -1239,6 +1314,48 @@
       "tooltipKeyset": "Checks the table's primary key with a lightweight query and only reloads the grid when new rows arrive. Inserts only; edits and deletes are not detected.",
       "tooltipSnapshot": "Re-runs this query on every interval and compares the results. Use a table tab with a single integer primary key for a lighter check.",
       "stoppedAfterErrors": "Live Tail stopped after repeated errors: {{error}}"
+    },
+    "askAiToFix": "Ask AI to fix this error",
+    "console": {
+      "detachButton": "Separate window",
+      "detachTooltip": "Open the console and results in a separate window"
+    },
+    "explainDiff": {
+      "slowQueryTooltip": "Slow query (>500ms). Click to analyze the plan and get index suggestions."
+    },
+    "slowQueryButton": "Optimize ({{ms}}ms)",
+    "queryHistory": {
+      "button": "History",
+      "tooltip": "SQL query history (Ctrl+H)"
+    },
+    "tablePrefix": "Table",
+    "transactionCommitted": "Transaction committed.",
+    "transactionRolledBack": "Transaction rolled back.",
+    "transactionStarted": "New transaction started.",
+    "autoCommitTooltip": "Auto-commit: changes are saved after every statement",
+    "manualCommitTooltip": "Manual: you must commit or roll back yourself",
+    "beginTransactionTooltip": "Begin a transaction (BEGIN / START TRANSACTION)",
+    "transactionOpenTooltip": "A transaction is open",
+    "commitTooltip": "Commit the changes (COMMIT;)",
+    "rollbackTooltip": "Roll back the changes (ROLLBACK;)",
+    "beginTransaction": "Begin",
+    "readOnlyBlocked": "Blocked by Read-Only mode",
+    "readOnlyTitle": "Read-Only Safe Mode",
+    "confirmExecute": "Run this statement?",
+    "safeModeTitle": "Safety guard (Safe Mode)",
+    "askAiToFixHint": "Ask the AI to diagnose and fix this SQL query",
+    "nextPage": "Next",
+    "previousPage": "Previous",
+    "showQueryHistory": "Show query history",
+    "resultsTitle": "Results",
+    "results": {
+      "detach": "Detach the results into a separate window",
+      "detached": "The results are open in a separate window.",
+      "reattach": "Reattach window",
+      "minimize": "Minimize the results",
+      "maximize": "Maximize the results",
+      "restore": "Restore the results",
+      "close": "Close the results"
     }
   },
   "createTable": {
@@ -1261,7 +1378,8 @@
     "nameRequired": "Table name is required",
     "colRequired": "At least one column is required",
     "failCreate": "Failed to create table: ",
-    "requiresExtension": "Requires extension: {{ext}}"
+    "requiresExtension": "Requires extension: {{ext}}",
+    "sqlPreview": "SQL Preview"
   },
   "schema": {
     "title": "Schema: {{table}}",
@@ -1271,7 +1389,8 @@
     "colNullable": "Nullable",
     "colKey": "Key",
     "yes": "YES",
-    "no": "NO"
+    "no": "NO",
+    "close": "Close"
   },
   "generateSQL": {
     "title": "Generated SQL: {{table}}",
@@ -1330,7 +1449,8 @@
     "create": "Create Foreign Key",
     "cancel": "Cancel",
     "colRequired": "Please select local and referenced columns",
-    "tableRequired": "Please select a referenced table"
+    "tableRequired": "Please select a referenced table",
+    "nameRequired": "Enter a name for the foreign key."
   },
   "healthCheck": {
     "title": "Connection Lost",
@@ -1378,7 +1498,8 @@
     "confirmAlter": "Are you sure you want to modify view \"{{view}}\"?",
     "refreshSuccess": "Materialized view \"{{view}}\" refreshed",
     "refreshError": "Failed to refresh materialized view: ",
-    "failGetDefinition": "Failed to get definition: "
+    "failGetDefinition": "Failed to get definition: ",
+    "alterView": "Alter view"
   },
   "triggers": {
     "createTrigger": "Create Trigger",
@@ -1505,7 +1626,8 @@
     "subtitle": "Row #{{row}}",
     "save": "Save Changes",
     "cancel": "Cancel",
-    "enterValue": "Enter value..."
+    "enterValue": "Enter value...",
+    "resize": "Resize sidebar"
   },
   "contextMenu": {
     "openSidebar": "Open Sidebar Editor",
@@ -1617,7 +1739,10 @@
     "createFirst": "Create your first group to organize connections",
     "groupName": "Group name",
     "dragHint": "Drag connections here",
-    "createError": "Failed to create group"
+    "createError": "Failed to create group",
+    "deleteError": "Failed to delete the group",
+    "moveError": "Failed to move the connection",
+    "renameError": "Failed to rename the group"
   },
   "queryModal": {
     "database": "Database",
@@ -1750,7 +1875,9 @@
       "write": "Write",
       "ddl": "DDL",
       "unknown": "Unknown"
-    }
+    },
+    "exportCsv": "Export CSV",
+    "exportJson": "Export JSON"
   },
   "aiApproval": {
     "title": "AI requested a database write",
@@ -1819,10 +1946,47 @@
     "queryPreview": "Statement to execute:",
     "waitCountdown": "Please wait for safety confirmation ({{seconds}}s)...",
     "confirmExecute": "I understand the risks, Execute now",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "confirmExecution": "Confirm and run",
+    "countdownText": "Confirmation unlocks in {{seconds}}s...",
+    "safetyGuardSubtitle": "Review the statement carefully before running it to avoid serious data loss.",
+    "unlockedText": "Unlocked. You can confirm and run the statement.",
+    "waiting": "Wait",
+    "reasons": {
+      "drop": "A DROP statement permanently removes a table or database structure!",
+      "truncate": "A TRUNCATE statement wipes all data in the table!",
+      "deleteNoWhere": "A DELETE without a WHERE clause removes every row!",
+      "updateNoWhere": "An UPDATE without a WHERE clause overwrites every row!",
+      "production": "You are working directly on a PRODUCTION environment!"
+    },
+    "onConnection": " on connection \"{{name}}\"",
+    "readonlyBlocked": "[Read-Only Safe Mode] A write statement was blocked{{suffix}}. This connection is configured to disallow changes to data or structure.",
+    "strictConfirm": "[Strict Guard] You are about to run a statement that changes data or structure{{suffix}}.{{reasons}}\n\nAre you sure you want to continue?",
+    "alertConfirm": "[Alert Safe Mode] A dangerous operation was detected{{suffix}}:\n• {{reasons}}\n\nAre you sure you want to run this statement?"
   },
   "cellInspector": {
-    "title": "Cell Value Inspector"
+    "title": "Cell Value Inspector",
+    "characters": "characters",
+    "lines": "lines",
+    "notJson": "The data is not JSON",
+    "viewJsonTree": "View as JSON tree",
+    "hexEmpty": "00000000  (empty)",
+    "ariaLabel": "Inspect cell details",
+    "tabText": "Text / Format",
+    "tabHex": "Hex / Binary",
+    "base64Detected": "Base64 detected:",
+    "urlEncodeDetected": "URL encoding detected:",
+    "decode": "Decode",
+    "prettifyJson": "Prettify JSON",
+    "minifyJson": "Minify JSON",
+    "wordWrap": "Word wrap",
+    "restoreTooltip": "Restore the original value",
+    "restore": "Restore",
+    "searchPlaceholder": "Search keys or values in the JSON...",
+    "copied": "Copied",
+    "copy": "Copy",
+    "saved": "Saved to the cell!",
+    "applyToCell": "Apply to cell"
   },
   "queryHistory": {
     "title": "SQL Query History"
@@ -1837,7 +2001,23 @@
     "lengthRange": "Character Length (Min - Max)",
     "validRows": "Non-null Rows",
     "topValues": "Top Most Frequent Values",
-    "copyReport": "Copy Report"
+    "copyReport": "Copy Report",
+    "sum": "Sum: ",
+    "earliest": "Earliest: ",
+    "latest": "Latest: ",
+    "frequencyPercent": "Frequency (%)",
+    "report": {
+      "title": "Column statistics: {{column}} ({{type}})",
+      "totalRows": "Total rows",
+      "nullRows": "Empty rows (NULL)",
+      "distinct": "Distinct values",
+      "earliest": "Earliest",
+      "latest": "Latest",
+      "topValues": "Most frequent values",
+      "occurrences": "{{count}} times"
+    },
+    "characters": "characters",
+    "emptyString": "\"\" (empty string)"
   },
   "mockData": {
     "title": "Mock Data Generator",
@@ -1851,7 +2031,9 @@
     "insertBtn": "Insert {{count}} rows into table",
     "inserting": "Inserting...",
     "insertSuccess": "Successfully inserted {{count}} mock rows into {{table}}!",
-    "insertFailure": "Failed to insert mock data"
+    "insertFailure": "Failed to insert mock data",
+    "loadError": "Could not load the table's columns",
+    "loadingCols": "Reading table structure..."
   },
   "schemaDiff": {
     "title": "Schema Compare & Synchronization",
@@ -1864,7 +2046,11 @@
     "visualDiff": "Structural Differences",
     "migrationSql": "Migration Script",
     "copySql": "Copy Migration SQL",
-    "openEditor": "Open in Editor"
+    "openEditor": "Open in Editor",
+    "emptyPrompt": "Pick two connections and press Compare to find structural differences.",
+    "error": "Schema comparison failed",
+    "readingSchemas": "Reading table and column metadata from both databases...",
+    "selectBoth": "Please select both a source and a target connection."
   },
   "teamSync": {
     "title": "Git-Backed Team Workspace Sync",
@@ -1927,7 +2113,34 @@
       "committed": "Committed.",
       "committedAndPushed": "Committed and pushed.",
       "committedNoRemote": "Committed, but this repository has no 'origin' remote to push to."
-    }
+    },
+    "connectionCount": "{{count}} connection(s)",
+    "queryCount": "{{count}} query(ies)",
+    "newConnections": "{{count}} new connection(s)",
+    "newQueries": "{{count}} new query(ies)",
+    "skippedDuplicates": "{{count}} duplicate(s) skipped",
+    "applySuccess": "Imported {{connections}} connection(s) and {{queries}} query(ies) into the workspace.",
+    "applyFailed": "Failed to import data:",
+    "labelConnections": "Database connections:",
+    "labelQueries": "Saved queries:",
+    "passphrasePlaceholder": "Enter the team's shared master passphrase...",
+    "encryptionNote": "Passwords are encrypted with PBKDF2 (600k rounds) + AES-256-GCM, so the file is safe to commit to a Git repository.",
+    "passwordsStripped": "All connection passwords are removed from the bundle to prevent leaks.",
+    "exporting": "Exporting...",
+    "createBundle": "Create sync bundle",
+    "downloadJson": "Download .json file",
+    "copyJson": "Copy JSON",
+    "pasteLabel": "Paste the bundle file contents (.tabularis-workspace.json):",
+    "pastePlaceholder": "Paste the JSON here...",
+    "decryptLabel": "Decryption passphrase (if the bundle is encrypted):",
+    "decryptPlaceholder": "Enter the passphrase...",
+    "conflictLabel": "How to handle duplicates:",
+    "conflictMerge": "Skip existing items (keep current)",
+    "conflictOverwrite": "Overwrite with the bundle's data",
+    "analyzing": "Analyzing...",
+    "checkBundle": "Check bundle data",
+    "bundleValid": "Bundle is valid! Ready to merge:",
+    "applyNow": "Apply sync now"
   },
   "explainDiff": {
     "title": "Index Advisor (what-if analysis)",
@@ -1959,5 +2172,427 @@
     "currentPlan": "Current plan",
     "projectedPlan": "Plan with suggested indexes",
     "note": "Costs come from the database planner with hypothetical indexes. Nothing is created and the query is not executed."
+  },
+  "foreignKeyPicker": {
+    "backToPicker": "Back to list",
+    "columnNotFound": "Column {{column}} was not found in {{table}}",
+    "manualButton": "Type value",
+    "manualLabel": "Enter the value directly:",
+    "noMatch": "No matching records.",
+    "searchPlaceholder": "Search by ID or name...",
+    "setNull": "Set to NULL",
+    "totalCount": "{{count}} records",
+    "useManual": "Enter value manually"
+  },
+  "highlight": {
+    "addFirstRule": "Add the first rule",
+    "addRule": "Add rule",
+    "buttonLabel": "Highlight",
+    "buttonTitle": "Highlight rules",
+    "clearAll": "Clear all",
+    "color": "Color:",
+    "column": "Column",
+    "emptyDesc": "Create rules to spot failed orders, negative balances, important statuses or NULL data at a glance.",
+    "emptyTitle": "No highlight rules yet",
+    "operator": "Condition",
+    "subtitle": "Automatically color a row or cell based on a column value condition.",
+    "target": "Scope",
+    "targetCell": "Cell only",
+    "targetRow": "Entire row",
+    "title": "Conditional highlight rules",
+    "value": "Value",
+    "operators": {
+      "eq": "= (Equals)",
+      "neq": "≠ (Not equals)",
+      "gt": "> (Greater than)",
+      "gte": "≥ (Greater or equal)",
+      "lt": "< (Less than)",
+      "lte": "≤ (Less or equal)",
+      "contains": "Contains",
+      "notContains": "Does not contain",
+      "startsWith": "Starts with",
+      "endsWith": "Ends with",
+      "isNull": "Is NULL",
+      "isNotNull": "Is NOT NULL"
+    },
+    "valuePlaceholder": "e.g. failed, 0, admin...",
+    "colors": {
+      "red": "Red",
+      "green": "Green",
+      "amber": "Amber",
+      "blue": "Blue",
+      "purple": "Purple",
+      "rose": "Rose",
+      "emerald": "Emerald",
+      "indigo": "Indigo",
+      "cyan": "Cyan",
+      "gray": "Gray"
+    }
+  },
+  "projectScanner": {
+    "confirmImport": "Add {{count}} connection(s) to Tabularis",
+    "foundCount": "Found {{count}} connection(s) ready to add to your list.",
+    "importError": "Failed to save connections: {{error}}",
+    "importSuccess": "Imported {{count}} connection(s) into Tabularis.",
+    "modalTitle": "Import connections from a project",
+    "selectedCount": "Selected: {{selected}} / {{total}}",
+    "connectionNamePlaceholder": "Connection name",
+    "passwordDetected": "✓ Password detected",
+    "importing": "Importing..."
+  },
+  "queryHistoryModal": {
+    "subtitle": "Search, copy or re-run the SQL statements you have executed",
+    "confirmClear": "Delete everything?",
+    "deleteAll": "Delete all",
+    "cancel": "Cancel",
+    "clearHistoryTooltip": "Delete the entire history",
+    "clearHistory": "Clear history",
+    "searchPlaceholder": "Search by SQL, table or database name...",
+    "filterAll": "All",
+    "noResults": "No matching queries found",
+    "empty": "No query history saved yet",
+    "emptyHint": "When you run SQL in the console or open a table, it is recorded here automatically.",
+    "rowsAffectedSuffix": " rows affected",
+    "deleteEntry": "Delete this entry",
+    "copied": "Copied",
+    "copy": "Copy",
+    "insertTooltip": "Insert this statement at the cursor in the editor",
+    "insert": "Insert into editor",
+    "runTooltip": "Run this statement now",
+    "run": "Run now",
+    "success": "Success",
+    "error": "Error"
+  },
+  "schemaDiffModal": {
+    "columnsDiffer": "{{count}} column(s) differ",
+    "sourceVsTarget": "Source: {{source}} vs Target: {{target}}",
+    "schemaPlaceholder": "Schema (optional, e.g. public)",
+    "identicalTables": "Identical tables",
+    "sourceOnly": "Only in source",
+    "withDifferences": "With column differences",
+    "targetOnly": "Only in target",
+    "missingInTarget": "Missing in target (+ create)",
+    "identical": "Identical",
+    "missingColumn": "+ Missing column:",
+    "extraColumn": "- Extra in target:",
+    "typeMismatch": "~ Type differs:"
+  },
+  "sqlTemplatesModal": {
+    "fillTooltip": "Quickly fill in parameters (table, columns, conditions...)",
+    "collapse": "Collapse",
+    "fillParams": "Fill parameters",
+    "customized": "Customized",
+    "restoreTooltip": "Restore the original template",
+    "insertTooltip": "Insert this SQL at the cursor in the editor",
+    "insert": "Insert into code",
+    "quickCustomize": "Quickly customize the template values:",
+    "restoreDefaults": "Restore defaults",
+    "copied": "Copied",
+    "copySql": "Copy SQL"
+  },
+  "resultsWindow": {
+    "rowCount": "{{count}} rows",
+    "runTooltip": "Run query (Ctrl + Enter)",
+    "templatesTooltip": "Ready-made SQL templates & snippets (Ctrl + J)",
+    "templates": "SQL templates",
+    "showBothTooltip": "Show both the console and the results",
+    "both": "Both",
+    "consoleOnlyTooltip": "Show only the SQL console",
+    "resultsOnlyTooltip": "Show only the results table",
+    "reattachTooltip": "Reattach to the main window",
+    "reattach": "Reattach",
+    "resizeTooltip": "Drag to resize the console and results",
+    "results": "Results"
+  },
+  "schemaDiagram": {
+    "exportTooltip": "Export ER diagram",
+    "exportPng": "Export PNG image (.png)",
+    "exportSvg": "Export SVG vector (.svg)"
+  },
+  "visualQuery": {
+    "addTableTooltip": "Add a table to the query design canvas",
+    "addTable": "+ Add a table to the Visual Query...",
+    "title": "Visual Query",
+    "emptyHint": "👈 Drag a table from the list on the left and drop it here, or pick one below to start building JOINs and filters.",
+    "pickTable": "+ Pick a table to add to the canvas..."
+  },
+  "aiChat": {
+    "defaultTitle": "New chat",
+    "suggestions": {
+      "latestRows": "Write a SQL query that returns the 10 newest rows from the table ",
+      "optimize": "Optimize and explain the following query:\n",
+      "explainColumns": "Explain the structure and meaning of the columns of the table ",
+      "toPostgres": "Convert the following SQL to PostgreSQL:\n"
+    },
+    "copied": "Copied",
+    "copy": "Copy",
+    "insert": "Insert",
+    "runNow": "Run now",
+    "configureInSettings": "Configure AI in Settings",
+    "readingDbWithCount": "Reading the whole DB ({{count}} tables)",
+    "insertTooltip": "Append to the end of the console (keeps the existing SQL)",
+    "openConnectionToInsert": "Open a connection to insert SQL",
+    "runTooltip": "Insert into the console and run immediately",
+    "openConnectionToRun": "Open a connection to run SQL",
+    "errorNeedConnectionInsert": "Open a connection before inserting SQL into the editor.",
+    "errorNeedConnectionRun": "Open a connection before running SQL.",
+    "errorNoProvider": "No AI provider is configured. Open Settings › AI.",
+    "emptyResponse": "_(no content returned)_",
+    "stopped": "_(stopped)_",
+    "conversations": "Conversations",
+    "notConfigured": "Not configured",
+    "newConversation": "New conversation",
+    "clearConversation": "Clear this conversation",
+    "saveName": "Save name",
+    "rename": "Rename",
+    "deleteConversation": "Delete conversation",
+    "pickModel": "Pick a model…",
+    "searchModel": "Search models…",
+    "noModels": "No models",
+    "reloadModels": "Reload the model list",
+    "schemaToggleTooltip": "Let the AI read all tables and the database structure",
+    "readingDb": "Reading the whole DB",
+    "noSchema": "Not sending the DB schema",
+    "refreshSchema": "Refresh the DB schema",
+    "askAnything": "Ask the AI anything.",
+    "copyMessage": "Copy message",
+    "answering": "Answering…",
+    "copyError": "Copy error message",
+    "inputPlaceholder": "Type a message… (Enter to send, Shift+Enter for a new line)",
+    "stop": "Stop answering",
+    "send": "Send",
+    "close": "Close"
+  },
+  "columnDetails": {
+    "types": {
+      "maxChars": "Text (up to {{max}} characters)",
+      "text": "Text / string",
+      "boolean": "Boolean (true/false or 0/1)",
+      "bigint": "64-bit big integer (BIGINT)",
+      "smallint": "Small integer (SMALLINT/TINYINT)",
+      "integer": "32-bit integer (INTEGER)",
+      "decimal": "High-precision decimal (DECIMAL)",
+      "float": "Floating-point number (FLOAT/DOUBLE)",
+      "datetime": "Date & time (DATETIME/TIMESTAMP)",
+      "date": "Date (DATE: YYYY-MM-DD)",
+      "time": "Time (TIME: HH:MM:SS)",
+      "json": "JSON data structure",
+      "blob": "Binary data (BLOB)",
+      "uuid": "Unique identifier (UUID)",
+      "other": "Data type: {{type}}"
+    },
+    "primaryKey": "🔑 Primary key",
+    "foreignKey": "🔗 Foreign key ➔ references: {{table}}.{{column}}",
+    "notNull": "• Constraint: required (NOT NULL)",
+    "nullable": "• Constraint: allows NULL",
+    "autoIncrement": "• Auto-increment (AUTO_INCREMENT)",
+    "defaultValue": "• Default: {{value}}",
+    "spec": "• Specification: {{description}}"
+  },
+  "aiPrompts": {
+    "fixSqlError": "The following SQL query failed when executed against the database:\n\n```sql\n{{query}}\n```\n\nError message from the database engine:\n```\n{{error}}\n```\n\nExplain what caused the error and give a corrected, complete, optimized and accurate SQL statement."
+  },
+  "sqlSnippets": {
+    "docs": {
+      "sel": "1. SELECT - Pick the columns to read from a table\nQuickly type a SELECT statement",
+      "select": "1. SELECT - The SELECT clause picks columns",
+      "sc": "SELECT COUNT(*) - Count the rows",
+      "from": "2. FROM - The source table",
+      "join": "2. JOIN - Join tables in the FROM clause",
+      "leftjoin": "2. LEFT JOIN - Keep every row of the left table",
+      "rightjoin": "2. RIGHT JOIN - Keep every row of the right table",
+      "where": "3. WHERE - Filter rows",
+      "groupby": "4. GROUP BY - Group the data",
+      "having": "5. HAVING - Filter groups after grouping",
+      "orderby": "6. ORDER BY - Sort the results",
+      "limit": "7. LIMIT / OFFSET - Paginate the data",
+      "ins": "INSERT INTO - Add a new record to a table",
+      "upd": "UPDATE ... SET ... WHERE - Update data",
+      "del": "DELETE FROM ... WHERE - Delete records",
+      "cte": "WITH (CTE) - Common Table Expression, a temporary named result",
+      "case": "CASE - A conditional expression in SQL",
+      "query": "The order a DEVELOPER WRITES A QUERY:\n1. SELECT (columns to read)\n2. FROM & JOIN (source tables)\n3. WHERE (filter rows)\n4. GROUP BY (group)\n5. HAVING (filter groups)\n6. ORDER BY (sort)\n7. LIMIT / OFFSET (paginate)",
+      "fullquery": "A complete SQL query template in the order developers write it"
+    }
+  },
+  "autocomplete": {
+    "pressEnterTable": "Press Enter to insert the table name into the statement.",
+    "noColumns": "No columns, or still loading...",
+    "columnList": "Columns ({{count}}):",
+    "tableEntry": "- Table: `{{table}}` ({{type}})",
+    "belongsTo": "Belongs to:",
+    "tableMissing": "⚠️ Table \"{{name}}\" does not exist in the current database.",
+    "columnMissingInTable": "⚠️ Column \"{{column}}\" does not exist in table \"{{table}}\".",
+    "columnMissingInTables": "⚠️ Column \"{{column}}\" does not exist in the selected tables ({{tables}})."
+  },
+  "sqlTemplates": {
+    "items": {
+      "sel-from-where": {
+        "description": "Basic query with a filter condition"
+      },
+      "sel-count-group": {
+        "description": "Group and aggregate counts and totals"
+      },
+      "sel-group-having": {
+        "description": "Group and aggregate with a filter on the groups"
+      },
+      "sel-pagination-limit": {
+        "name": "SELECT pagination (LIMIT / OFFSET)",
+        "description": "Paginate data by page size"
+      },
+      "sel-pagination-keyset": {
+        "name": "SELECT keyset pagination (cursor, very fast)",
+        "description": "High-performance pagination for tables with millions of rows, without OFFSET"
+      },
+      "sel-text-search": {
+        "name": "SELECT text search (ILIKE / LIKE)",
+        "description": "Case-insensitive text search"
+      },
+      "sel-time-series": {
+        "name": "SELECT statistics over time (DATE_TRUNC)",
+        "description": "Group revenue and counts by day or month"
+      },
+      "join-inner": {
+        "name": "SELECT ... INNER JOIN ... ON (join 2 tables)",
+        "description": "Join 2 tables using a foreign key and a filter"
+      },
+      "join-orphans": {
+        "name": "SELECT ... LEFT JOIN ... ON (find orphan records)",
+        "description": "Find records with no related rows (e.g. customers who never ordered)"
+      },
+      "join-multi": {
+        "name": "JOIN 3 tables (orders • customers • details)",
+        "description": "Chain several tables together in an e-commerce model"
+      },
+      "join-self": {
+        "name": "SELF JOIN (parent - child hierarchy)",
+        "description": "A table joined to itself (manager / employee, parent / child folder)"
+      },
+      "ins-values": {
+        "description": "Insert a new row into a table"
+      },
+      "ins-bulk": {
+        "name": "INSERT INTO multiple rows (bulk insert)",
+        "description": "Insert many records in a single statement"
+      },
+      "ins-select": {
+        "name": "INSERT INTO ... SELECT (copy data)",
+        "description": "Load data into another table or an archive"
+      },
+      "dml-upsert-pg": {
+        "description": "Insert if missing, update when the key already exists"
+      },
+      "dml-upsert-mysql": {
+        "description": "MySQL / MariaDB insert-or-update syntax"
+      },
+      "upd-where": {
+        "name": "UPDATE ... SET ... WHERE (safe)",
+        "description": "Update data with a protective WHERE clause"
+      },
+      "upd-join": {
+        "name": "UPDATE from a JOIN with another table",
+        "description": "Sync or update values based on a related table"
+      },
+      "del-where": {
+        "name": "DELETE FROM ... WHERE (safe)",
+        "description": "Delete data safely with an explicit WHERE clause"
+      },
+      "cte-with": {
+        "name": "CTE (WITH ... AS) temporary table",
+        "description": "A CTE keeps complex queries readable"
+      },
+      "cte-recursive": {
+        "name": "Recursive CTE (category tree)",
+        "description": "Walk a parent-child tree of any depth"
+      },
+      "window-rank": {
+        "name": "Window function - ranking (ROW_NUMBER)",
+        "description": "Number rows and rank the top N within each group"
+      },
+      "window-running-total": {
+        "name": "Window function - running total",
+        "description": "Compute a running total over time"
+      },
+      "case-when": {
+        "name": "CASE WHEN multi-condition classification",
+        "description": "Conditional branching expression inside a SELECT"
+      },
+      "create-table": {
+        "name": "CREATE TABLE (complete standard)",
+        "description": "Create a new table with customizable column definitions"
+      },
+      "create-table-fk": {
+        "name": "CREATE TABLE with a foreign key",
+        "description": "Create a linked table with a foreign key and ON DELETE CASCADE"
+      },
+      "create-index": {
+        "description": "Create a single or composite index to speed up lookups"
+      },
+      "alter-add-column": {
+        "name": "ALTER TABLE add a new column",
+        "description": "Safely add a new column to an existing table"
+      },
+      "create-view": {
+        "name": "CREATE OR REPLACE VIEW",
+        "description": "Create a reusable view for complex queries"
+      },
+      "txn-safe": {
+        "name": "Safe TRANSACTION (BEGIN ... COMMIT ... ROLLBACK)",
+        "description": "A transaction block that preserves ACID data integrity"
+      }
+    },
+    "params": {
+      "ten_bang": "Table name",
+      "danh_sach_cot": "Column list",
+      "dieu_kien_loc_where": "Filter condition (WHERE)",
+      "cot_gom_nhom": "Group-by column",
+      "cot_tinh_tong": "Column to sum",
+      "so_luong_toi_thieu": "Minimum count",
+      "so_dong_limit": "Row limit (LIMIT)",
+      "vi_tri_bat_dau_offset": "Start position (OFFSET)",
+      "id_moc_tiep_theo": "Next cursor ID",
+      "so_dong": "Row count",
+      "cot_tim_kiem": "Search column",
+      "tu_khoa_tim_kiem": "Search keyword",
+      "cot_ngay_thang": "Date column",
+      "bang_a_chinh": "Table A (main)",
+      "bang_b_lien_ket": "Table B (linked)",
+      "khoa_ngoai_o_bang_a": "Foreign key in table A",
+      "khoa_chinh_o_bang_b": "Primary key in table B",
+      "bang_cha": "Parent table",
+      "bang_con": "Child table",
+      "cot_khoa_ngoai_o_bang_con": "Foreign key column in the child table",
+      "cot_id_cap_tren": "Parent ID column",
+      "gia_tri": "Values",
+      "bang_dich_luu_tru": "Target table (archive)",
+      "bang_nguon": "Source table",
+      "cot_khoa_trung_pk_unique": "Conflict key column (PK/Unique)",
+      "cot_gia_tri_cap_nhat": "Columns & values to update",
+      "bang_can_cap_nhat": "Table to update",
+      "bang_nguon_du_lieu": "Data source table",
+      "dieu_kien_xoa_where": "Delete condition (WHERE)",
+      "ten_bang_moi": "New table name",
+      "dinh_nghia_cac_cot_thuoc_tinh": "Column definitions & attributes",
+      "ten_bang_con_moi": "New child table name",
+      "bang_cha_lien_ket": "Linked parent table",
+      "ten_cot_khoa_ngoai": "Foreign key column name",
+      "ten_index": "Index name",
+      "cac_cot_danh_index": "Columns to index",
+      "ten_cot_moi": "New column name",
+      "kieu_du_lieu_mac_dinh": "Data type & default",
+      "ten_view": "View name"
+    },
+    "categories": {
+      "all": "All",
+      "select": "SELECT & Analysis",
+      "join": "JOIN & Relations",
+      "ddl": "Create tables (DDL)",
+      "transaction": "Safe transactions",
+      "dml": "INSERT / UPDATE / DELETE",
+      "advanced": "CTE & Window"
+    }
+  },
+  "general": {
+    "error": "Error"
   }
 }

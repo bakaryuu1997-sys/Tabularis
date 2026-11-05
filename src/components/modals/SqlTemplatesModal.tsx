@@ -18,6 +18,7 @@ import {
   DEFAULT_TEMPLATES,
   resolveSql,
   type SqlTemplate,
+  type SqlTemplateParam,
 } from "../../utils/sqlTemplates";
 
 export interface SqlTemplatesModalProps {
@@ -36,6 +37,10 @@ export function SqlTemplatesModal({
   activeTable,
 }: SqlTemplatesModalProps) {
   const { t } = useTranslation();
+  const templateName = (tmpl: SqlTemplate) => (tmpl.nameKey ? t(tmpl.nameKey) : tmpl.name);
+  const templateDescription = (tmpl: SqlTemplate) =>
+    tmpl.descriptionKey ? t(tmpl.descriptionKey) : tmpl.description;
+  const paramLabel = (param: SqlTemplateParam) => (param.labelKey ? t(param.labelKey) : param.label);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -64,12 +69,13 @@ export function SqlTemplatesModal({
       const term = search.trim().toLowerCase();
       const matchSearch =
         !term ||
-        tmpl.name.toLowerCase().includes(term) ||
-        tmpl.description.toLowerCase().includes(term) ||
+        templateName(tmpl).toLowerCase().includes(term) ||
+        templateDescription(tmpl).toLowerCase().includes(term) ||
         tmpl.sql.toLowerCase().includes(term);
       return matchCat && matchSearch;
     });
-  }, [search, selectedCategory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the name/description getters only depend on `t`
+  }, [search, selectedCategory, t]);
 
   const toggleParams = (id: string) => {
     setOpenParamPanels((prev) => ({
@@ -116,12 +122,10 @@ export function SqlTemplatesModal({
             </div>
             <div>
               <h2 className="text-base font-semibold text-primary">
-                {t("editor.sqlTemplates.title", { defaultValue: "Mẫu SQL & Snippets (Ctrl+J)" })}
+                {t("editor.sqlTemplates.title")}
               </h2>
               <p className="text-xs text-muted">
-                {t("editor.sqlTemplates.subtitle", {
-                  defaultValue: "Chọn mẫu SQL dựng sẵn, điền nhanh tham số hoặc chèn trực tiếp vào trình soạn thảo.",
-                })}
+                {t("editor.sqlTemplates.subtitle")}
               </p>
             </div>
           </div>
@@ -142,9 +146,7 @@ export function SqlTemplatesModal({
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("editor.sqlTemplates.searchPlaceholder", {
-                defaultValue: "Tìm kiếm mẫu (SELECT, JOIN, WHERE, INSERT, CTE, CREATE TABLE...)",
-              })}
+              placeholder={t("editor.sqlTemplates.searchPlaceholder")}
               className="w-full pl-9 pr-3 py-1.5 text-xs bg-surface-secondary border border-strong rounded-lg text-primary placeholder:text-muted focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -160,7 +162,7 @@ export function SqlTemplatesModal({
                     : "bg-surface-secondary text-secondary hover:text-primary hover:bg-surface-tertiary"
                 }`}
               >
-                {cat.label}
+                {t(cat.labelKey)}
               </button>
             ))}
           </div>
@@ -170,7 +172,7 @@ export function SqlTemplatesModal({
         <div className="p-4 flex-1 overflow-y-auto space-y-3.5 select-text">
           {filteredTemplates.length === 0 ? (
             <div className="text-center py-8 text-xs text-muted italic">
-              {t("editor.sqlTemplates.empty", { defaultValue: "Không tìm thấy mẫu SQL nào phù hợp." })}
+              {t("editor.sqlTemplates.empty")}
             </div>
           ) : (
             filteredTemplates.map((tmpl) => {
@@ -193,19 +195,19 @@ export function SqlTemplatesModal({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="text-xs font-bold text-primary group-hover:text-blue-400 transition-colors">
-                          {tmpl.name}
+                          {templateName(tmpl)}
                         </h4>
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-secondary text-muted font-medium border border-default/50">
-                          {categoryObj ? categoryObj.label : tmpl.category}
+                          {categoryObj ? t(categoryObj.labelKey) : tmpl.category}
                         </span>
                         {isCustomized && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/30 flex items-center gap-1">
                             <Sparkles size={10} />
-                            Đã tùy biến
+                            {t("sqlTemplatesModal.customized")}
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-muted mt-0.5">{tmpl.description}</p>
+                      <p className="text-[11px] text-muted mt-0.5">{templateDescription(tmpl)}</p>
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -217,10 +219,10 @@ export function SqlTemplatesModal({
                               ? "bg-blue-600/15 text-blue-400 border-blue-500/40"
                               : "bg-surface-secondary hover:bg-surface-tertiary text-secondary hover:text-primary border-default/60"
                           }`}
-                          title="Điền nhanh tham số (Tên bảng, cột, điều kiện...)"
+                          title={t("sqlTemplatesModal.fillTooltip")}
                         >
                           <SlidersHorizontal size={12} />
-                          <span>{isParamsOpen ? "Thu gọn" : "Điền tham số"}</span>
+                          <span>{isParamsOpen ? t("sqlTemplatesModal.collapse") : t("sqlTemplatesModal.fillParams")}</span>
                         </button>
                       )}
 
@@ -228,7 +230,7 @@ export function SqlTemplatesModal({
                         <button
                           onClick={() => handleReset(tmpl.id)}
                           className="p-1.5 rounded bg-surface-secondary hover:bg-surface-tertiary text-muted hover:text-amber-400 text-xs transition-colors flex items-center gap-1 border border-default/60"
-                          title="Khôi phục mẫu gốc mặc định"
+                          title={t("sqlTemplatesModal.restoreTooltip")}
                         >
                           <RotateCcw size={12} />
                         </button>
@@ -237,12 +239,12 @@ export function SqlTemplatesModal({
                       <button
                         onClick={() => handleCopy(tmpl)}
                         className="p-1.5 rounded bg-surface-secondary hover:bg-surface-tertiary text-secondary hover:text-primary text-xs transition-colors flex items-center gap-1 border border-default/60"
-                        title="Sao chép SQL"
+                        title={t("sqlTemplatesModal.copySql")}
                       >
                         {copiedId === tmpl.id ? (
                           <>
                             <Check size={12} className="text-emerald-400" />
-                            <span className="text-[10px] text-emerald-400 font-medium">Đã chép</span>
+                            <span className="text-[10px] text-emerald-400 font-medium">{t("sqlTemplatesModal.copied")}</span>
                           </>
                         ) : (
                           <Copy size={12} />
@@ -255,9 +257,9 @@ export function SqlTemplatesModal({
                           onClose();
                         }}
                         className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors flex items-center gap-1 shadow-sm"
-                        title="Chèn câu lệnh SQL này vào vị trí con trỏ trong Editor"
+                        title={t("sqlTemplatesModal.insertTooltip")}
                       >
-                        <span>Chèn vào code</span>
+                        <span>{t("sqlTemplatesModal.insert")}</span>
                         <ArrowRight size={12} />
                       </button>
                     </div>
@@ -269,7 +271,7 @@ export function SqlTemplatesModal({
                       <div className="flex items-center justify-between text-[11px] font-semibold text-primary border-b border-default/40 pb-1.5">
                         <span className="flex items-center gap-1 text-blue-400">
                           <SlidersHorizontal size={11} />
-                          Tùy biến nhanh giá trị mẫu:
+                          {t("sqlTemplatesModal.quickCustomize")}
                         </span>
                         {isCustomized && (
                           <button
@@ -277,7 +279,7 @@ export function SqlTemplatesModal({
                             className="text-muted hover:text-amber-400 text-[10px] flex items-center gap-1 transition-colors"
                           >
                             <RotateCcw size={10} />
-                            Khôi phục mặc định
+                            {t("sqlTemplatesModal.restoreDefaults")}
                           </button>
                         )}
                       </div>
@@ -289,7 +291,7 @@ export function SqlTemplatesModal({
                             return (
                               <div key={param.key} className="col-span-full flex flex-col gap-1">
                                 <label className="text-[11px] font-medium text-secondary">
-                                  {param.label}:
+                                  {paramLabel(param)}:
                                 </label>
                                 <textarea
                                   rows={4}
@@ -306,7 +308,7 @@ export function SqlTemplatesModal({
                           return (
                             <div key={param.key} className="flex flex-col gap-1">
                               <label className="text-[11px] font-medium text-secondary">
-                                {param.label}:
+                                {paramLabel(param)}:
                               </label>
                               <div className="relative">
                                 <input

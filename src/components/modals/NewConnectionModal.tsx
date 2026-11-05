@@ -973,10 +973,7 @@ export const NewConnectionModal = ({
       >("probe_local_databases");
       if (!hits || hits.length === 0) {
         setScanHint(
-          t("newConnection.scanNotFound", {
-            defaultValue:
-              "Không tìm thấy MySQL/PostgreSQL đang chạy trên localhost.",
-          }),
+          t("newConnection.scanNotFound"),
         );
         return;
       }
@@ -990,7 +987,6 @@ export const NewConnectionModal = ({
       }));
       setScanHint(
         t("newConnection.scanFound", {
-          defaultValue: "Đã tìm thấy {{driver}} trên {{host}}:{{port}}",
           driver: hit.driver,
           host: hit.host,
           port: hit.port,
@@ -1133,10 +1129,8 @@ export const NewConnectionModal = ({
                 className="text-xs px-2.5 py-1.5 border border-strong rounded-md text-secondary hover:text-primary hover:border-blue-500 transition-colors disabled:opacity-50"
               >
                 {scanningLocal
-                  ? t("newConnection.scanning", { defaultValue: "Đang quét…" })
-                  : t("newConnection.scanLocalhost", {
-                      defaultValue: "🔍 Quét localhost",
-                    })}
+                  ? t("newConnection.scanning")
+                  : t("newConnection.scanLocalhost")}
               </button>
               {scanHint && (
                 <span className="text-xs text-secondary">{scanHint}</span>
@@ -2308,13 +2302,9 @@ export const NewConnectionModal = ({
                             title={
                               localServers[d.id]
                                 ? t("newConnection.serverRunning", {
-                                    defaultValue: "Đang chạy trên cổng {{port}}",
                                     port: localServers[d.id],
                                   })
-                                : t("newConnection.serverOff", {
-                                    defaultValue:
-                                      "Không phát hiện server cục bộ",
-                                  })
+                                : t("newConnection.serverOff")
                             }
                           />
                         )}

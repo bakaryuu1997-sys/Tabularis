@@ -129,10 +129,10 @@ export const SchemaDiagramPage = () => {
                 <button
                   onClick={() => setIsExportMenuOpen((prev) => !prev)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
-                  title="Xuất sơ đồ ERD"
+                  title={t("schemaDiagram.exportTooltip")}
                 >
                   <Download size={15} />
-                  <span>{t('erDiagram.export', { defaultValue: 'Xuất sơ đồ' })}</span>
+                  <span>{t('erDiagram.export')}</span>
                   <ChevronDown size={14} className="opacity-80" />
                 </button>
 
@@ -143,14 +143,14 @@ export const SchemaDiagramPage = () => {
                       className="w-full px-3 py-2 flex items-center gap-2 text-primary hover:bg-surface-secondary text-left transition-colors"
                     >
                       <Image size={14} className="text-blue-400" />
-                      <span>Xuất ảnh PNG (.png)</span>
+                      <span>{t("schemaDiagram.exportPng")}</span>
                     </button>
                     <button
                       onClick={handleExportSvg}
                       className="w-full px-3 py-2 flex items-center gap-2 text-primary hover:bg-surface-secondary text-left transition-colors"
                     >
                       <Code2 size={14} className="text-emerald-400" />
-                      <span>Xuất vector SVG (.svg)</span>
+                      <span>{t("schemaDiagram.exportSvg")}</span>
                     </button>
                   </div>
                 )}

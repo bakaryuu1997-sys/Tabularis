@@ -226,7 +226,7 @@ export function AppearanceSection({
       {/* Environment Guardrail Selection */}
       <div className="flex flex-col gap-2">
         <label className="text-[10px] uppercase font-semibold tracking-wider text-muted">
-          {t("connectionAppearance.environment", { defaultValue: "Môi trường (Production Guard)" })}
+          {t("connectionAppearance.environment")}
         </label>
         <div className="grid grid-cols-4 gap-2">
           {[
@@ -257,14 +257,14 @@ export function AppearanceSection({
       {/* Safe Mode Guardrail Selection */}
       <div className="flex flex-col gap-2">
         <label className="text-[10px] uppercase font-semibold tracking-wider text-muted">
-          {t("connectionAppearance.safeMode", { defaultValue: "Cấp độ an toàn (Safe Mode)" })}
+          {t("connectionAppearance.safeMode")}
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {[
-            { id: "silent", label: "Silent (Tự do)", color: "bg-slate-500/15 border-slate-500/40 text-slate-300 hover:bg-slate-500/25", active: "bg-slate-600 text-white border-slate-600 shadow-sm shadow-slate-600/30" },
-            { id: "alert", label: "Alert (Cảnh báo)", color: "bg-amber-500/15 border-amber-500/40 text-amber-400 hover:bg-amber-500/25", active: "bg-amber-600 text-white border-amber-600 shadow-sm shadow-amber-600/30" },
-            { id: "strict", label: "Strict Guard (Nghiêm ngặt)", color: "bg-orange-500/15 border-orange-500/40 text-orange-400 hover:bg-orange-500/25", active: "bg-orange-600 text-white border-orange-600 shadow-sm shadow-orange-600/30" },
-            { id: "readonly", label: "Read-Only (Chỉ đọc)", color: "bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/25", active: "bg-red-600 text-white border-red-600 shadow-sm shadow-red-600/30" },
+            { id: "silent", label: t("connectionAppearance.safeModes.silent"), color: "bg-slate-500/15 border-slate-500/40 text-slate-300 hover:bg-slate-500/25", active: "bg-slate-600 text-white border-slate-600 shadow-sm shadow-slate-600/30" },
+            { id: "alert", label: t("connectionAppearance.safeModes.alert"), color: "bg-amber-500/15 border-amber-500/40 text-amber-400 hover:bg-amber-500/25", active: "bg-amber-600 text-white border-amber-600 shadow-sm shadow-amber-600/30" },
+            { id: "strict", label: t("connectionAppearance.safeModes.strict"), color: "bg-orange-500/15 border-orange-500/40 text-orange-400 hover:bg-orange-500/25", active: "bg-orange-600 text-white border-orange-600 shadow-sm shadow-orange-600/30" },
+            { id: "readonly", label: t("connectionAppearance.safeModes.readonly"), color: "bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/25", active: "bg-red-600 text-white border-red-600 shadow-sm shadow-red-600/30" },
           ].map((mode) => {
             const isSelected = value.safeMode === mode.id;
             return (

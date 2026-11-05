@@ -506,8 +506,7 @@ export function NotebookView({
     } catch (e) {
       console.error("Notebook export failed:", e);
       showAlert(
-        t("editor.notebook.exportError") ||
-          `Export failed: ${e instanceof Error ? e.message : String(e)}`,
+        `${t("editor.notebook.exportError")}: ${e instanceof Error ? e.message : String(e)}`,
         { kind: "error" },
       );
     }
@@ -528,8 +527,7 @@ export function NotebookView({
     } catch (e) {
       console.error("HTML export failed:", e);
       showAlert(
-        t("editor.notebook.exportError") ||
-          `Export failed: ${e instanceof Error ? e.message : String(e)}`,
+        `${t("editor.notebook.exportError")}: ${e instanceof Error ? e.message : String(e)}`,
         { kind: "error" },
       );
     }

@@ -79,7 +79,8 @@ export const ForeignKeyPicker: React.FC<ForeignKeyPickerProps> = ({
         if (refColIdx === -1) {
           setError(
             t("foreignKeyPicker.columnNotFound", {
-              defaultValue: `Không tìm thấy cột ${fk.ref_column} trong ${fk.ref_table}`,
+              column: fk.ref_column,
+              table: fk.ref_table,
             })
           );
           setIsLoading(false);
@@ -198,7 +199,7 @@ export const ForeignKeyPicker: React.FC<ForeignKeyPickerProps> = ({
       {isManualInput ? (
         <div className="p-3 space-y-2">
           <label className="block text-[11px] text-muted font-medium">
-            {t("foreignKeyPicker.manualLabel", { defaultValue: "Nhập giá trị trực tiếp:" })}
+            {t("foreignKeyPicker.manualLabel")}
           </label>
           <input
             ref={inputRef}
@@ -214,14 +215,14 @@ export const ForeignKeyPicker: React.FC<ForeignKeyPickerProps> = ({
               onClick={() => setIsManualInput(false)}
               className="text-xs text-muted hover:text-primary transition-colors"
             >
-              &larr; {t("foreignKeyPicker.backToPicker", { defaultValue: "Quay lại danh sách" })}
+              &larr; {t("foreignKeyPicker.backToPicker")}
             </button>
             <button
               type="button"
               onClick={() => onSelect(manualValue)}
               className="px-3 py-1 text-xs font-medium rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
             >
-              {t("common.apply", { defaultValue: "Áp dụng" })}
+              {t("common.apply")}
             </button>
           </div>
         </div>
@@ -236,9 +237,7 @@ export const ForeignKeyPicker: React.FC<ForeignKeyPickerProps> = ({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("foreignKeyPicker.searchPlaceholder", {
-                  defaultValue: "Tìm theo ID hoặc tên...",
-                })}
+                placeholder={t("foreignKeyPicker.searchPlaceholder")}
                 className="w-full bg-transparent border-none outline-none text-xs text-primary placeholder:text-muted/60 font-mono"
               />
               {search && (
@@ -256,7 +255,7 @@ export const ForeignKeyPicker: React.FC<ForeignKeyPickerProps> = ({
               <button
                 type="button"
                 onClick={() => onSelect(null)}
-                title={t("foreignKeyPicker.setNull", { defaultValue: "Đặt là NULL" })}
+                title={t("foreignKeyPicker.setNull")}
                 className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium border border-default text-muted hover:text-amber-400 hover:border-amber-500/40 hover:bg-amber-500/10 transition-colors shrink-0"
               >
                 <Ban size={11} />
@@ -270,7 +269,7 @@ export const ForeignKeyPicker: React.FC<ForeignKeyPickerProps> = ({
             {isLoading ? (
               <div className="flex items-center justify-center py-8 text-muted gap-2 text-xs">
                 <Loader2 size={15} className="animate-spin text-blue-400" />
-                <span>{t("common.loading", { defaultValue: "Đang tải dữ liệu tham chiếu..." })}</span>
+                <span>{t("common.loading")}</span>
               </div>
             ) : error ? (
               <div className="p-4 text-center text-xs text-red-400 space-y-2">
@@ -280,18 +279,18 @@ export const ForeignKeyPicker: React.FC<ForeignKeyPickerProps> = ({
                   onClick={() => setIsManualInput(true)}
                   className="text-blue-400 underline hover:text-blue-300"
                 >
-                  {t("foreignKeyPicker.useManual", { defaultValue: "Nhập giá trị tay" })}
+                  {t("foreignKeyPicker.useManual")}
                 </button>
               </div>
             ) : filtered.length === 0 ? (
               <div className="p-6 text-center text-xs text-muted space-y-2">
-                <p>{t("foreignKeyPicker.noMatch", { defaultValue: "Không có bản ghi phù hợp." })}</p>
+                <p>{t("foreignKeyPicker.noMatch")}</p>
                 <button
                   type="button"
                   onClick={() => setIsManualInput(true)}
                   className="text-blue-400 underline hover:text-blue-300"
                 >
-                  {t("foreignKeyPicker.useManual", { defaultValue: "Nhập giá trị tay" })}
+                  {t("foreignKeyPicker.useManual")}
                 </button>
               </div>
             ) : (
@@ -352,7 +351,6 @@ export const ForeignKeyPicker: React.FC<ForeignKeyPickerProps> = ({
           <div className="px-3 py-1.5 border-t border-default bg-surface-secondary/40 flex items-center justify-between text-[11px] text-muted">
             <span>
               {t("foreignKeyPicker.totalCount", {
-                defaultValue: `${filtered.length} bản ghi`,
                 count: filtered.length,
               })}
             </span>
@@ -362,7 +360,7 @@ export const ForeignKeyPicker: React.FC<ForeignKeyPickerProps> = ({
               className="flex items-center gap-1 hover:text-blue-400 transition-colors"
             >
               <Edit3 size={11} />
-              <span>{t("foreignKeyPicker.manualButton", { defaultValue: "Nhập tay" })}</span>
+              <span>{t("foreignKeyPicker.manualButton")}</span>
             </button>
           </div>
         </>

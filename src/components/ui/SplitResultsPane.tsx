@@ -169,7 +169,7 @@ export function SplitResultsPane({
                   : "text-muted hover:text-secondary"
               }`}
             >
-              {t("editor.results", "Results")}
+              {t("editor.resultsTitle")}
             </button>
           </div>
         )}

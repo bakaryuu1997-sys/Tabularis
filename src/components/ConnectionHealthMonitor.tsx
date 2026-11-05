@@ -21,10 +21,10 @@ export function ConnectionHealthMonitor() {
       (event) => {
         const { connectionId, error } = event.payload;
         showAlert(
-          `${t("healthCheck.connectionLost", { defaultValue: "Mất kết nối tới cơ sở dữ liệu" })}: ${error}`,
+          `${t("healthCheck.connectionLost")}: ${error}`,
           {
             kind: "warning",
-            title: t("healthCheck.title", { defaultValue: "Kiểm tra kết nối" }),
+            title: t("healthCheck.title"),
           },
         );
         if (connectionId) {

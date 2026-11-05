@@ -1,9 +1,11 @@
 import type * as Monaco from "monaco-editor";
+import { translate } from "../i18n/translate";
 
 export interface SqlSnippetDef {
   label: string;
   detail: string;
-  documentation: string;
+  /** Translation key of the description shown next to the snippet. */
+  documentationKey: string;
   insertText: string;
 }
 
@@ -11,115 +13,115 @@ export const SQL_SNIPPETS: SqlSnippetDef[] = [
   {
     label: "sel",
     detail: "SELECT * FROM table",
-    documentation: "1. SELECT - Chọn cột lấy ra từ bảng\nGõ nhanh câu lệnh SELECT lấy dữ liệu",
+    documentationKey: "sqlSnippets.docs.sel",
     insertText: "SELECT ${1:*} FROM ${2:table_name};",
   },
   {
     label: "select",
     detail: "SELECT columns FROM table",
-    documentation: "1. SELECT - Mệnh đề SELECT chọn cột",
+    documentationKey: "sqlSnippets.docs.select",
     insertText: "SELECT ${1:*} FROM ${2:table_name};",
   },
   {
     label: "sc",
     detail: "SELECT COUNT(*) FROM table",
-    documentation: "SELECT COUNT(*) - Đếm số lượng dòng dữ liệu",
+    documentationKey: "sqlSnippets.docs.sc",
     insertText: "SELECT COUNT(*) FROM ${1:table_name};",
   },
   {
     label: "from",
     detail: "FROM table_name AS alias",
-    documentation: "2. FROM - Nguồn bảng dữ liệu",
+    documentationKey: "sqlSnippets.docs.from",
     insertText: "FROM ${1:table_name} AS ${2:t1}",
   },
   {
     label: "join",
     detail: "INNER JOIN table ON condition",
-    documentation: "2. JOIN - Kết nối bảng trong FROM clause",
+    documentationKey: "sqlSnippets.docs.join",
     insertText: "INNER JOIN ${1:table_name} ON ${2:condition}",
   },
   {
     label: "leftjoin",
     detail: "LEFT JOIN table ON condition",
-    documentation: "2. LEFT JOIN - Kết nối bảng bên trái",
+    documentationKey: "sqlSnippets.docs.leftjoin",
     insertText: "LEFT JOIN ${1:table_name} ON ${2:condition}",
   },
   {
     label: "rightjoin",
     detail: "RIGHT JOIN table ON condition",
-    documentation: "2. RIGHT JOIN - Kết nối bảng bên phải",
+    documentationKey: "sqlSnippets.docs.rightjoin",
     insertText: "RIGHT JOIN ${1:table_name} ON ${2:condition}",
   },
   {
     label: "where",
     detail: "WHERE condition",
-    documentation: "3. WHERE - Điều kiện lọc dòng",
+    documentationKey: "sqlSnippets.docs.where",
     insertText: "WHERE ${1:condition}",
   },
   {
     label: "groupby",
     detail: "GROUP BY column",
-    documentation: "4. GROUP BY - Gom nhóm dữ liệu",
+    documentationKey: "sqlSnippets.docs.groupby",
     insertText: "GROUP BY ${1:column}",
   },
   {
     label: "having",
     detail: "HAVING condition",
-    documentation: "5. HAVING - Lọc trên nhóm sau gom nhóm",
+    documentationKey: "sqlSnippets.docs.having",
     insertText: "HAVING ${1:condition}",
   },
   {
     label: "orderby",
     detail: "ORDER BY column ASC/DESC",
-    documentation: "6. ORDER BY - Sắp xếp kết quả",
+    documentationKey: "sqlSnippets.docs.orderby",
     insertText: "ORDER BY ${1:column} ${2|ASC,DESC|}",
   },
   {
     label: "limit",
     detail: "LIMIT count OFFSET offset",
-    documentation: "7. LIMIT / OFFSET - Phân trang dữ liệu",
+    documentationKey: "sqlSnippets.docs.limit",
     insertText: "LIMIT ${1:50} OFFSET ${2:0}",
   },
   {
     label: "ins",
     detail: "INSERT INTO table (cols) VALUES (vals)",
-    documentation: "INSERT INTO - Thêm mới bản ghi vào bảng",
+    documentationKey: "sqlSnippets.docs.ins",
     insertText: "INSERT INTO ${1:table_name} (${2:column1, column2})\nVALUES (${3:value1, value2});",
   },
   {
     label: "upd",
     detail: "UPDATE table SET col = val WHERE cond",
-    documentation: "UPDATE ... SET ... WHERE - Cập nhật dữ liệu",
+    documentationKey: "sqlSnippets.docs.upd",
     insertText: "UPDATE ${1:table_name}\nSET ${2:column} = ${3:value}\nWHERE ${4:condition};",
   },
   {
     label: "del",
     detail: "DELETE FROM table WHERE cond",
-    documentation: "DELETE FROM ... WHERE - Xóa bản ghi",
+    documentationKey: "sqlSnippets.docs.del",
     insertText: "DELETE FROM ${1:table_name}\nWHERE ${2:condition};",
   },
   {
     label: "cte",
     detail: "WITH cte AS (...) SELECT ...",
-    documentation: "WITH (CTE) - Bảng tạm Common Table Expression",
+    documentationKey: "sqlSnippets.docs.cte",
     insertText: "WITH ${1:cte_name} AS (\n  SELECT ${2:*}\n  FROM ${3:source_table}\n  WHERE ${4:condition}\n)\nSELECT *\nFROM ${1:cte_name};",
   },
   {
     label: "case",
     detail: "CASE WHEN ... THEN ... ELSE ... END",
-    documentation: "CASE biểu thức điều kiện trong SQL",
+    documentationKey: "sqlSnippets.docs.case",
     insertText: "CASE\n  WHEN ${1:condition} THEN ${2:result}\n  ELSE ${3:default_result}\nEND",
   },
   {
     label: "query",
     detail: "Full SQL Developer Query Flow (SELECT -> FROM -> JOIN -> WHERE -> GROUP -> HAVING -> ORDER -> LIMIT)",
-    documentation: "Thứ tự LẬP TRÌNH VIÊN VIẾT:\n1. SELECT (Chọn cột lấy ra)\n2. FROM & JOIN (Nguồn bảng)\n3. WHERE (Điều kiện lọc dòng)\n4. GROUP BY (Gom nhóm)\n5. HAVING (Lọc trên nhóm)\n6. ORDER BY (Sắp xếp)\n7. LIMIT / OFFSET (Phân trang)",
+    documentationKey: "sqlSnippets.docs.query",
     insertText: "SELECT\n  ${1:t1.*}\nFROM ${2:table1} AS t1\nLEFT JOIN ${3:table2} AS t2 ON ${4:t2.fk = t1.id}\nWHERE ${5:1=1}\nGROUP BY ${6:t1.id}\nHAVING ${7:COUNT(*) > 0}\nORDER BY ${8:t1.id} DESC\nLIMIT ${9:50} OFFSET ${10:0};",
   },
   {
     label: "fullquery",
     detail: "Full SQL Developer Query Flow (SELECT -> FROM -> WHERE -> GROUP BY -> HAVING -> ORDER BY -> LIMIT)",
-    documentation: "Chuẩn mẫu câu truy vấn SQL hoàn chỉnh theo thứ tự lập trình viên",
+    documentationKey: "sqlSnippets.docs.fullquery",
     insertText: "SELECT\n  ${1:t1.*}\nFROM ${2:table1} AS t1\nLEFT JOIN ${3:table2} AS t2 ON ${4:t2.fk = t1.id}\nWHERE ${5:1=1}\nGROUP BY ${6:t1.id}\nHAVING ${7:COUNT(*) > 0}\nORDER BY ${8:t1.id} DESC\nLIMIT ${9:50} OFFSET ${10:0};",
   },
 ];
@@ -138,7 +140,7 @@ export function buildMonacoSqlSnippets(
       label: snippet.label,
       kind: monaco.languages.CompletionItemKind.Snippet,
       detail: `Snippet · ${snippet.detail}`,
-      documentation: snippet.documentation,
+      documentation: translate(snippet.documentationKey),
       insertText: snippet.insertText,
       insertTextRules:
         monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,

@@ -271,7 +271,7 @@ const SchemaDiagramContent = ({
     schema,
   ]);
 
-  // Effetto per filtrare i nodi quando una tabella è selezionata
+  // Filter the nodes when a table is selected
   useEffect(() => {
     if (!selectedTable || allNodes.length === 0) {
       // Mostra tutti i nodi

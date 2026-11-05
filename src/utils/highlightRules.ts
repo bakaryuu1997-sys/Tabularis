@@ -51,7 +51,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-red-500/20 text-red-200 border-l-2 border-red-500",
     badgeClass: "bg-red-500/20 text-red-300 border-red-500/30",
     borderClass: "border-red-500",
-    label: "Red (Đỏ)",
+    label: "Red",
     hex: "#ef4444",
   },
   green: {
@@ -59,7 +59,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-emerald-500/20 text-emerald-200 border-l-2 border-emerald-500",
     badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
     borderClass: "border-emerald-500",
-    label: "Emerald (Xanh lá)",
+    label: "Emerald",
     hex: "#10b981",
   },
   amber: {
@@ -67,7 +67,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-amber-500/20 text-amber-200 border-l-2 border-amber-500",
     badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/30",
     borderClass: "border-amber-500",
-    label: "Amber (Vàng hổ phách)",
+    label: "Amber",
     hex: "#f59e0b",
   },
   blue: {
@@ -75,7 +75,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-blue-500/20 text-blue-200 border-l-2 border-blue-500",
     badgeClass: "bg-blue-500/20 text-blue-300 border-blue-500/30",
     borderClass: "border-blue-500",
-    label: "Blue (Xanh dương)",
+    label: "Blue",
     hex: "#3b82f6",
   },
   purple: {
@@ -83,7 +83,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-purple-500/20 text-purple-200 border-l-2 border-purple-500",
     badgeClass: "bg-purple-500/20 text-purple-300 border-purple-500/30",
     borderClass: "border-purple-500",
-    label: "Purple (Tím)",
+    label: "Purple",
     hex: "#a855f7",
   },
   rose: {
@@ -91,7 +91,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-rose-500/20 text-rose-200 border-l-2 border-rose-500",
     badgeClass: "bg-rose-500/20 text-rose-300 border-rose-500/30",
     borderClass: "border-rose-500",
-    label: "Rose (Hồng hoa hồng)",
+    label: "Rose",
     hex: "#f43f5e",
   },
   emerald: {
@@ -99,7 +99,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-teal-500/20 text-teal-200 border-l-2 border-teal-500",
     badgeClass: "bg-teal-500/20 text-teal-300 border-teal-500/30",
     borderClass: "border-teal-500",
-    label: "Teal (Xanh mòng két)",
+    label: "Teal",
     hex: "#14b8a6",
   },
   indigo: {
@@ -107,7 +107,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-indigo-500/20 text-indigo-200 border-l-2 border-indigo-500",
     badgeClass: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
     borderClass: "border-indigo-500",
-    label: "Indigo (Chàm)",
+    label: "Indigo",
     hex: "#6366f1",
   },
   cyan: {
@@ -115,7 +115,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-cyan-500/20 text-cyan-200 border-l-2 border-cyan-500",
     badgeClass: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
     borderClass: "border-cyan-500",
-    label: "Cyan (Xanh lơ)",
+    label: "Cyan",
     hex: "#06b6d4",
   },
   gray: {
@@ -123,7 +123,7 @@ export const HIGHLIGHT_COLOR_SCHEMES: Record<HighlightColorScheme, HighlightStyl
     cellClass: "bg-zinc-500/20 text-zinc-300 border-l-2 border-zinc-500",
     badgeClass: "bg-zinc-500/20 text-zinc-300 border-zinc-500/30",
     borderClass: "border-zinc-500",
-    label: "Gray (Xám)",
+    label: "Gray",
     hex: "#71717a",
   },
 };

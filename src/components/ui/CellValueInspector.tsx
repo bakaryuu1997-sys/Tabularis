@@ -183,7 +183,7 @@ export function CellValueInspector({
       lines.push(`${offset}  ${hexGroup1}  ${hexGroup2}  |${ascii}|`);
     }
 
-    return lines.length > 0 ? lines.join("\n") : "00000000  (rỗng)";
+    return lines.length > 0 ? lines.join("\n") : t("cellInspector.hexEmpty");
   };
 
   const charCount = typeof cellValue === "string" ? cellValue.length : rawString.length;
@@ -192,14 +192,14 @@ export function CellValueInspector({
   return (
     <aside
       className="fixed inset-y-0 right-0 z-40 w-full sm:w-[480px] lg:w-[560px] bg-elevated border-l border-default shadow-2xl flex flex-col animate-slide-in-right"
-      aria-label="Kiểm tra chi tiết ô"
+      aria-label={t("cellInspector.ariaLabel")}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-default bg-surface-secondary/40 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Eye size={16} className="text-cyan-400 shrink-0" />
           <h2 className="text-sm font-semibold text-primary truncate">
-            {t("cellInspector.title", { defaultValue: "Kiểm tra chi tiết ô" })}
+            {t("cellInspector.title")}
           </h2>
           <span className="font-mono text-xs px-2 py-0.5 rounded bg-cyan-950/40 text-cyan-300 border border-cyan-800/50 truncate max-w-[160px]">
             {columnName}
@@ -213,7 +213,7 @@ export function CellValueInspector({
         <button
           onClick={onClose}
           className="p-1 rounded text-muted hover:text-primary hover:bg-surface-secondary transition-colors"
-          title={t("common.close", { defaultValue: "Đóng" })}
+          title={t("common.close")}
         >
           <X size={16} />
         </button>
@@ -231,7 +231,7 @@ export function CellValueInspector({
             }`}
           >
             <FileText size={13} />
-            <span>Văn bản / Định dạng</span>
+            <span>{t("cellInspector.tabText")}</span>
           </button>
           <button
             onClick={() => setActiveTab("tree")}
@@ -243,7 +243,7 @@ export function CellValueInspector({
                 ? "text-muted hover:text-primary"
                 : "text-muted/40 cursor-not-allowed"
             }`}
-            title={parsedJson === null ? "Dữ liệu không phải JSON" : "Xem dạng cây JSON"}
+            title={parsedJson === null ? t("cellInspector.notJson") : t("cellInspector.viewJsonTree")}
           >
             <Code size={13} />
             <span>JSON Tree</span>
@@ -257,14 +257,14 @@ export function CellValueInspector({
             }`}
           >
             <Binary size={13} />
-            <span>Hex / Nhị phân</span>
+            <span>{t("cellInspector.tabHex")}</span>
           </button>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted font-mono">
-          <span>{charCount} ký tự</span>
+          <span>{charCount} {t("cellInspector.characters")}</span>
           <span>·</span>
-          <span>{lineCount} dòng</span>
+          <span>{lineCount} {t("cellInspector.lines")}</span>
         </div>
       </div>
 
@@ -275,7 +275,7 @@ export function CellValueInspector({
             <div className="flex items-center justify-between text-purple-300">
               <span className="flex items-center gap-1.5">
                 <Sparkles size={12} className="text-purple-400" />
-                <span>Phát hiện Base64:</span>
+                <span>{t("cellInspector.base64Detected")}</span>
                 <span className="font-mono text-purple-200 truncate max-w-[260px]">
                   {detectedBase64}
                 </span>
@@ -284,7 +284,7 @@ export function CellValueInspector({
                 onClick={() => setEditedText(detectedBase64)}
                 className="text-[11px] underline hover:text-white"
               >
-                Giải mã
+                {t("cellInspector.decode")}
               </button>
             </div>
           )}
@@ -292,7 +292,7 @@ export function CellValueInspector({
             <div className="flex items-center justify-between text-purple-300">
               <span className="flex items-center gap-1.5">
                 <Sparkles size={12} className="text-purple-400" />
-                <span>Phát hiện URL Encode:</span>
+                <span>{t("cellInspector.urlEncodeDetected")}</span>
                 <span className="font-mono text-purple-200 truncate max-w-[260px]">
                   {detectedUrlEncoded}
                 </span>
@@ -301,7 +301,7 @@ export function CellValueInspector({
                 onClick={() => setEditedText(detectedUrlEncoded)}
                 className="text-[11px] underline hover:text-white"
               >
-                Giải mã
+                {t("cellInspector.decode")}
               </button>
             </div>
           )}
@@ -319,7 +319,7 @@ export function CellValueInspector({
                     <button
                       onClick={handleFormatJson}
                       className="px-2 py-1 rounded bg-surface-secondary hover:bg-surface-tertiary text-secondary hover:text-primary border border-strong flex items-center gap-1"
-                      title="Làm đẹp JSON"
+                      title={t("cellInspector.prettifyJson")}
                     >
                       <Sparkles size={12} className="text-amber-400" />
                       <span>Format JSON</span>
@@ -327,7 +327,7 @@ export function CellValueInspector({
                     <button
                       onClick={handleCompactJson}
                       className="px-2 py-1 rounded bg-surface-secondary hover:bg-surface-tertiary text-secondary hover:text-primary border border-strong"
-                      title="Nén JSON"
+                      title={t("cellInspector.minifyJson")}
                     >
                       Minify
                     </button>
@@ -340,7 +340,7 @@ export function CellValueInspector({
                     onChange={(e) => setWrapLines(e.target.checked)}
                     className="rounded accent-blue-500"
                   />
-                  <span>Tự động xuống dòng</span>
+                  <span>{t("cellInspector.wordWrap")}</span>
                 </label>
               </div>
 
@@ -348,10 +348,10 @@ export function CellValueInspector({
                 <button
                   onClick={() => setEditedText(rawString)}
                   className="flex items-center gap-1 text-muted hover:text-secondary"
-                  title="Khôi phục giá trị gốc"
+                  title={t("cellInspector.restoreTooltip")}
                 >
                   <RotateCcw size={12} />
-                  <span>Khôi phục</span>
+                  <span>{t("cellInspector.restore")}</span>
                 </button>
               )}
             </div>
@@ -379,7 +379,7 @@ export function CellValueInspector({
                 type="text"
                 value={treeSearchQuery}
                 onChange={(e) => setTreeSearchQuery(e.target.value)}
-                placeholder="Tìm kiếm khóa hoặc giá trị trong JSON..."
+                placeholder={t("cellInspector.searchPlaceholder")}
                 className="w-full pl-8 pr-3 py-1.5 bg-surface-secondary border border-strong rounded text-xs text-primary placeholder-muted focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
@@ -410,12 +410,12 @@ export function CellValueInspector({
           {copied ? (
             <>
               <Check size={14} className="text-green-400" />
-              <span className="text-green-400">Đã sao chép</span>
+              <span className="text-green-400">{t("cellInspector.copied")}</span>
             </>
           ) : (
             <>
               <Copy size={14} />
-              <span>Sao chép</span>
+              <span>{t("cellInspector.copy")}</span>
             </>
           )}
         </button>
@@ -429,10 +429,10 @@ export function CellValueInspector({
             {applied ? (
               <>
                 <Check size={14} />
-                <span>Đã lưu vào ô!</span>
+                <span>{t("cellInspector.saved")}</span>
               </>
             ) : (
-              <span>Áp dụng cho ô</span>
+              <span>{t("cellInspector.applyToCell")}</span>
             )}
           </button>
         )}

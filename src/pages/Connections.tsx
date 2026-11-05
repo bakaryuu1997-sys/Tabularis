@@ -261,11 +261,11 @@ export const Connections = () => {
         if (found.length > 0) {
           setDetectedConnections(found);
           const folderName = selected.split(/[/\\]/).filter(Boolean).pop() || selected;
-          setImportSourceTitle(`Kết nối từ dự án: ${folderName}`);
+          setImportSourceTitle(t("connections.importFromProject", { folder: folderName }));
           setIsProjectImportOpen(true);
         } else {
           showAlert(
-            "Không tìm thấy cấu hình cơ sở dữ liệu (.env, docker-compose.yml hoặc prisma/schema.prisma) trong thư mục này.",
+            t("connections.noProjectConfig"),
             { kind: "warning" },
           );
         }
@@ -282,8 +282,8 @@ export const Connections = () => {
     try {
       const selected = await open({
         filters: [
-          { name: "Cấu hình / Sao lưu (*.json)", extensions: ["json"] },
-          { name: "Tất cả tệp", extensions: ["*"] },
+          { name: t("connections.fileFilterConfig"), extensions: ["json"] },
+          { name: t("connections.fileFilterAll"), extensions: ["*"] },
         ],
         multiple: false,
       });
@@ -295,7 +295,7 @@ export const Connections = () => {
           const dbeaverConns = parseDBeaverDataSources(content);
           if (dbeaverConns.length > 0) {
             setDetectedConnections(dbeaverConns);
-            setImportSourceTitle("Nhập kết nối từ DBeaver");
+            setImportSourceTitle(t("connections.importFromDbeaver"));
             setIsProjectImportOpen(true);
             return;
           }
@@ -306,7 +306,7 @@ export const Connections = () => {
           const tablePlusConns = parseTablePlusExport(content);
           if (tablePlusConns.length > 0) {
             setDetectedConnections(tablePlusConns);
-            setImportSourceTitle("Nhập kết nối từ TablePlus");
+            setImportSourceTitle(t("connections.importFromTableplus"));
             setIsProjectImportOpen(true);
             return;
           }
@@ -316,7 +316,7 @@ export const Connections = () => {
         const payload = JSON.parse(content);
         await invoke("import_connections_payload", { payload });
         await loadConnections();
-        showAlert("Đã nhập thành công cấu hình Tabularis!", { kind: "info" });
+        showAlert(t("connections.importedConfig"), { kind: "info" });
       }
     } catch (e) {
       console.error("Import failed:", e);
@@ -629,16 +629,16 @@ export const Connections = () => {
           <button
             onClick={handleScanProjectFolder}
             disabled={isScanningFolder}
-            title="Tự động quét cấu hình CSDL từ thư mục dự án (.env, docker-compose, prisma)"
+            title={t("connections.scanProjectTooltip")}
             className="flex items-center gap-2 bg-surface-secondary/70 hover:bg-surface-secondary text-secondary hover:text-primary border border-default hover:border-strong px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all shadow-xs hover:-translate-y-px"
           >
             {isScanningFolder ? <Loader2 size={14} className="animate-spin text-blue-400" /> : <FolderOpen size={14} className="text-amber-400" />}
-            <span>Mở từ thư mục dự án</span>
+            <span>{t("connections.openFromProject")}</span>
           </button>
 
           <button
             onClick={handleImport}
-            title="Nhập kết nối từ Tabularis, DBeaver hoặc TablePlus"
+            title={t("connections.importMenuTooltip")}
             className="flex items-center gap-2 bg-surface-secondary/70 hover:bg-surface-secondary text-secondary hover:text-primary border border-default hover:border-strong px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all shadow-xs hover:-translate-y-px"
           >
             <Upload size={14} className="text-blue-400" />
@@ -709,7 +709,7 @@ export const Connections = () => {
                 className="flex items-center gap-2 bg-elevated border border-strong hover:border-amber-500/50 text-secondary hover:text-amber-300 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all hover:-translate-y-px"
               >
                 <FolderOpen size={14} className="text-amber-400" />
-                <span>Mở từ thư mục dự án</span>
+                <span>{t("connections.openFromProject")}</span>
               </button>
               <button
                 onClick={handleImport}

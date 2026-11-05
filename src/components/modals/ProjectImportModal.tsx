@@ -91,7 +91,6 @@ export function ProjectImportModal({
 
       showAlert(
         t("projectScanner.importSuccess", {
-          defaultValue: `Đã nhập thành công ${successCount} kết nối vào Tabularis!`,
           count: successCount,
         }),
         { kind: "info" },
@@ -102,7 +101,7 @@ export function ProjectImportModal({
     } catch (err) {
       showAlert(
         t("projectScanner.importError", {
-          defaultValue: `Có lỗi khi lưu kết nối: ${String(err)}`,
+          error: String(err),
         }),
         { kind: "error" },
       );
@@ -122,11 +121,10 @@ export function ProjectImportModal({
             </div>
             <div>
               <h2 className="text-base font-bold text-primary">
-                {sourceTitle || t("projectScanner.modalTitle", { defaultValue: "Nhập kết nối từ dự án" })}
+                {sourceTitle || t("projectScanner.modalTitle")}
               </h2>
               <p className="text-xs text-muted mt-0.5">
                 {t("projectScanner.foundCount", {
-                  defaultValue: `Tìm thấy ${connections.length} kết nối sẵn sàng thêm vào danh sách kết nối.`,
                   count: connections.length,
                 })}
               </p>
@@ -153,13 +151,12 @@ export function ProjectImportModal({
             )}
             <span>
               {selectedIds.size === connections.length
-                ? t("common.deselectAll", { defaultValue: "Bỏ chọn tất cả" })
-                : t("common.selectAll", { defaultValue: "Chọn tất cả" })}
+                ? t("common.deselectAll")
+                : t("common.selectAll")}
             </span>
           </button>
           <span className="text-muted">
             {t("projectScanner.selectedCount", {
-              defaultValue: `Đã chọn: ${selectedIds.size} / ${connections.length}`,
               selected: selectedIds.size,
               total: connections.length,
             })}
@@ -205,7 +202,7 @@ export function ProjectImportModal({
                         setCustomNames((prev) => ({ ...prev, [conn.id]: val }));
                       }}
                       onClick={(e) => e.stopPropagation()}
-                      placeholder="Tên kết nối"
+                      placeholder={t("projectScanner.connectionNamePlaceholder")}
                       className="bg-transparent border-b border-transparent hover:border-default focus:border-blue-500 font-semibold text-sm text-primary px-1 py-0.5 rounded outline-none flex-1 truncate transition-colors"
                     />
                   </div>
@@ -248,7 +245,7 @@ export function ProjectImportModal({
                   )}
                   {conn.password && (
                     <span className="text-emerald-400/80 text-[10px] font-sans font-medium">
-                      ✓ Đã nhận mật khẩu
+                      {t("projectScanner.passwordDetected")}
                     </span>
                   )}
                 </div>
@@ -265,7 +262,7 @@ export function ProjectImportModal({
             disabled={isImporting}
             className="px-4 py-2 rounded-xl text-xs font-semibold text-secondary hover:text-primary hover:bg-surface-secondary transition-colors"
           >
-            {t("common.cancel", { defaultValue: "Hủy" })}
+            {t("common.cancel")}
           </button>
 
           <button
@@ -277,14 +274,13 @@ export function ProjectImportModal({
             {isImporting ? (
               <>
                 <Loader2 size={14} className="animate-spin" />
-                <span>Đang nhập...</span>
+                <span>{t("projectScanner.importing")}</span>
               </>
             ) : (
               <>
                 <Check size={14} />
                 <span>
                   {t("projectScanner.confirmImport", {
-                    defaultValue: `Thêm ${selectedIds.size} kết nối vào Tabularis`,
                     count: selectedIds.size,
                   })}
                 </span>

@@ -1,3 +1,5 @@
+import { translate } from "../i18n/translate";
+
 export type SafetyDangerType =
   | "drop"
   | "truncate"
@@ -163,7 +165,7 @@ export function checkSqlSafety(
     if (/\bDROP\s+(TABLE|DATABASE|SCHEMA|VIEW|INDEX)\b/i.test(stmt)) {
       if (!dangerTypes.includes("drop")) {
         dangerTypes.push("drop");
-        reasons.push("Câu lệnh DROP sẽ hủy bỏ cấu trúc bảng hoặc cơ sở dữ liệu!");
+        reasons.push(translate("safety.reasons.drop"));
       }
     }
 
@@ -171,7 +173,7 @@ export function checkSqlSafety(
     if (/\bTRUNCATE(\s+TABLE)?\b/i.test(stmt)) {
       if (!dangerTypes.includes("truncate")) {
         dangerTypes.push("truncate");
-        reasons.push("Câu lệnh TRUNCATE sẽ xóa sạch toàn bộ dữ liệu trong bảng!");
+        reasons.push(translate("safety.reasons.truncate"));
       }
     }
 
@@ -180,7 +182,7 @@ export function checkSqlSafety(
       if (!/\bWHERE\b/i.test(stmt)) {
         if (!dangerTypes.includes("delete_no_where")) {
           dangerTypes.push("delete_no_where");
-          reasons.push("Câu lệnh DELETE không có điều kiện WHERE sẽ xóa sạch toàn bộ hàng!");
+          reasons.push(translate("safety.reasons.deleteNoWhere"));
         }
       }
     }
@@ -190,7 +192,7 @@ export function checkSqlSafety(
       if (!/\bWHERE\b/i.test(stmt)) {
         if (!dangerTypes.includes("update_no_where")) {
           dangerTypes.push("update_no_where");
-          reasons.push("Câu lệnh UPDATE không có điều kiện WHERE sẽ ghi đè toàn bộ hàng!");
+          reasons.push(translate("safety.reasons.updateNoWhere"));
         }
       }
     }
@@ -200,7 +202,7 @@ export function checkSqlSafety(
   if (isProduction) {
     if (dangerTypes.length > 0 || /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE)\b/i.test(cleaned)) {
       dangerTypes.push("production_target");
-      reasons.push("Bạn đang thao tác trực tiếp trên môi trường PRODUCTION thật!");
+      reasons.push(translate("safety.reasons.production"));
     }
   }
 
@@ -220,7 +222,7 @@ export function evaluateSafeMode(
   level: SafeModeLevel,
   connectionName?: string,
 ): SafeModeCheckResult {
-  const nameSuffix = connectionName ? ` trên kết nối "${connectionName}"` : "";
+  const nameSuffix = connectionName ? translate("safety.onConnection", { name: connectionName }) : "";
 
   // 1. READONLY: Block any write operations immediately
   if (level === "readonly") {
@@ -228,7 +230,7 @@ export function evaluateSafeMode(
       return {
         allowed: false,
         requiresConfirmation: false,
-        reason: `[Chế độ Chỉ đọc / Read-Only Safe Mode] Đã chặn câu lệnh ghi${nameSuffix}. Kết nối này được cấu hình không cho phép thay đổi dữ liệu hoặc cấu trúc.`,
+        reason: translate("safety.readonlyBlocked", { suffix: nameSuffix }),
       };
     }
     return { allowed: true, requiresConfirmation: false };
@@ -242,7 +244,7 @@ export function evaluateSafeMode(
       return {
         allowed: true,
         requiresConfirmation: true,
-        reason: `[Bảo vệ nghiêm ngặt / Strict Guard] Bạn đang chuẩn bị thực thi thao tác ghi dữ liệu/cấu trúc${nameSuffix}.${reasonsText}\n\nBạn có chắc chắn muốn tiếp tục thực thi?`,
+        reason: translate("safety.strictConfirm", { suffix: nameSuffix, reasons: reasonsText }),
       };
     }
     return { allowed: true, requiresConfirmation: false };
@@ -255,7 +257,7 @@ export function evaluateSafeMode(
       return {
         allowed: true,
         requiresConfirmation: true,
-        reason: `[Cảnh báo an toàn / Alert Safe Mode] Phát hiện thao tác nguy hiểm${nameSuffix}:\n• ${safety.reasons.join("\n• ")}\n\nBạn có chắc chắn muốn thực thi câu lệnh này?`,
+        reason: translate("safety.alertConfirm", { suffix: nameSuffix, reasons: safety.reasons.join("\n• ") }),
       };
     }
     return { allowed: true, requiresConfirmation: false };

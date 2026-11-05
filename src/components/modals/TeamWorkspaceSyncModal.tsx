@@ -65,9 +65,9 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
         passphrase: encryptEnabled ? passphrase.trim() : undefined,
       });
       setExportedJson(json);
-      showAlert(t("teamSync.exportSuccess", "Đã tạo bundle thành công!"), { kind: "info" });
+      showAlert(t("teamSync.exportSuccess"), { kind: "info" });
     } catch (err) {
-      showAlert(`${t("teamSync.exportFailed", "Lỗi xuất bundle:")} ${String(err)}`, { kind: "error" });
+      showAlert(`${t("teamSync.exportFailed")} ${String(err)}`, { kind: "error" });
     } finally {
       setIsExporting(false);
     }
@@ -82,22 +82,22 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
     a.download = "tabularis-workspace.json";
     a.click();
     URL.revokeObjectURL(url);
-    showAlert(t("teamSync.downloaded", "Đã tải file tabularis-workspace.json"), { kind: "info" });
+    showAlert(t("teamSync.downloaded"), { kind: "info" });
   };
 
   const handleCopyJson = async () => {
     if (!exportedJson) return;
     try {
       await copyTextToClipboard(exportedJson);
-      showAlert(t("common.copied", "Đã chép nội dung vào Clipboard!"), { kind: "info" });
+      showAlert(t("common.copied"), { kind: "info" });
     } catch {
-      showAlert(t("common.error", "Lỗi sao chép!"), { kind: "error" });
+      showAlert(t("common.error"), { kind: "error" });
     }
   };
 
   const handleAnalyzeImport = async () => {
     if (!importJson.trim()) {
-      showAlert(t("teamSync.emptyImport", "Vui lòng dán nội dung file bundle JSON."), { kind: "warning" });
+      showAlert(t("teamSync.emptyImport"), { kind: "warning" });
       return;
     }
 
@@ -120,7 +120,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
         );
       }
     } catch (err) {
-      showAlert(`${t("teamSync.importError", "Lỗi phân tích:")} ${String(err)}`, { kind: "error" });
+      showAlert(`${t("teamSync.importError")} ${String(err)}`, { kind: "error" });
     } finally {
       setIsImporting(false);
     }
@@ -157,12 +157,12 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
       }
 
       showAlert(
-        `Đã nhập thành công ${connCount} kết nối và ${queryCount} truy vấn vào Workspace!`,
+        t("teamSync.applySuccess", { connections: connCount, queries: queryCount }),
         { kind: "info" }
       );
       onClose();
     } catch (err) {
-      showAlert(`Lỗi khi nhập dữ liệu: ${String(err)}`, { kind: "error" });
+      showAlert(`${t("teamSync.applyFailed")} ${String(err)}`, { kind: "error" });
     } finally {
       setIsImporting(false);
     }
@@ -179,10 +179,10 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-semibold text-primary">
-                {t("teamSync.title", "Đồng Bộ Workspace Nhóm Qua Git (Team Workspace Sync)")}
+                {t("teamSync.title")}
               </h2>
               <p className="text-xs text-muted">
-                {t("teamSync.subtitle", "Chia sẻ cấu hình kết nối, thư viện truy vấn và tài liệu nội bộ an toàn")}
+                {t("teamSync.subtitle")}
               </p>
             </div>
           </div>
@@ -205,7 +205,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
             }`}
           >
             <Download className="w-3.5 h-3.5" />
-            {t("teamSync.tabExport", "Xuất Bundle Đồng Bộ")}
+            {t("teamSync.tabExport")}
           </button>
           <button
             onClick={() => setActiveTab("import")}
@@ -216,7 +216,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
             }`}
           >
             <Upload className="w-3.5 h-3.5" />
-            {t("teamSync.tabImport", "Nhập & Hợp Nhất (Import)")}
+            {t("teamSync.tabImport")}
           </button>
           <button
             onClick={() => setActiveTab("git")}
@@ -227,7 +227,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
             }`}
           >
             <GitBranch className="w-3.5 h-3.5" />
-            {t("teamSync.tabGit", "Quy Trình Git Team")}
+            {t("teamSync.tabGit")}
           </button>
         </div>
 
@@ -239,16 +239,16 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
                 <div className="p-3 rounded-lg bg-surface-secondary border border-default flex items-center gap-3">
                   <Database className="w-4 h-4 text-blue-400" />
                   <div className="text-xs">
-                    <span className="text-muted block">Kết nối CSDL:</span>
-                    <span className="font-semibold text-primary">{savedConnections.length} kết nối</span>
+                    <span className="text-muted block">{t("teamSync.labelConnections")}</span>
+                    <span className="font-semibold text-primary">{t("teamSync.connectionCount", { count: savedConnections.length })}</span>
                   </div>
                 </div>
 
                 <div className="p-3 rounded-lg bg-surface-secondary border border-default flex items-center gap-3">
                   <FileCode className="w-4 h-4 text-emerald-400" />
                   <div className="text-xs">
-                    <span className="text-muted block">Truy vấn đã lưu:</span>
-                    <span className="font-semibold text-primary">{savedQueries.length} câu truy vấn</span>
+                    <span className="text-muted block">{t("teamSync.labelQueries")}</span>
+                    <span className="font-semibold text-primary">{t("teamSync.queryCount", { count: savedQueries.length })}</span>
                   </div>
                 </div>
               </div>
@@ -264,7 +264,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
                   />
                   <span className="text-xs font-semibold text-primary flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    {t("teamSync.encryptOption", "Mã hóa bảo mật bằng Master Passphrase (AES-256-GCM)")}
+                    {t("teamSync.encryptOption")}
                   </span>
                 </label>
 
@@ -276,18 +276,18 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
                         type="password"
                         value={passphrase}
                         onChange={(e) => setPassphrase(e.target.value)}
-                        placeholder="Nhập Master Passphrase chung của team..."
+                        placeholder={t("teamSync.passphrasePlaceholder")}
                         className="flex-1 px-3 py-1.5 rounded bg-base border border-default text-xs text-primary focus:outline-none focus:border-primary"
                       />
                     </div>
                     <p className="text-[11px] text-muted">
-                      Mật khẩu sẽ được mã hóa bằng thuật toán PBKDF2 (600k rounds) + AES-GCM 256-bit an toàn khi commit lên Git repository.
+                      {t("teamSync.encryptionNote")}
                     </p>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-xs text-amber-400/90 pl-6">
                     <Unlock className="w-3.5 h-3.5" />
-                    <span>Mọi thông tin mật khẩu kết nối sẽ được loại bỏ khỏi file bundle để chống rò rỉ.</span>
+                    <span>{t("teamSync.passwordsStripped")}</span>
                   </div>
                 )}
               </div>
@@ -299,7 +299,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
                   className="px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-xs hover:opacity-90 transition-all flex items-center gap-2"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  {isExporting ? "Đang xuất..." : "Tạo Bundle Đồng Bộ"}
+                  {isExporting ? t("teamSync.exporting") : t("teamSync.createBundle")}
                 </button>
 
                 {exportedJson && (
@@ -309,14 +309,14 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
                       className="px-4 py-2 rounded-lg bg-surface-secondary hover:bg-surface border border-default text-xs font-medium text-primary transition-colors flex items-center gap-2"
                     >
                       <Download className="w-3.5 h-3.5 text-emerald-400" />
-                      Tải File .json
+                      {t("teamSync.downloadJson")}
                     </button>
                     <button
                       onClick={handleCopyJson}
                       className="px-4 py-2 rounded-lg bg-surface-secondary hover:bg-surface border border-default text-xs font-medium text-primary transition-colors flex items-center gap-2"
                     >
                       <Copy className="w-3.5 h-3.5" />
-                      Sao Chép JSON
+                      {t("teamSync.copyJson")}
                     </button>
                   </>
                 )}
@@ -328,12 +328,12 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-primary block">
-                  Dán nội dung file bundle (.tabularis-workspace.json):
+                  {t("teamSync.pasteLabel")}
                 </label>
                 <textarea
                   value={importJson}
                   onChange={(e) => setImportJson(e.target.value)}
-                  placeholder="Dán nội dung JSON vào đây..."
+                  placeholder={t("teamSync.pastePlaceholder")}
                   rows={6}
                   className="w-full p-3 rounded-lg bg-base border border-default font-mono text-xs text-primary focus:outline-none focus:border-primary resize-none"
                 />
@@ -342,28 +342,28 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-primary block">
-                    Passphrase giải mã (nếu bundle được mã hóa):
+                    {t("teamSync.decryptLabel")}
                   </label>
                   <input
                     type="password"
                     value={importPassphrase}
                     onChange={(e) => setImportPassphrase(e.target.value)}
-                    placeholder="Nhập passphrase..."
+                    placeholder={t("teamSync.decryptPlaceholder")}
                     className="w-full px-3 py-1.5 rounded bg-base border border-default text-xs text-primary focus:outline-none focus:border-primary"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-primary block">
-                    Chiến lược xử lý trùng lặp:
+                    {t("teamSync.conflictLabel")}
                   </label>
                   <select
                     value={conflictMode}
                     onChange={(e) => setConflictMode(e.target.value as "merge_new" | "overwrite")}
                     className="w-full px-3 py-1.5 rounded bg-base border border-default text-xs text-primary focus:outline-none focus:border-primary"
                   >
-                    <option value="merge_new">Bỏ qua các mục đã tồn tại (Giữ bản hiện có)</option>
-                    <option value="overwrite">Ghi đè bằng dữ liệu trong bundle</option>
+                    <option value="merge_new">{t("teamSync.conflictMerge")}</option>
+                    <option value="overwrite">{t("teamSync.conflictOverwrite")}</option>
                   </select>
                 </div>
               </div>
@@ -374,7 +374,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
                   disabled={isImporting}
                   className="px-4 py-2 rounded-lg bg-surface-secondary hover:bg-surface border border-default text-xs font-medium text-primary transition-colors"
                 >
-                  {isImporting ? "Đang phân tích..." : "Kiểm Tra Dữ Liệu Bundle"}
+                  {isImporting ? t("teamSync.analyzing") : t("teamSync.checkBundle")}
                 </button>
               </div>
 
@@ -383,25 +383,25 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
                 <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 space-y-3">
                   <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
                     <Check className="w-4 h-4" />
-                    Bundle hợp lệ! Sẵn sàng hợp nhất:
+                    {t("teamSync.bundleValid")}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-xs text-muted">
                     <div>
                       <span className="block font-medium text-primary">
-                        + {importResult.stats.addedConnections} kết nối mới
+                        + {t("teamSync.newConnections", { count: importResult.stats.addedConnections })}
                       </span>
                       {importResult.stats.skippedConnections > 0 && (
-                        <span>({importResult.stats.skippedConnections} trùng lặp bỏ qua)</span>
+                        <span>({t("teamSync.skippedDuplicates", { count: importResult.stats.skippedConnections })})</span>
                       )}
                     </div>
 
                     <div>
                       <span className="block font-medium text-primary">
-                        + {importResult.stats.addedQueries} truy vấn mới
+                        + {t("teamSync.newQueries", { count: importResult.stats.addedQueries })}
                       </span>
                       {importResult.stats.skippedQueries > 0 && (
-                        <span>({importResult.stats.skippedQueries} trùng lặp bỏ qua)</span>
+                        <span>({t("teamSync.skippedDuplicates", { count: importResult.stats.skippedQueries })})</span>
                       )}
                     </div>
                   </div>
@@ -411,7 +411,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
                     disabled={isImporting}
                     className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition-colors shadow-sm"
                   >
-                    Áp Dụng Đồng Bộ Ngay
+                    {t("teamSync.applyNow")}
                   </button>
                 </div>
               )}
@@ -437,7 +437,7 @@ export const TeamWorkspaceSyncModal: React.FC<TeamWorkspaceSyncModalProps> = ({
             onClick={onClose}
             className="px-4 py-1.5 rounded-lg bg-surface-secondary hover:bg-surface border border-default text-xs font-medium text-primary transition-colors"
           >
-            {t("common.close", "Đóng")}
+            {t("common.close")}
           </button>
         </div>
       </div>

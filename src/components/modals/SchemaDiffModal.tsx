@@ -50,7 +50,7 @@ export const SchemaDiffModal = ({
 
   const handleCompare = async () => {
     if (!sourceConnId || !targetConnId) {
-      showAlert(t("schemaDiff.selectBoth", { defaultValue: "Vui lòng chọn cả kết nối nguồn và đích!" }), {
+      showAlert(t("schemaDiff.selectBoth"), {
         kind: "warning",
       });
       return;
@@ -122,7 +122,7 @@ export const SchemaDiffModal = ({
     } catch (err) {
       console.error("Failed to compare schemas:", err);
       showAlert(
-        `${t("schemaDiff.error", { defaultValue: "Lỗi so sánh cấu trúc CSDL" })}: ${String(err)}`,
+        `${t("schemaDiff.error")}: ${String(err)}`,
         { kind: "error" },
       );
     } finally {
@@ -162,12 +162,10 @@ export const SchemaDiffModal = ({
             </div>
             <div>
               <h2 className="text-base font-semibold text-primary">
-                {t("schemaDiff.title", { defaultValue: "So sánh cấu trúc CSDL (Schema Compare & Sync)" })}
+                {t("schemaDiff.title")}
               </h2>
               <p className="text-xs text-muted">
-                {t("schemaDiff.subtitle", {
-                  defaultValue: "Phát hiện chênh lệch cấu trúc giữa 2 Database và sinh script ALTER TABLE tự động",
-                })}
+                {t("schemaDiff.subtitle")}
               </p>
             </div>
           </div>
@@ -185,14 +183,14 @@ export const SchemaDiffModal = ({
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-primary flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span>{t("schemaDiff.source", { defaultValue: "Nguồn (Source / Chuẩn)" })}</span>
+              <span>{t("schemaDiff.source")}</span>
             </label>
             <select
               value={sourceConnId}
               onChange={(e) => setSourceConnId(e.target.value)}
               className="w-full text-xs px-2.5 py-1.5 rounded-lg bg-base border border-default text-primary focus:border-blue-500 outline-none"
             >
-              <option value="">{t("schemaDiff.selectConnection", "Chọn kết nối...")}</option>
+              <option value="">{t("schemaDiff.selectConnection")}</option>
               {connections.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.params.driver})
@@ -203,7 +201,7 @@ export const SchemaDiffModal = ({
               type="text"
               value={sourceSchema}
               onChange={(e) => setSourceSchema(e.target.value)}
-              placeholder="Schema (tùy chọn, vd: public)"
+              placeholder={t("schemaDiffModal.schemaPlaceholder")}
               className="w-full text-[11px] font-mono px-2 py-1 rounded bg-base border border-default text-primary placeholder:text-muted outline-none"
             />
           </div>
@@ -212,14 +210,14 @@ export const SchemaDiffModal = ({
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-primary flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-blue-400" />
-              <span>{t("schemaDiff.target", { defaultValue: "Đích (Target / Cần đồng bộ)" })}</span>
+              <span>{t("schemaDiff.target")}</span>
             </label>
             <select
               value={targetConnId}
               onChange={(e) => setTargetConnId(e.target.value)}
               className="w-full text-xs px-2.5 py-1.5 rounded-lg bg-base border border-default text-primary focus:border-blue-500 outline-none"
             >
-              <option value="">{t("schemaDiff.selectConnection", "Chọn kết nối...")}</option>
+              <option value="">{t("schemaDiff.selectConnection")}</option>
               {connections.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.params.driver})
@@ -230,7 +228,7 @@ export const SchemaDiffModal = ({
               type="text"
               value={targetSchema}
               onChange={(e) => setTargetSchema(e.target.value)}
-              placeholder="Schema (tùy chọn, vd: public)"
+              placeholder={t("schemaDiffModal.schemaPlaceholder")}
               className="w-full text-[11px] font-mono px-2 py-1 rounded bg-base border border-default text-primary placeholder:text-muted outline-none"
             />
           </div>
@@ -250,7 +248,7 @@ export const SchemaDiffModal = ({
                       : "text-secondary hover:text-primary"
                   }`}
                 >
-                  {t("schemaDiff.visualDiff", "Chênh lệch cấu trúc")}
+                  {t("schemaDiff.visualDiff")}
                 </button>
                 <button
                   type="button"
@@ -275,12 +273,12 @@ export const SchemaDiffModal = ({
             {isComparing ? (
               <>
                 <Loader2 size={14} className="animate-spin" />
-                <span>{t("schemaDiff.comparing", "Đang so sánh...")}</span>
+                <span>{t("schemaDiff.comparing")}</span>
               </>
             ) : (
               <>
                 <GitCompare size={14} />
-                <span>{t("schemaDiff.compareBtn", { defaultValue: "So sánh ngay" })}</span>
+                <span>{t("schemaDiff.compareBtn")}</span>
               </>
             )}
           </button>
@@ -291,14 +289,14 @@ export const SchemaDiffModal = ({
           {!diffResult && !isComparing && (
             <div className="py-16 text-center text-secondary text-xs">
               <GitCompare size={36} className="mx-auto mb-2 text-muted opacity-40" />
-              <p>{t("schemaDiff.emptyPrompt", { defaultValue: "Chọn 2 kết nối CSDL và nhấn 'So sánh ngay' để phát hiện lệch cấu trúc." })}</p>
+              <p>{t("schemaDiff.emptyPrompt")}</p>
             </div>
           )}
 
           {isComparing && (
             <div className="py-16 text-center text-secondary text-xs flex flex-col items-center justify-center gap-2">
               <Loader2 size={28} className="animate-spin text-teal-400" />
-              <span>{t("schemaDiff.readingSchemas", { defaultValue: "Đang đọc metadata bảng và cột từ 2 database..." })}</span>
+              <span>{t("schemaDiff.readingSchemas")}</span>
             </div>
           )}
 
@@ -307,25 +305,25 @@ export const SchemaDiffModal = ({
               {/* Summary Cards */}
               <div className="grid grid-cols-4 gap-2.5">
                 <div className="p-2.5 rounded-lg bg-surface border border-default text-xs">
-                  <div className="text-muted font-medium">Bảng giống nhau</div>
+                  <div className="text-muted font-medium">{t("schemaDiffModal.identicalTables")}</div>
                   <div className="text-base font-semibold text-emerald-400 mt-0.5 font-mono">
                     {diffResult.summary.identicalCount}
                   </div>
                 </div>
                 <div className="p-2.5 rounded-lg bg-surface border border-default text-xs">
-                  <div className="text-muted font-medium">Chỉ có ở Nguồn</div>
+                  <div className="text-muted font-medium">{t("schemaDiffModal.sourceOnly")}</div>
                   <div className="text-base font-semibold text-blue-400 mt-0.5 font-mono">
                     {diffResult.summary.sourceOnlyCount}
                   </div>
                 </div>
                 <div className="p-2.5 rounded-lg bg-surface border border-default text-xs">
-                  <div className="text-muted font-medium">Có cột chênh lệch</div>
+                  <div className="text-muted font-medium">{t("schemaDiffModal.withDifferences")}</div>
                   <div className="text-base font-semibold text-amber-400 mt-0.5 font-mono">
                     {diffResult.summary.differentCount}
                   </div>
                 </div>
                 <div className="p-2.5 rounded-lg bg-surface border border-default text-xs">
-                  <div className="text-muted font-medium">Chỉ có ở Đích</div>
+                  <div className="text-muted font-medium">{t("schemaDiffModal.targetOnly")}</div>
                   <div className="text-base font-semibold text-muted mt-0.5 font-mono">
                     {diffResult.summary.targetOnlyCount}
                   </div>
@@ -364,17 +362,17 @@ export const SchemaDiffModal = ({
                           <div>
                             {isSourceOnly && (
                               <span className="px-2 py-0.5 rounded text-[10px] bg-blue-500/20 text-blue-300 font-medium">
-                                Chưa có ở Target (+ Tạo mới)
+                                {t("schemaDiffModal.missingInTarget")}
                               </span>
                             )}
                             {isDiff && (
                               <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-medium">
-                                Lệch {tDiff.columnDiffs.length} cột
+                                {t("schemaDiffModal.columnsDiffer", { count: tDiff.columnDiffs.length })}
                               </span>
                             )}
                             {isIdentical && (
                               <span className="text-[10px] text-muted">
-                                Giống nhau
+                                {t("schemaDiffModal.identical")}
                               </span>
                             )}
                           </div>
@@ -386,13 +384,13 @@ export const SchemaDiffModal = ({
                             {tDiff.columnDiffs.map((c, i) => (
                               <div key={i} className="flex items-center gap-2">
                                 {c.kind === "missing_in_target" && (
-                                  <span className="text-emerald-400">+ Thiếu cột: <strong>{c.name}</strong> ({c.sourceType})</span>
+                                  <span className="text-emerald-400">{t("schemaDiffModal.missingColumn")} <strong>{c.name}</strong> ({c.sourceType})</span>
                                 )}
                                 {c.kind === "extra_in_target" && (
-                                  <span className="text-muted">- Thừa ở đích: <strong>{c.name}</strong> ({c.targetType})</span>
+                                  <span className="text-muted">{t("schemaDiffModal.extraColumn")} <strong>{c.name}</strong> ({c.targetType})</span>
                                 )}
                                 {c.kind === "type_mismatch" && (
-                                  <span className="text-amber-400">~ Khác kiểu: <strong>{c.name}</strong> (Nguồn: {c.sourceType} vs Đích: {c.targetType})</span>
+                                  <span className="text-amber-400">{t("schemaDiffModal.typeMismatch")} <strong>{c.name}</strong> ({t("schemaDiffModal.sourceVsTarget", { source: c.sourceType, target: c.targetType })})</span>
                                 )}
                               </div>
                             ))}
@@ -421,14 +419,14 @@ export const SchemaDiffModal = ({
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-primary bg-surface border border-default hover:border-strong transition-colors"
                 >
                   {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                  <span>{copied ? t("common.copied", "Đã chép SQL!") : t("schemaDiff.copySql", "Sao chép SQL Migration")}</span>
+                  <span>{copied ? t("common.copied") : t("schemaDiff.copySql")}</span>
                 </button>
                 <button
                   onClick={handleOpenEditor}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-primary bg-surface border border-default hover:border-strong transition-colors"
                 >
                   <FileCode size={14} className="text-purple-400" />
-                  <span>{t("schemaDiff.openEditor", "Mở trong Editor")}</span>
+                  <span>{t("schemaDiff.openEditor")}</span>
                 </button>
               </>
             )}
@@ -438,7 +436,7 @@ export const SchemaDiffModal = ({
             onClick={onClose}
             className="px-4 py-1.5 bg-surface hover:bg-surface-secondary text-primary border border-default rounded-lg text-xs font-medium transition-colors"
           >
-            {t("common.close", "Đóng")}
+            {t("common.close")}
           </button>
         </div>
       </div>

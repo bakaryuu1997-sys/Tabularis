@@ -18,6 +18,6 @@ describe("aiSqlErrorFix", () => {
 
     expect(prompt).toContain("SELECT * FROM users WHERE usr_id = 1;");
     expect(prompt).toContain("Unknown column 'usr_id'");
-    expect(prompt).toContain("sửa lại câu lệnh SQL");
+    expect(prompt).toContain("corrected, complete, optimized");
   });
 });

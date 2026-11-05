@@ -1800,7 +1800,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       },
                     },
                     {
-                      label: t("editor.split.splitRight", { defaultValue: "Mở bên phải (Split Right)" }),
+                      label: t("editor.split.splitRight"),
                       icon: Columns2,
                       action: () => {
                         const quotedTable = quoteTableRef(contextMenu.id, activeDriver, ctxSchema);
@@ -1864,7 +1864,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       action: () => setIsClipboardImportOpen(true),
                     } : null,
                     supportsManageTables(activeCapabilities) ? {
-                      label: t("sidebar.mockData", { defaultValue: "Sinh dữ liệu mẫu (Mock Data)" }),
+                      label: t("sidebar.mockData"),
                       icon: Sparkles,
                       action: () => {
                         window.dispatchEvent(
@@ -2020,7 +2020,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                 },
                               },
                               {
-                                label: t("editor.split.splitRight", { defaultValue: "Mở bên phải (Split Right)" }),
+                                label: t("editor.split.splitRight"),
                                 icon: Columns2,
                                 action: () => {
                                   const quotedView = quoteTableRef(contextMenu.id, activeDriver, viewCtxSchema);
@@ -2091,7 +2091,7 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                 },
                               },
                               {
-                                label: t("editor.split.splitRight", { defaultValue: "Mở bên phải (Split Right)" }),
+                                label: t("editor.split.splitRight"),
                                 icon: Columns2,
                                 action: () => {
                                   const quotedView = quoteTableRef(contextMenu.id, activeDriver, mvCtxSchema);
@@ -2276,14 +2276,14 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   action: () => setDumpModal({ database: contextMenu.id }),
                                 },
                                 {
-                                  label: t("sidebar.schemaDiff", { defaultValue: "So sánh cấu trúc CSDL (Schema Compare)" }),
+                                  label: t("sidebar.schemaDiff"),
                                   icon: GitCompare,
                                   action: () => {
                                     window.dispatchEvent(new CustomEvent("tabularis:open-schema-diff"));
                                   },
                                 },
                                 {
-                                  label: t("sidebar.teamWorkspaceSync", { defaultValue: "Đồng bộ Workspace nhóm (Git Sync)" }),
+                                  label: t("sidebar.teamWorkspaceSync"),
                                   icon: Share2,
                                   action: () => {
                                     window.dispatchEvent(new CustomEvent("tabularis:open-team-sync"));

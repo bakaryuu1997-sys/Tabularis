@@ -64,7 +64,7 @@ export const MockDataModal = ({
       setColumns(cols);
     } catch (err) {
       console.error("Failed to load columns for mock data generator:", err);
-      showAlert(t("mockData.loadError", { defaultValue: "Không thể tải danh sách cột của bảng" }), {
+      showAlert(t("mockData.loadError"), {
         kind: "error",
       });
     } finally {
@@ -123,7 +123,8 @@ export const MockDataModal = ({
       });
       showAlert(
         t("mockData.insertSuccess", {
-          defaultValue: `Đã chèn thành công ${rowCount} dòng dữ liệu mẫu vào bảng ${tableName}!`,
+          count: rowCount,
+          table: tableName,
         }),
         { kind: "info" },
       );
@@ -132,7 +133,7 @@ export const MockDataModal = ({
     } catch (err) {
       console.error("Failed to insert mock data:", err);
       showAlert(
-        `${t("mockData.insertFailure", { defaultValue: "Lỗi chèn dữ liệu mẫu" })}: ${String(err)}`,
+        `${t("mockData.insertFailure")}: ${String(err)}`,
         { kind: "error" },
       );
     } finally {
@@ -152,16 +153,14 @@ export const MockDataModal = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold text-primary">
-                  {t("mockData.title", { defaultValue: "Sinh dữ liệu mẫu (Mock Data Generator)" })}
+                  {t("mockData.title")}
                 </h2>
                 <span className="font-mono text-xs px-2 py-0.5 rounded bg-surface border border-default text-primary">
                   {tableName}
                 </span>
               </div>
               <p className="text-xs text-muted">
-                {t("mockData.subtitle", {
-                  defaultValue: "Tự động sinh dữ liệu thử nghiệm ngẫu nhiên nhưng chuẩn thực tế",
-                })}
+                {t("mockData.subtitle")}
               </p>
             </div>
           </div>
@@ -178,7 +177,7 @@ export const MockDataModal = ({
           {isLoadingCols ? (
             <div className="py-12 flex flex-col items-center justify-center gap-2 text-secondary text-sm">
               <Loader2 size={24} className="animate-spin text-primary" />
-              <span>{t("mockData.loadingCols", { defaultValue: "Đang đọc cấu trúc bảng..." })}</span>
+              <span>{t("mockData.loadingCols")}</span>
             </div>
           ) : (
             <>
@@ -186,10 +185,10 @@ export const MockDataModal = ({
               <div className="flex items-center justify-between p-3 rounded-lg bg-surface border border-default">
                 <div>
                   <div className="text-xs font-semibold text-primary">
-                    {t("mockData.rowCount", { defaultValue: "Số lượng dòng cần sinh" })}
+                    {t("mockData.rowCount")}
                   </div>
                   <div className="text-[11px] text-muted">
-                    {t("mockData.rowCountDesc", { defaultValue: "Dữ liệu được tạo ngẫu nhiên theo kiểu dữ liệu của từng cột" })}
+                    {t("mockData.rowCountDesc")}
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -214,10 +213,10 @@ export const MockDataModal = ({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs text-muted">
                   <span>
-                    {t("mockData.preview", { defaultValue: "Xem trước (5 dòng đầu tiên)" })}:
+                    {t("mockData.preview")}:
                   </span>
                   <span className="font-mono text-[11px]">
-                    {columns.length} {t("mockData.columns", { defaultValue: "cột" })}
+                    {columns.length} {t("mockData.columns")}
                   </span>
                 </div>
                 <div className="border border-default rounded-lg overflow-x-auto max-h-[260px] bg-base">
@@ -263,7 +262,7 @@ export const MockDataModal = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-primary bg-surface border border-default hover:border-strong transition-colors disabled:opacity-50"
             >
               {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-              <span>{copied ? t("common.copied", "Đã sao chép SQL!") : t("mockData.copySql", "Sao chép SQL")}</span>
+              <span>{copied ? t("common.copied") : t("mockData.copySql")}</span>
             </button>
             <button
               onClick={handleOpenEditor}
@@ -271,7 +270,7 @@ export const MockDataModal = ({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-primary bg-surface border border-default hover:border-strong transition-colors disabled:opacity-50"
             >
               <FileCode size={14} className="text-purple-400" />
-              <span>{t("mockData.openEditor", "Mở trong Editor")}</span>
+              <span>{t("mockData.openEditor")}</span>
             </button>
           </div>
 
@@ -281,7 +280,7 @@ export const MockDataModal = ({
               disabled={isInserting}
               className="px-3 py-1.5 text-secondary hover:text-primary rounded-lg text-xs font-medium transition-colors"
             >
-              {t("common.cancel", "Hủy")}
+              {t("common.cancel")}
             </button>
             <button
               onClick={handleInsertDirectly}
@@ -291,12 +290,12 @@ export const MockDataModal = ({
               {isInserting ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
-                  <span>{t("mockData.inserting", "Đang chèn...")}</span>
+                  <span>{t("mockData.inserting")}</span>
                 </>
               ) : (
                 <>
                   <Database size={14} />
-                  <span>{t("mockData.insertBtn", { defaultValue: `Chèn ${rowCount} dòng vào bảng` })}</span>
+                  <span>{t("mockData.insertBtn", { count: rowCount })}</span>
                 </>
               )}
             </button>

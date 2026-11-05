@@ -29,7 +29,9 @@
     "selectForApplyAll": "Chọn cho Áp dụng tất cả",
     "valuePlaceholder": "giá trị",
     "fromPlaceholder": "từ",
-    "toPlaceholder": "đến"
+    "toPlaceholder": "đến",
+    "refresh": "Tải lại dữ liệu bảng",
+    "refreshLabel": "Tải lại"
   },
   "common": {
     "save": "Lưu",
@@ -45,7 +47,18 @@
     "noResults": "Không tìm thấy kết quả",
     "error": "Lỗi",
     "success": "Thành công",
-    "ok": "OK"
+    "ok": "OK",
+    "apply": "Áp dụng",
+    "copied": "Đã sao chép!",
+    "deselectAll": "Bỏ chọn tất cả",
+    "done": "Hoàn tất",
+    "run": "Chạy (Ctrl+Enter)",
+    "running": "Đang chạy...",
+    "saved": "Đã xuất file Excel thành công!",
+    "selectAll": "Chọn tất cả",
+    "clear": "Xóa",
+    "refresh": "Làm mới",
+    "untitled": "SQL Console"
   },
   "sidebar": {
     "connections": "Kết nối",
@@ -202,7 +215,9 @@
       "renamePlaceholder": "Tên notebook"
     },
     "mockData": "Sinh dữ liệu mẫu (Mock Data)",
-    "schemaDiff": "So sánh cấu trúc CSDL (Schema Compare)"
+    "schemaDiff": "So sánh cấu trúc CSDL (Schema Compare)",
+    "teamWorkspaceSync": "Đồng bộ Workspace nhóm (Git)",
+    "actions": "Thao tác"
   },
   "mcp": {
     "title": "Tích hợp máy chủ MCP",
@@ -280,7 +295,17 @@
     "export": "Xuất kết nối",
     "import": "Nhập kết nối",
     "exportTitle": "Xuất kết nối",
-    "exportWarning": "File xuất ra sẽ chứa mật khẩu cơ sở dữ liệu và SSH ở dạng văn bản thuần. Vui lòng lưu trữ an toàn."
+    "exportWarning": "File xuất ra sẽ chứa mật khẩu cơ sở dữ liệu và SSH ở dạng văn bản thuần. Vui lòng lưu trữ an toàn.",
+    "importFromProject": "Kết nối từ dự án: {{folder}}",
+    "noProjectConfig": "Không tìm thấy cấu hình cơ sở dữ liệu (.env, docker-compose.yml hoặc prisma/schema.prisma) trong thư mục này.",
+    "fileFilterConfig": "Cấu hình / Sao lưu (*.json)",
+    "fileFilterAll": "Tất cả tệp",
+    "importFromDbeaver": "Nhập kết nối từ DBeaver",
+    "importFromTableplus": "Nhập kết nối từ TablePlus",
+    "importedConfig": "Đã nhập thành công cấu hình Tabularis!",
+    "scanProjectTooltip": "Tự động quét cấu hình CSDL từ thư mục dự án (.env, docker-compose, prisma)",
+    "openFromProject": "Mở từ thư mục dự án",
+    "importMenuTooltip": "Nhập kết nối từ Tabularis, DBeaver hoặc TablePlus"
   },
   "connectionAppearance": {
     "section": "Giao diện",
@@ -311,7 +336,19 @@
     "errors": {
       "invalidEmoji": "Vui lòng nhập đúng một emoji",
       "invalidHex": "Vui lòng nhập mã màu hex hợp lệ, ví dụ #1a2b3c"
-    }
+    },
+    "safeMode": "Cấp độ an toàn (Safe Mode)",
+    "safeModes": {
+      "silent": "Silent (Tự do)",
+      "alert": "Alert (Cảnh báo)",
+      "strict": "Strict Guard (Nghiêm ngặt)",
+      "readonly": "Read-Only (Chỉ đọc)"
+    },
+    "emojiSearch": "Tìm emoji…",
+    "iconNoResults": "Không có biểu tượng phù hợp.",
+    "iconResultsTruncated": "Hiển thị {{shown}} / {{total}} — hãy thu hẹp tìm kiếm.",
+    "iconSearch": "Tìm biểu tượng…",
+    "noPreview": "Không có xem trước"
   },
   "settings": {
     "title": "Cài đặt",
@@ -473,7 +510,15 @@
       "endpointUrlDesc": "URL gốc của API tương thích OpenAI của bạn. Ví dụ: https://api.groq.com/openai/v1, http://localhost:8000/v1",
       "customOpenaiModelPlaceholder": "ví dụ: llama3-70b-8192, mixtral-8x7b",
       "customOpenaiModelDesc": "Nhập tên mô hình do dịch vụ tương thích OpenAI của bạn cung cấp.",
-      "customOpenaiModelHelp": "Nhập chính xác tên mô hình cho nhà cung cấp tương thích OpenAI của bạn."
+      "customOpenaiModelHelp": "Nhập chính xác tên mô hình cho nhà cung cấp tương thích OpenAI của bạn.",
+      "activeModelsFilter": "Đang lọc: {{count}} model hoạt động",
+      "modelTestFailed": "Lỗi phản hồi: {{message}}",
+      "modelTestOk": "Model phản hồi tốt ({{ms}}ms)",
+      "showAllTooltip": "Khôi phục danh sách đầy đủ",
+      "showAll": "(Hiện tất cả)",
+      "testModelTooltip": "Thử gửi câu lệnh kiểm tra phản hồi model",
+      "testingModel": "Đang thử...",
+      "testModel": "Thử model"
     },
     "updates": "Cập nhật",
     "openSourceLibraries": "Thư viện mã nguồn mở",
@@ -758,7 +803,12 @@
       "prefer": "Ưu tiên",
       "require": "Bắt buộc",
       "verify-ca": "Verify CA",
-      "verify-full": "Verify Full"
+      "verify-full": "Verify Full",
+      "disabled": "Tắt",
+      "preferred": "Ưu tiên",
+      "required": "Bắt buộc",
+      "verify_ca": "Xác minh CA",
+      "verify_identity": "Xác minh danh tính"
     },
     "advanced": "Nâng cao",
     "pipesAsConcat": "Đặt sql_mode PIPES_AS_CONCAT khi kết nối",
@@ -789,7 +839,20 @@
     "startupScriptDescription": "SQL chạy trên mỗi kết nối mới tới nguồn dữ liệu này. Dùng cho các thiết lập phiên như SET / set_config (ví dụ bỏ qua RLS). Phân tách các câu lệnh bằng dấu chấm phẩy.",
     "startupScriptPlaceholder": "SELECT set_config('app.bypass_rls', 'on', false);",
     "scrollTabsLeft": "Cuộn tab sang trái",
-    "scrollTabsRight": "Cuộn tab sang phải"
+    "scrollTabsRight": "Cuộn tab sang phải",
+    "connectionString": "Chuỗi kết nối",
+    "connectionStringPlaceholder": "vd: mysql://user:pass@localhost:3306/db",
+    "general": "Chung",
+    "loadDatabasesHint": "Nhấn \"Tải danh sách database\" để lấy các database khả dụng.",
+    "noGeneralSettings": "Driver này không có cài đặt chung.",
+    "selectDatabasesHint": "Chọn các database để đưa vào kết nối này.",
+    "sshNotAvailable": "Driver này không hỗ trợ SSH.",
+    "sslCa": "Chứng chỉ CA",
+    "sslCert": "Chứng chỉ client",
+    "sslCertificatesOptional": "Đường dẫn chứng chỉ là tùy chọn. Để trống để dùng mặc định của hệ thống.",
+    "sslDescription": "Cấu hình SSL/TLS cho kết nối database an toàn (tùy chọn).",
+    "sslKey": "Khóa client",
+    "unnamedConnection": "Kết nối chưa đặt tên"
   },
   "sshConnections": {
     "title": "Kết nối SSH",
@@ -870,7 +933,10 @@
     "openReferenced": "Mở hàng được tham chiếu trong {{table}}",
     "copyAs": "Sao chép dưới dạng...",
     "inspectCell": "Kiểm tra chi tiết ô (Value Inspector)",
-    "profileColumn": "Thống kê cột (Column Profile)"
+    "profileColumn": "Thống kê cột (Column Profile)",
+    "foreignKeyTooltip": "Khóa ngoại ➔ {{table}}.{{column}}",
+    "primaryKeyTooltip": "Khóa chính (Primary Key)",
+    "copyCsvWithHeader": "CSV (kèm Header)"
   },
   "editRow": {
     "title": "Sửa hàng",
@@ -923,15 +989,6 @@
     "rowCount": "{{total}} hàng",
     "executePrompt": "Thực thi một truy vấn để xem kết quả",
     "tableRunPrompt": "Nhấn Chạy (Ctrl/Command+F5) để tải dữ liệu bảng",
-    "results": {
-      "minimize": "Thu nhỏ",
-      "maximize": "Phóng to (ẩn trình soạn thảo)",
-      "restore": "Khôi phục trình soạn thảo",
-      "close": "Đóng",
-      "detach": "Tách ra cửa sổ riêng",
-      "detached": "Kết quả đã tách ra cửa sổ riêng",
-      "reattach": "Gắn lại"
-    },
     "split": {
       "pin": "Mở ở khung chia (phải)",
       "unpin": "Đóng khung chia",
@@ -942,7 +999,11 @@
       "save": "Lưu thay đổi",
       "saveHint": "Có thay đổi chưa lưu — chuyển sang khung chính để lưu",
       "empty": "Chạy tab này để xem kết quả ở đây",
-      "tableLabel": "Bảng"
+      "tableLabel": "Bảng",
+      "splitRight": "Mở bên phải (Split Right)",
+      "splitDown": "Tách xuống dưới",
+      "switchToHorizontal": "Chuyển sang chia ngang (cạnh nhau)",
+      "switchToVertical": "Chuyển sang chia dọc (xếp chồng)"
     },
     "closeTab": "Đóng tab",
     "reopenClosedTab": "Mở lại tab vừa đóng",
@@ -976,7 +1037,8 @@
       "empty": "Không tìm thấy mẫu SQL nào phù hợp.",
       "insert": "Chèn vào code",
       "copy": "Sao chép SQL",
-      "copied": "Đã chép"
+      "copied": "Đã chép",
+      "subtitle": "Chọn mẫu SQL dựng sẵn, điền nhanh tham số hoặc chèn trực tiếp vào trình soạn thảo."
     },
     "showErrorDetails": "Xem chi tiết",
     "hideErrorDetails": "Ẩn chi tiết",
@@ -1015,6 +1077,17 @@
         "countRows": "Đếm số hàng",
         "query": "Chạy truy vấn SELECT",
         "copyName": "Sao chép tên"
+      },
+      "commands": {
+        "formatSql": "Định dạng truy vấn SQL",
+        "newTab": "Tab mới / console truy vấn",
+        "openConnections": "Quản lý kết nối",
+        "openSettings": "Mở cài đặt",
+        "pasteImport": "Dán & nhập từ clipboard",
+        "reopenClosedTab": "Mở lại tab đã đóng",
+        "runQuery": "Chạy câu lệnh / truy vấn",
+        "showSqlSnippets": "Hiện đoạn mã SQL",
+        "toggleSidebar": "Bật/tắt thanh bên trái"
       }
     },
     "submitChanges": "Gửi thay đổi",
@@ -1104,7 +1177,8 @@
       "aiAnalysis": "Phân tích AI",
       "aiAnalysisTitle": "Phân tích kế hoạch truy vấn bằng AI",
       "aiAnalyzing": "Đang phân tích kế hoạch truy vấn bằng AI...",
-      "aiConfigRequired": "Chưa cấu hình nhà cung cấp AI. Vui lòng vào Cài đặt > AI."
+      "aiConfigRequired": "Chưa cấu hình nhà cung cấp AI. Vui lòng vào Cài đặt > AI.",
+      "diffView": "Plan Diff & Tư vấn chỉ mục"
     },
     "notebook": {
       "addSqlCell": "Thêm ô SQL",
@@ -1186,7 +1260,8 @@
           "stopOnError": "Đã bật/tắt dừng khi lỗi",
           "other": "Đã sửa notebook"
         }
-      }
+      },
+      "exportError": "Xuất thất bại"
     },
     "querySelection": {
       "title": "Chọn truy vấn để thực thi",
@@ -1239,6 +1314,48 @@
       "tooltipKeyset": "Kiểm tra khóa chính bằng truy vấn nhẹ và chỉ tải lại bảng khi có dòng mới. Chỉ phát hiện thêm mới; sửa và xóa không được phát hiện.",
       "tooltipSnapshot": "Chạy lại truy vấn này theo chu kỳ và so sánh kết quả. Dùng tab bảng có khóa chính số nguyên đơn để kiểm tra nhẹ hơn.",
       "stoppedAfterErrors": "Live Tail đã dừng sau nhiều lỗi liên tiếp: {{error}}"
+    },
+    "askAiToFix": "Hỏi AI sửa lỗi này",
+    "console": {
+      "detachButton": "Cửa sổ riêng",
+      "detachTooltip": "Mở Console & Kết quả ra cửa sổ riêng"
+    },
+    "explainDiff": {
+      "slowQueryTooltip": "Truy vấn chạy chậm (>500ms). Nhấn để phân tích kế hoạch và xem gợi ý chỉ mục."
+    },
+    "slowQueryButton": "Tối ưu ({{ms}}ms)",
+    "queryHistory": {
+      "button": "Lịch sử",
+      "tooltip": "Lịch sử truy vấn SQL (Ctrl+H)"
+    },
+    "tablePrefix": "Bảng",
+    "transactionCommitted": "Đã COMMIT giao dịch thành công!",
+    "transactionRolledBack": "Đã ROLLBACK hoàn tác giao dịch.",
+    "transactionStarted": "Đã bắt đầu giao dịch mới.",
+    "autoCommitTooltip": "Chế độ Auto-Commit: Tự động lưu sau mỗi lệnh",
+    "manualCommitTooltip": "Chế độ Manual: Cần Commit hoặc Rollback thủ công",
+    "beginTransactionTooltip": "Bắt đầu Transaction (BEGIN / START TRANSACTION)",
+    "transactionOpenTooltip": "Đang có Transaction mở",
+    "commitTooltip": "Commit các thay đổi (COMMIT;)",
+    "rollbackTooltip": "Hoàn tác các thay đổi (ROLLBACK;)",
+    "beginTransaction": "Bắt đầu",
+    "readOnlyBlocked": "Bị chặn bởi Chế độ Chỉ đọc (Read-Only)",
+    "readOnlyTitle": "Chế độ Chỉ đọc (Read-Only Safe Mode)",
+    "confirmExecute": "Xác nhận thực thi câu lệnh?",
+    "safeModeTitle": "Bảo vệ an toàn (Safe Mode)",
+    "askAiToFixHint": "Nhờ AI chẩn đoán và sửa truy vấn SQL này",
+    "nextPage": "Sau",
+    "previousPage": "Trước",
+    "showQueryHistory": "Hiện lịch sử truy vấn",
+    "resultsTitle": "Kết quả",
+    "results": {
+      "detach": "Tách kết quả ra cửa sổ riêng",
+      "detached": "Kết quả đang mở ở cửa sổ riêng.",
+      "reattach": "Gắn lại cửa sổ",
+      "minimize": "Thu nhỏ kết quả",
+      "maximize": "Phóng to kết quả",
+      "restore": "Khôi phục kết quả",
+      "close": "Đóng kết quả"
     }
   },
   "createTable": {
@@ -1261,7 +1378,8 @@
     "nameRequired": "Tên bảng là bắt buộc",
     "colRequired": "Cần ít nhất một cột",
     "failCreate": "Không tạo được bảng: ",
-    "requiresExtension": "Yêu cầu extension: {{ext}}"
+    "requiresExtension": "Yêu cầu extension: {{ext}}",
+    "sqlPreview": "Xem trước SQL"
   },
   "schema": {
     "title": "Schema: {{table}}",
@@ -1271,7 +1389,8 @@
     "colNullable": "Cho phép NULL",
     "colKey": "Khóa",
     "yes": "CÓ",
-    "no": "KHÔNG"
+    "no": "KHÔNG",
+    "close": "Đóng"
   },
   "generateSQL": {
     "title": "SQL đã sinh: {{table}}",
@@ -1330,7 +1449,8 @@
     "create": "Tạo khóa ngoại",
     "cancel": "Hủy",
     "colRequired": "Vui lòng chọn cột cục bộ và cột tham chiếu",
-    "tableRequired": "Vui lòng chọn bảng tham chiếu"
+    "tableRequired": "Vui lòng chọn bảng tham chiếu",
+    "nameRequired": "Hãy nhập tên cho khóa ngoại."
   },
   "healthCheck": {
     "title": "Mất kết nối",
@@ -1378,7 +1498,8 @@
     "confirmAlter": "Bạn có chắc muốn sửa view \"{{view}}\"?",
     "refreshSuccess": "Đã làm mới materialized view \"{{view}}\"",
     "refreshError": "Không làm mới được materialized view: ",
-    "failGetDefinition": "Không lấy được định nghĩa: "
+    "failGetDefinition": "Không lấy được định nghĩa: ",
+    "alterView": "Sửa view"
   },
   "triggers": {
     "createTrigger": "Tạo Trigger",
@@ -1505,7 +1626,8 @@
     "subtitle": "Hàng #{{row}}",
     "save": "Lưu thay đổi",
     "cancel": "Hủy",
-    "enterValue": "Nhập giá trị..."
+    "enterValue": "Nhập giá trị...",
+    "resize": "Đổi kích thước thanh bên"
   },
   "contextMenu": {
     "openSidebar": "Mở trình sửa ở thanh bên",
@@ -1617,7 +1739,10 @@
     "createFirst": "Tạo nhóm đầu tiên để sắp xếp các kết nối",
     "groupName": "Tên nhóm",
     "dragHint": "Kéo kết nối vào đây",
-    "createError": "Không tạo được nhóm"
+    "createError": "Không tạo được nhóm",
+    "deleteError": "Không thể xóa nhóm",
+    "moveError": "Không thể di chuyển kết nối",
+    "renameError": "Không thể đổi tên nhóm"
   },
   "queryModal": {
     "database": "Cơ sở dữ liệu",
@@ -1750,7 +1875,9 @@
       "write": "Ghi",
       "ddl": "DDL",
       "unknown": "Không rõ"
-    }
+    },
+    "exportCsv": "Xuất CSV",
+    "exportJson": "Xuất JSON"
   },
   "aiApproval": {
     "title": "AI yêu cầu ghi vào cơ sở dữ liệu",
@@ -1819,10 +1946,47 @@
     "queryPreview": "Nội dung câu lệnh chuẩn bị chạy:",
     "waitCountdown": "Vui lòng chờ xác nhận ({{seconds}}s)...",
     "confirmExecute": "Tôi hiểu rủi ro, Thực thi ngay",
-    "cancel": "Hủy bỏ"
+    "cancel": "Hủy bỏ",
+    "confirmExecution": "Xác nhận & Tiếp tục chạy",
+    "countdownText": "Mở khóa xác nhận sau {{seconds}}s...",
+    "safetyGuardSubtitle": "Vui lòng kiểm tra kỹ câu lệnh trước khi thực thi để tránh mất mát dữ liệu nghiêm trọng.",
+    "unlockedText": "Đã mở khóa. Bạn có thể xác nhận chạy lệnh.",
+    "waiting": "Chờ",
+    "reasons": {
+      "drop": "Câu lệnh DROP sẽ hủy bỏ cấu trúc bảng hoặc cơ sở dữ liệu!",
+      "truncate": "Câu lệnh TRUNCATE sẽ xóa sạch toàn bộ dữ liệu trong bảng!",
+      "deleteNoWhere": "Câu lệnh DELETE không có điều kiện WHERE sẽ xóa sạch toàn bộ hàng!",
+      "updateNoWhere": "Câu lệnh UPDATE không có điều kiện WHERE sẽ ghi đè toàn bộ hàng!",
+      "production": "Bạn đang thao tác trực tiếp trên môi trường PRODUCTION thật!"
+    },
+    "onConnection": " trên kết nối \"{{name}}\"",
+    "readonlyBlocked": "[Chế độ Chỉ đọc / Read-Only Safe Mode] Đã chặn câu lệnh ghi{{suffix}}. Kết nối này được cấu hình không cho phép thay đổi dữ liệu hoặc cấu trúc.",
+    "strictConfirm": "[Bảo vệ nghiêm ngặt / Strict Guard] Bạn đang chuẩn bị thực thi thao tác ghi dữ liệu/cấu trúc{{suffix}}.{{reasons}}\n\nBạn có chắc chắn muốn tiếp tục thực thi?",
+    "alertConfirm": "[Cảnh báo an toàn / Alert Safe Mode] Phát hiện thao tác nguy hiểm{{suffix}}:\n• {{reasons}}\n\nBạn có chắc chắn muốn thực thi câu lệnh này?"
   },
   "cellInspector": {
-    "title": "Kiểm tra chi tiết ô"
+    "title": "Kiểm tra chi tiết ô",
+    "characters": "ký tự",
+    "lines": "dòng",
+    "notJson": "Dữ liệu không phải JSON",
+    "viewJsonTree": "Xem dạng cây JSON",
+    "hexEmpty": "\"00000000  (rỗng)\"",
+    "ariaLabel": "Kiểm tra chi tiết ô",
+    "tabText": "Văn bản / Định dạng",
+    "tabHex": "Hex / Nhị phân",
+    "base64Detected": "Phát hiện Base64:",
+    "urlEncodeDetected": "Phát hiện URL Encode:",
+    "decode": "Giải mã",
+    "prettifyJson": "Làm đẹp JSON",
+    "minifyJson": "Nén JSON",
+    "wordWrap": "Tự động xuống dòng",
+    "restoreTooltip": "Khôi phục giá trị gốc",
+    "restore": "Khôi phục",
+    "searchPlaceholder": "Tìm kiếm khóa hoặc giá trị trong JSON...",
+    "copied": "Đã sao chép",
+    "copy": "Sao chép",
+    "saved": "Đã lưu vào ô!",
+    "applyToCell": "Áp dụng cho ô"
   },
   "queryHistory": {
     "title": "Lịch sử truy vấn SQL"
@@ -1837,7 +2001,23 @@
     "lengthRange": "Độ dài ký tự (Min - Max)",
     "validRows": "Dòng có dữ liệu",
     "topValues": "Top giá trị xuất hiện nhiều nhất",
-    "copyReport": "Sao chép báo cáo"
+    "copyReport": "Sao chép báo cáo",
+    "sum": "Tổng (Sum): ",
+    "earliest": "Sớm nhất: ",
+    "latest": "Muộn nhất: ",
+    "frequencyPercent": "Tần suất (%)",
+    "report": {
+      "title": "Thống kê cột: {{column}} ({{type}})",
+      "totalRows": "Tổng số dòng",
+      "nullRows": "Dòng rỗng (NULL)",
+      "distinct": "Giá trị duy nhất",
+      "earliest": "Sớm nhất",
+      "latest": "Muộn nhất",
+      "topValues": "Top giá trị phổ biến nhất",
+      "occurrences": "{{count}} lần"
+    },
+    "characters": "ký tự",
+    "emptyString": "\"\" (chuỗi rỗng)"
   },
   "mockData": {
     "title": "Sinh dữ liệu mẫu (Mock Data Generator)",
@@ -1851,7 +2031,9 @@
     "insertBtn": "Chèn {{count}} dòng vào bảng",
     "inserting": "Đang chèn...",
     "insertSuccess": "Đã chèn thành công {{count}} dòng dữ liệu mẫu vào bảng {{table}}!",
-    "insertFailure": "Lỗi chèn dữ liệu mẫu"
+    "insertFailure": "Lỗi chèn dữ liệu mẫu",
+    "loadError": "Không thể tải danh sách cột của bảng",
+    "loadingCols": "Đang đọc cấu trúc bảng..."
   },
   "schemaDiff": {
     "title": "So sánh cấu trúc CSDL (Schema Compare & Sync)",
@@ -1864,7 +2046,11 @@
     "visualDiff": "Chênh lệch cấu trúc",
     "migrationSql": "Script Migration SQL",
     "copySql": "Sao chép SQL Migration",
-    "openEditor": "Mở trong Editor"
+    "openEditor": "Mở trong Editor",
+    "emptyPrompt": "Chọn 2 kết nối CSDL và nhấn 'So sánh ngay' để phát hiện lệch cấu trúc.",
+    "error": "Lỗi so sánh cấu trúc CSDL",
+    "readingSchemas": "Đang đọc metadata bảng và cột từ 2 database...",
+    "selectBoth": "Vui lòng chọn cả kết nối nguồn và đích!"
   },
   "teamSync": {
     "title": "Đồng Bộ Workspace Nhóm Qua Git (Team Workspace Sync)",
@@ -1927,7 +2113,34 @@
       "committed": "Đã commit.",
       "committedAndPushed": "Đã commit và push.",
       "committedNoRemote": "Đã commit, nhưng kho này không có remote 'origin' để push."
-    }
+    },
+    "connectionCount": "{{count}} kết nối",
+    "queryCount": "{{count}} câu truy vấn",
+    "newConnections": "{{count}} kết nối mới",
+    "newQueries": "{{count}} truy vấn mới",
+    "skippedDuplicates": "{{count}} trùng lặp bỏ qua",
+    "applySuccess": "Đã nhập thành công {{connections}} kết nối và {{queries}} truy vấn vào Workspace!",
+    "applyFailed": "Lỗi khi nhập dữ liệu:",
+    "labelConnections": "Kết nối CSDL:",
+    "labelQueries": "Truy vấn đã lưu:",
+    "passphrasePlaceholder": "Nhập Master Passphrase chung của team...",
+    "encryptionNote": "Mật khẩu sẽ được mã hóa bằng thuật toán PBKDF2 (600k rounds) + AES-GCM 256-bit an toàn khi commit lên Git repository.",
+    "passwordsStripped": "Mọi thông tin mật khẩu kết nối sẽ được loại bỏ khỏi file bundle để chống rò rỉ.",
+    "exporting": "Đang xuất...",
+    "createBundle": "Tạo Bundle Đồng Bộ",
+    "downloadJson": "Tải File .json",
+    "copyJson": "Sao Chép JSON",
+    "pasteLabel": "Dán nội dung file bundle (.tabularis-workspace.json):",
+    "pastePlaceholder": "Dán nội dung JSON vào đây...",
+    "decryptLabel": "Passphrase giải mã (nếu bundle được mã hóa):",
+    "decryptPlaceholder": "Nhập passphrase...",
+    "conflictLabel": "Chiến lược xử lý trùng lặp:",
+    "conflictMerge": "Bỏ qua các mục đã tồn tại (Giữ bản hiện có)",
+    "conflictOverwrite": "Ghi đè bằng dữ liệu trong bundle",
+    "analyzing": "Đang phân tích...",
+    "checkBundle": "Kiểm Tra Dữ Liệu Bundle",
+    "bundleValid": "Bundle hợp lệ! Sẵn sàng hợp nhất:",
+    "applyNow": "Áp Dụng Đồng Bộ Ngay"
   },
   "explainDiff": {
     "title": "Tư vấn chỉ mục (phân tích what-if)",
@@ -1959,5 +2172,427 @@
     "currentPlan": "Kế hoạch hiện tại",
     "projectedPlan": "Kế hoạch khi có chỉ mục đề xuất",
     "note": "Chi phí lấy từ planner của CSDL với chỉ mục giả định. Không tạo gì và không chạy truy vấn."
+  },
+  "foreignKeyPicker": {
+    "backToPicker": "Quay lại danh sách",
+    "columnNotFound": "Không tìm thấy cột {{column}} trong {{table}}",
+    "manualButton": "Nhập tay",
+    "manualLabel": "Nhập giá trị trực tiếp:",
+    "noMatch": "Không có bản ghi phù hợp.",
+    "searchPlaceholder": "Tìm theo ID hoặc tên...",
+    "setNull": "Đặt là NULL",
+    "totalCount": "{{count}} bản ghi",
+    "useManual": "Nhập giá trị tay"
+  },
+  "highlight": {
+    "addFirstRule": "Thêm quy tắc đầu tiên",
+    "addRule": "Thêm quy tắc",
+    "buttonLabel": "Tô màu",
+    "buttonTitle": "Quy tắc tô màu dữ liệu",
+    "clearAll": "Xoá tất cả",
+    "color": "Màu sắc:",
+    "column": "Cột",
+    "emptyDesc": "Tạo quy tắc để nhanh chóng nhận diện đơn hàng lỗi, số dư âm, trạng thái quan trọng hoặc dữ liệu NULL.",
+    "emptyTitle": "Chưa có quy tắc tô màu nào",
+    "operator": "Điều kiện",
+    "subtitle": "Tự động đổi màu nền hàng hoặc ô dữ liệu dựa trên điều kiện giá trị cột.",
+    "target": "Phạm vi",
+    "targetCell": "Chỉ ô đó (Cell)",
+    "targetRow": "Toàn bộ hàng (Row)",
+    "title": "Quy tắc tô màu có điều kiện",
+    "value": "Giá trị",
+    "operators": {
+      "eq": "= (Bằng)",
+      "neq": "≠ (Khác)",
+      "gt": "> (Lớn hơn)",
+      "gte": "≥ (Lớn hơn hoặc bằng)",
+      "lt": "< (Nhỏ hơn)",
+      "lte": "≤ (Nhỏ hơn hoặc bằng)",
+      "contains": "Chứa chuỗi",
+      "notContains": "Không chứa",
+      "startsWith": "Bắt đầu với",
+      "endsWith": "Kết thúc với",
+      "isNull": "Là NULL",
+      "isNotNull": "Không phải NULL"
+    },
+    "valuePlaceholder": "Ví dụ: failed, 0, admin...",
+    "colors": {
+      "red": "Đỏ",
+      "green": "Xanh lá",
+      "amber": "Vàng hổ phách",
+      "blue": "Xanh dương",
+      "purple": "Tím",
+      "rose": "Hồng hoa hồng",
+      "emerald": "Xanh ngọc",
+      "indigo": "Chàm",
+      "cyan": "Xanh lơ",
+      "gray": "Xám"
+    }
+  },
+  "projectScanner": {
+    "confirmImport": "Thêm {{count}} kết nối vào Tabularis",
+    "foundCount": "Tìm thấy {{count}} kết nối sẵn sàng thêm vào danh sách kết nối.",
+    "importError": "Có lỗi khi lưu kết nối: {{error}}",
+    "importSuccess": "Đã nhập thành công {{count}} kết nối vào Tabularis!",
+    "modalTitle": "Nhập kết nối từ dự án",
+    "selectedCount": "Đã chọn: {{selected}} / {{total}}",
+    "connectionNamePlaceholder": "Tên kết nối",
+    "passwordDetected": "✓ Đã nhận mật khẩu",
+    "importing": "Đang nhập..."
+  },
+  "queryHistoryModal": {
+    "subtitle": "Tìm kiếm, chép lại hoặc chạy ngay các câu lệnh SQL đã thực thi",
+    "confirmClear": "Xác nhận xóa?",
+    "deleteAll": "Xóa hết",
+    "cancel": "Hủy",
+    "clearHistoryTooltip": "Xóa toàn bộ lịch sử",
+    "clearHistory": "Xóa lịch sử",
+    "searchPlaceholder": "Tìm theo lệnh SQL, tên bảng, database...",
+    "filterAll": "Tất cả",
+    "noResults": "Không tìm thấy câu truy vấn phù hợp",
+    "empty": "Chưa có lịch sử câu lệnh nào được lưu",
+    "emptyHint": "Khi bạn thực thi câu lệnh SQL trong Console hoặc mở bảng, lịch sử sẽ tự động được ghi lại tại đây.",
+    "rowsAffectedSuffix": " dòng ảnh hưởng",
+    "deleteEntry": "Xóa mục này",
+    "copied": "Đã chép",
+    "copy": "Sao chép",
+    "insertTooltip": "Chèn câu lệnh này vào vị trí con trỏ trong Editor",
+    "insert": "Chèn vào Editor",
+    "runTooltip": "Chạy ngay câu lệnh này",
+    "run": "Chạy ngay",
+    "success": "Thành công",
+    "error": "Lỗi"
+  },
+  "schemaDiffModal": {
+    "columnsDiffer": "Lệch {{count}} cột",
+    "sourceVsTarget": "Nguồn: {{source}} vs Đích: {{target}}",
+    "schemaPlaceholder": "Schema (tùy chọn, vd: public)",
+    "identicalTables": "Bảng giống nhau",
+    "sourceOnly": "Chỉ có ở Nguồn",
+    "withDifferences": "Có cột chênh lệch",
+    "targetOnly": "Chỉ có ở Đích",
+    "missingInTarget": "Chưa có ở Target (+ Tạo mới)",
+    "identical": "Giống nhau",
+    "missingColumn": "+ Thiếu cột:",
+    "extraColumn": "- Thừa ở đích:",
+    "typeMismatch": "~ Khác kiểu:"
+  },
+  "sqlTemplatesModal": {
+    "fillTooltip": "Điền nhanh tham số (Tên bảng, cột, điều kiện...)",
+    "collapse": "Thu gọn",
+    "fillParams": "Điền tham số",
+    "customized": "Đã tùy biến",
+    "restoreTooltip": "Khôi phục mẫu gốc mặc định",
+    "insertTooltip": "Chèn câu lệnh SQL này vào vị trí con trỏ trong Editor",
+    "insert": "Chèn vào code",
+    "quickCustomize": "Tùy biến nhanh giá trị mẫu:",
+    "restoreDefaults": "Khôi phục mặc định",
+    "copied": "Đã chép",
+    "copySql": "Sao chép SQL"
+  },
+  "resultsWindow": {
+    "rowCount": "{{count}} dòng",
+    "runTooltip": "Chạy truy vấn (Ctrl + Enter)",
+    "templatesTooltip": "Mẫu SQL & Snippets dựng sẵn (Ctrl + J)",
+    "templates": "Mẫu SQL",
+    "showBothTooltip": "Hiện cả Console & Kết quả",
+    "both": "Cả hai",
+    "consoleOnlyTooltip": "Chỉ hiện Console SQL",
+    "resultsOnlyTooltip": "Chỉ hiện Bảng Kết quả",
+    "reattachTooltip": "Gắn lại vào cửa sổ chính (Reattach)",
+    "reattach": "Gắn lại",
+    "resizeTooltip": "Kéo thả để điều chỉnh tỷ lệ Console và Kết quả",
+    "results": "Kết quả"
+  },
+  "schemaDiagram": {
+    "exportTooltip": "Xuất sơ đồ ERD",
+    "exportPng": "Xuất ảnh PNG (.png)",
+    "exportSvg": "Xuất vector SVG (.svg)"
+  },
+  "visualQuery": {
+    "addTableTooltip": "Thêm bảng vào khung thiết kế truy vấn",
+    "addTable": "+ Thêm bảng vào Visual Query...",
+    "title": "Truy vấn Trực quan (Visual Query)",
+    "emptyHint": "👈 Kéo bảng từ danh sách bảng bên trái và thả vào đây, hoặc chọn bảng bên dưới để bắt đầu kết nối JOIN và lọc dữ liệu.",
+    "pickTable": "+ Chọn bảng để thêm vào canvas..."
+  },
+  "aiChat": {
+    "defaultTitle": "Trò chuyện mới",
+    "suggestions": {
+      "latestRows": "Viết câu SQL lấy 10 bản ghi mới nhất từ bảng ",
+      "optimize": "Tối ưu và giải thích câu query sau:\n",
+      "explainColumns": "Giải thích cấu trúc và ý nghĩa các cột của bảng ",
+      "toPostgres": "Chuyển câu SQL sau sang PostgreSQL:\n"
+    },
+    "copied": "Đã copy",
+    "copy": "Copy",
+    "insert": "Chèn",
+    "runNow": "Chạy luôn",
+    "configureInSettings": "Cấu hình AI trong Settings",
+    "readingDbWithCount": "Đang đọc toàn bộ DB ({{count}} bảng)",
+    "insertTooltip": "Chèn xuống cuối console (giữ nguyên SQL đang có)",
+    "openConnectionToInsert": "Mở một kết nối để chèn SQL",
+    "runTooltip": "Chèn vào console rồi chạy ngay",
+    "openConnectionToRun": "Mở một kết nối để chạy SQL",
+    "errorNeedConnectionInsert": "Cần mở một kết nối trước khi chèn SQL vào editor.",
+    "errorNeedConnectionRun": "Cần mở một kết nối trước khi chạy SQL.",
+    "errorNoProvider": "Chưa cấu hình AI provider. Mở Settings › AI.",
+    "emptyResponse": "_(không có nội dung trả về)_",
+    "stopped": "_(đã dừng)_",
+    "conversations": "Danh sách hội thoại",
+    "notConfigured": "Chưa cấu hình",
+    "newConversation": "Hội thoại mới",
+    "clearConversation": "Xóa nội dung hội thoại này",
+    "saveName": "Lưu tên",
+    "rename": "Đổi tên",
+    "deleteConversation": "Xóa hội thoại",
+    "pickModel": "Chọn model…",
+    "searchModel": "Tìm model…",
+    "noModels": "Không có model",
+    "reloadModels": "Tải lại danh sách model",
+    "schemaToggleTooltip": "Cho AI đọc toàn bộ bảng và cấu trúc cơ sở dữ liệu",
+    "readingDb": "Đang đọc toàn bộ DB",
+    "noSchema": "Không gửi schema DB",
+    "refreshSchema": "Làm mới schema DB",
+    "askAnything": "Hỏi AI bất cứ điều gì.",
+    "copyMessage": "Sao chép nội dung tin nhắn",
+    "answering": "Đang trả lời…",
+    "copyError": "Sao chép thông báo lỗi",
+    "inputPlaceholder": "Nhập tin nhắn… (Enter để gửi, Shift+Enter xuống dòng)",
+    "stop": "Dừng trả lời",
+    "send": "Gửi",
+    "close": "Đóng"
+  },
+  "columnDetails": {
+    "types": {
+      "maxChars": "Chuỗi ký tự (Tối đa {{max}} ký tự)",
+      "text": "Chuỗi ký tự (Text/String)",
+      "boolean": "Kiểu Logic (Boolean / 0 hoặc 1)",
+      "bigint": "Số nguyên lớn 64-bit (BIGINT)",
+      "smallint": "Số nguyên nhỏ (SMALLINT/TINYINT)",
+      "integer": "Số nguyên 32-bit (INTEGER)",
+      "decimal": "Số thập phân chính xác cao (DECIMAL)",
+      "float": "Số thực dấu phẩy động (FLOAT/DOUBLE)",
+      "datetime": "Ngày & Giờ (DATETIME/TIMESTAMP)",
+      "date": "Ngày tháng (DATE: YYYY-MM-DD)",
+      "time": "Thời gian (TIME: HH:MM:SS)",
+      "json": "Cấu trúc dữ liệu JSON",
+      "blob": "Dữ liệu nhị phân (BLOB/Binary)",
+      "uuid": "Mã định danh duy nhất (UUID)",
+      "other": "Kiểu dữ liệu: {{type}}"
+    },
+    "primaryKey": "🔑 Khóa chính (Primary Key)",
+    "foreignKey": "🔗 Khóa ngoại ➔ Tham chiếu tới: {{table}}.{{column}}",
+    "notNull": "• Ràng buộc: Bắt buộc (NOT NULL)",
+    "nullable": "• Ràng buộc: Cho phép NULL",
+    "autoIncrement": "• Tự động tăng (AUTO_INCREMENT)",
+    "defaultValue": "• Mặc định: {{value}}",
+    "spec": "• Quy cách: {{description}}"
+  },
+  "aiPrompts": {
+    "fixSqlError": "Câu truy vấn SQL sau bị lỗi khi thực thi trên cơ sở dữ liệu:\n\n```sql\n{{query}}\n```\n\nThông báo lỗi từ database engine:\n```\n{{error}}\n```\n\nHãy giải thích nguyên nhân gây ra lỗi và sửa lại câu lệnh SQL hoàn chỉnh, tối ưu và chính xác nhất."
+  },
+  "sqlSnippets": {
+    "docs": {
+      "sel": "1. SELECT - Chọn cột lấy ra từ bảng\nGõ nhanh câu lệnh SELECT lấy dữ liệu",
+      "select": "1. SELECT - Mệnh đề SELECT chọn cột",
+      "sc": "SELECT COUNT(*) - Đếm số lượng dòng dữ liệu",
+      "from": "2. FROM - Nguồn bảng dữ liệu",
+      "join": "2. JOIN - Kết nối bảng trong FROM clause",
+      "leftjoin": "2. LEFT JOIN - Kết nối bảng bên trái",
+      "rightjoin": "2. RIGHT JOIN - Kết nối bảng bên phải",
+      "where": "3. WHERE - Điều kiện lọc dòng",
+      "groupby": "4. GROUP BY - Gom nhóm dữ liệu",
+      "having": "5. HAVING - Lọc trên nhóm sau gom nhóm",
+      "orderby": "6. ORDER BY - Sắp xếp kết quả",
+      "limit": "7. LIMIT / OFFSET - Phân trang dữ liệu",
+      "ins": "INSERT INTO - Thêm mới bản ghi vào bảng",
+      "upd": "UPDATE ... SET ... WHERE - Cập nhật dữ liệu",
+      "del": "DELETE FROM ... WHERE - Xóa bản ghi",
+      "cte": "WITH (CTE) - Bảng tạm Common Table Expression",
+      "case": "CASE biểu thức điều kiện trong SQL",
+      "query": "Thứ tự LẬP TRÌNH VIÊN VIẾT:\n1. SELECT (Chọn cột lấy ra)\n2. FROM & JOIN (Nguồn bảng)\n3. WHERE (Điều kiện lọc dòng)\n4. GROUP BY (Gom nhóm)\n5. HAVING (Lọc trên nhóm)\n6. ORDER BY (Sắp xếp)\n7. LIMIT / OFFSET (Phân trang)",
+      "fullquery": "Chuẩn mẫu câu truy vấn SQL hoàn chỉnh theo thứ tự lập trình viên"
+    }
+  },
+  "autocomplete": {
+    "pressEnterTable": "Nhấn Enter để chèn tên bảng vào câu lệnh.",
+    "noColumns": "Không có cột nào hoặc đang tải...",
+    "columnList": "Danh sách cột ({{count}}):",
+    "tableEntry": "- Bảng: `{{table}}` ({{type}})",
+    "belongsTo": "Thuộc về:",
+    "tableMissing": "⚠️ Bảng \"{{name}}\" không tồn tại trong cơ sở dữ liệu hiện tại.",
+    "columnMissingInTable": "⚠️ Cột \"{{column}}\" không tồn tại trong bảng \"{{table}}\".",
+    "columnMissingInTables": "⚠️ Cột \"{{column}}\" không tồn tại trong các bảng đã chọn ({{tables}})."
+  },
+  "sqlTemplates": {
+    "items": {
+      "sel-from-where": {
+        "description": "Truy vấn chọn dữ liệu cơ bản có điều kiện lọc"
+      },
+      "sel-count-group": {
+        "description": "Gom nhóm thống kê số lượng và tổng giá trị"
+      },
+      "sel-group-having": {
+        "description": "Gom nhóm thống kê có điều kiện lọc trên nhóm"
+      },
+      "sel-pagination-limit": {
+        "name": "SELECT Phân trang (LIMIT / OFFSET)",
+        "description": "Truy vấn phân trang dữ liệu theo kích thước trang"
+      },
+      "sel-pagination-keyset": {
+        "name": "SELECT Phân trang Keyset (Cursor - Siêu tốc)",
+        "description": "Phân trang hiệu năng cao cho bảng lớn triệu dòng, không dùng OFFSET"
+      },
+      "sel-text-search": {
+        "name": "SELECT Tìm kiếm văn bản (ILIKE / LIKE)",
+        "description": "Tìm kiếm văn bản chứa chuỗi không phân biệt hoa thường"
+      },
+      "sel-time-series": {
+        "name": "SELECT Thống kê theo Thời gian (DATE_TRUNC)",
+        "description": "Gom nhóm doanh thu và số lượng theo ngày hoặc tháng"
+      },
+      "join-inner": {
+        "name": "SELECT ... INNER JOIN ... ON (Kết nối 2 bảng)",
+        "description": "Kết nối 2 bảng dựa trên khóa ngoại và điều kiện lọc"
+      },
+      "join-orphans": {
+        "name": "SELECT ... LEFT JOIN ... ON (Tìm bản ghi mồ côi)",
+        "description": "Tìm các bản ghi không có liên kết (ví dụ: khách hàng chưa từng mua hàng)"
+      },
+      "join-multi": {
+        "name": "JOIN 3 Bảng (Đơn hàng • Khách • Chi tiết)",
+        "description": "Kết nối chuỗi nhiều bảng trong mô hình thương mại"
+      },
+      "join-self": {
+        "name": "SELF JOIN (Cây Phân Cấp Cha - Con)",
+        "description": "Bảng tự kết nối với chính nó (quản lý / nhân viên, thư mục cha / con)"
+      },
+      "ins-values": {
+        "description": "Thêm một dòng dữ liệu mới vào bảng"
+      },
+      "ins-bulk": {
+        "name": "INSERT INTO Nhiều dòng (Bulk Insert)",
+        "description": "Thêm hàng loạt bản ghi trong một câu truy vấn duy nhất"
+      },
+      "ins-select": {
+        "name": "INSERT INTO ... SELECT (Sao chép dữ liệu)",
+        "description": "Nạp dữ liệu sang bảng khác hoặc lưu trữ archive"
+      },
+      "dml-upsert-pg": {
+        "description": "Chèn mới nếu chưa có, cập nhật nếu đã tồn tại khóa trùng"
+      },
+      "dml-upsert-mysql": {
+        "description": "Cú pháp chèn hoặc cập nhật chuẩn MySQL / MariaDB"
+      },
+      "upd-where": {
+        "name": "UPDATE ... SET ... WHERE (An toàn)",
+        "description": "Cập nhật dữ liệu có điều kiện WHERE bảo vệ"
+      },
+      "upd-join": {
+        "name": "UPDATE từ JOIN Bảng khác",
+        "description": "Đồng bộ hoặc cập nhật giá trị dựa trên bảng liên kết"
+      },
+      "del-where": {
+        "name": "DELETE FROM ... WHERE (An toàn)",
+        "description": "Xóa dữ liệu an toàn có điều kiện WHERE rõ ràng"
+      },
+      "cte-with": {
+        "name": "CTE (WITH ... AS) Bảng tạm",
+        "description": "Mệnh đề bảng tạm CTE giúp query phức tạp trở nên mạch lạc"
+      },
+      "cte-recursive": {
+        "name": "Recursive CTE (Đệ quy Cây Danh mục)",
+        "description": "Duyệt toàn bộ cấu trúc cây cha-con vô hạn cấp bậc"
+      },
+      "window-rank": {
+        "name": "Window Function - Xếp hạng (ROW_NUMBER)",
+        "description": "Đánh số thứ tự và xếp hạng top N trong từng nhóm dữ liệu"
+      },
+      "window-running-total": {
+        "name": "Window Function - Tổng lũy kế (Running Total)",
+        "description": "Tính tổng dồn lũy kế liên tục theo dòng thời gian"
+      },
+      "case-when": {
+        "name": "CASE WHEN Phân loại đa điều kiện",
+        "description": "Biểu thức rẽ nhánh có điều kiện trong câu lệnh SELECT"
+      },
+      "create-table": {
+        "name": "CREATE TABLE Chuẩn đầy đủ",
+        "description": "Tạo cấu trúc bảng mới chuẩn SQL kèm thuộc tính tùy biến"
+      },
+      "create-table-fk": {
+        "name": "CREATE TABLE có Khóa ngoại (Foreign Key)",
+        "description": "Tạo bảng liên kết có ràng buộc khóa ngoại và ON DELETE CASCADE"
+      },
+      "create-index": {
+        "description": "Tạo chỉ mục đơn hoặc chỉ mục ghép tăng tốc độ tìm kiếm"
+      },
+      "alter-add-column": {
+        "name": "ALTER TABLE Thêm cột mới",
+        "description": "Thêm trường dữ liệu mới vào bảng hiện có một cách an toàn"
+      },
+      "create-view": {
+        "name": "CREATE OR REPLACE VIEW (Khung nhìn)",
+        "description": "Tạo view tái sử dụng cho các câu truy vấn phức tạp"
+      },
+      "txn-safe": {
+        "name": "TRANSACTION An toàn (BEGIN ... COMMIT ... ROLLBACK)",
+        "description": "Khối giao dịch đảm bảo toàn vẹn dữ liệu chuẩn ACID"
+      }
+    },
+    "params": {
+      "ten_bang": "Tên bảng",
+      "danh_sach_cot": "Danh sách cột",
+      "dieu_kien_loc_where": "Điều kiện lọc (WHERE)",
+      "cot_gom_nhom": "Cột gom nhóm",
+      "cot_tinh_tong": "Cột tính tổng",
+      "so_luong_toi_thieu": "Số lượng tối thiểu",
+      "so_dong_limit": "Số dòng (LIMIT)",
+      "vi_tri_bat_dau_offset": "Vị trí bắt đầu (OFFSET)",
+      "id_moc_tiep_theo": "ID mốc tiếp theo",
+      "so_dong": "Số dòng",
+      "cot_tim_kiem": "Cột tìm kiếm",
+      "tu_khoa_tim_kiem": "Từ khóa tìm kiếm",
+      "cot_ngay_thang": "Cột ngày tháng",
+      "bang_a_chinh": "Bảng A (Chính)",
+      "bang_b_lien_ket": "Bảng B (Liên kết)",
+      "khoa_ngoai_o_bang_a": "Khóa ngoại ở Bảng A",
+      "khoa_chinh_o_bang_b": "Khóa chính ở Bảng B",
+      "bang_cha": "Bảng Cha",
+      "bang_con": "Bảng Con",
+      "cot_khoa_ngoai_o_bang_con": "Cột khóa ngoại ở bảng con",
+      "cot_id_cap_tren": "Cột ID cấp trên",
+      "gia_tri": "Giá trị",
+      "bang_dich_luu_tru": "Bảng Đích (Lưu trữ)",
+      "bang_nguon": "Bảng Nguồn",
+      "cot_khoa_trung_pk_unique": "Cột khóa trùng (PK/Unique)",
+      "cot_gia_tri_cap_nhat": "Cột & Giá trị cập nhật",
+      "bang_can_cap_nhat": "Bảng cần cập nhật",
+      "bang_nguon_du_lieu": "Bảng nguồn dữ liệu",
+      "dieu_kien_xoa_where": "Điều kiện xóa (WHERE)",
+      "ten_bang_moi": "Tên bảng mới",
+      "dinh_nghia_cac_cot_thuoc_tinh": "Định nghĩa các cột & thuộc tính",
+      "ten_bang_con_moi": "Tên bảng con mới",
+      "bang_cha_lien_ket": "Bảng Cha liên kết",
+      "ten_cot_khoa_ngoai": "Tên cột khóa ngoại",
+      "ten_index": "Tên Index",
+      "cac_cot_danh_index": "Các cột đánh index",
+      "ten_cot_moi": "Tên cột mới",
+      "kieu_du_lieu_mac_dinh": "Kiểu dữ liệu & Mặc định",
+      "ten_view": "Tên View"
+    },
+    "categories": {
+      "all": "Tất cả",
+      "select": "SELECT & Phân tích",
+      "join": "JOIN & Quan hệ",
+      "ddl": "Tạo bảng DDL",
+      "transaction": "Giao dịch an toàn",
+      "dml": "INSERT / UPDATE / DELETE",
+      "advanced": "CTE & Window"
+    }
+  },
+  "general": {
+    "error": "Lỗi"
   }
 }

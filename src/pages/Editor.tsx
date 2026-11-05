@@ -981,15 +981,15 @@ export const Editor = () => {
       // Safe Mode Guardrail Check
       const safeCheck = evaluateSafeMode(textToRun, effectiveSafeModeLevel, activeConnectionObj?.name);
       if (!safeCheck.allowed) {
-        showAlert(safeCheck.reason || "Bị chặn bởi Chế độ Chỉ đọc (Read-Only)", {
-          title: "Chế độ Chỉ đọc (Read-Only Safe Mode)",
+        showAlert(safeCheck.reason || t("editor.readOnlyBlocked"), {
+          title: t("editor.readOnlyTitle"),
           kind: "error",
         });
         return;
       }
       if (safeCheck.requiresConfirmation) {
-        const confirmed = await ask(safeCheck.reason || "Xác nhận thực thi câu lệnh?", {
-          title: "Bảo vệ an toàn (Safe Mode)",
+        const confirmed = await ask(safeCheck.reason || t("editor.confirmExecute"), {
+          title: t("editor.safeModeTitle"),
           kind: "warning",
         });
         if (!confirmed) return;
@@ -1705,7 +1705,7 @@ export const Editor = () => {
       ? editor.getModel()?.getValueInRange(selection)?.trim()
       : undefined;
 
-    // 1. If text is highlighted (bôi đen), execute ONLY the highlighted text!
+    // 1. If text is highlighted, execute ONLY the highlighted text!
     if (selectedText && selection && !selection.isEmpty()) {
       const selectedQueries = splitQueries(selectedText, activeDialect);
       if (selectedQueries.length > 1) {
@@ -1790,7 +1790,7 @@ export const Editor = () => {
   const aiRunActiveTabRef = useRef(activeTab);
   aiRunActiveTabRef.current = activeTab;
 
-  // Bridge for the floating AI chat widget's "Chạy luôn" action: append the SQL
+  // Bridge for the floating AI chat widget's "Run now" action: append the SQL
   // to the current console tab (preserving what's already there) — or open a new
   // console tab when none is active — then execute just that snippet.
   useEffect(() => {
@@ -3239,7 +3239,7 @@ export const Editor = () => {
       });
 
       if (savedPath) {
-        showAlert(t("common.saved", { defaultValue: "Đã xuất file Excel thành công!" }), {
+        showAlert(t("common.saved"), {
           kind: "info",
         });
       }
@@ -3284,7 +3284,7 @@ export const Editor = () => {
       const sql = activeDriver === "postgres" || activeDriver === "sqlite" ? "BEGIN;" : "START TRANSACTION;";
       await runQuery(sql, 1);
       setIsTransactionActive(true);
-      showAlert(t("editor.transactionStarted", { defaultValue: "Đã bắt đầu Giao dịch (Transaction) mới." }), {
+      showAlert(t("editor.transactionStarted"), {
         title: "Transaction",
         kind: "info",
       });
@@ -3298,7 +3298,7 @@ export const Editor = () => {
     try {
       await runQuery("COMMIT;", 1);
       setIsTransactionActive(false);
-      showAlert(t("editor.transactionCommitted", { defaultValue: "Đã COMMIT giao dịch thành công!" }), {
+      showAlert(t("editor.transactionCommitted"), {
         title: "Transaction",
         kind: "info",
       });
@@ -3312,7 +3312,7 @@ export const Editor = () => {
     try {
       await runQuery("ROLLBACK;", 1);
       setIsTransactionActive(false);
-      showAlert(t("editor.transactionRolledBack", { defaultValue: "Đã ROLLBACK hoàn tác giao dịch." }), {
+      showAlert(t("editor.transactionRolledBack"), {
         title: "Transaction",
         kind: "info",
       });
@@ -3919,10 +3919,10 @@ export const Editor = () => {
                   <button
                     onClick={() => setIsSqlTemplatesOpen(true)}
                     className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-blue-300 bg-elevated/80 hover:bg-blue-900/40 border border-default hover:border-blue-500/40 transition-all backdrop-blur-sm shadow-sm"
-                    title={t("editor.sqlTemplates.tooltip", { defaultValue: "Mẫu SQL & Snippets (Ctrl+J)" })}
+                    title={t("editor.sqlTemplates.tooltip")}
                   >
                     <Zap size={12} className="text-amber-400" />
-                    <span>{t("editor.sqlTemplates.button", { defaultValue: "Mẫu SQL" })}</span>
+                    <span>{t("editor.sqlTemplates.button")}</span>
                     <span className="text-[10px] text-muted opacity-80 font-mono">Ctrl+J</span>
                   </button>
                 )}
@@ -3931,10 +3931,10 @@ export const Editor = () => {
                   <button
                     onClick={() => setIsQueryHistoryOpen(true)}
                     className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-purple-300 bg-elevated/80 hover:bg-purple-900/40 border border-default hover:border-purple-500/40 transition-all backdrop-blur-sm shadow-sm"
-                    title={t("editor.queryHistory.tooltip", { defaultValue: "Lịch sử truy vấn SQL (Ctrl+H)" })}
+                    title={t("editor.queryHistory.tooltip")}
                   >
                     <History size={12} className="text-purple-400" />
-                    <span>{t("editor.queryHistory.button", { defaultValue: "Lịch sử" })}</span>
+                    <span>{t("editor.queryHistory.button")}</span>
                     <span className="text-[10px] text-muted opacity-80 font-mono">Ctrl+H</span>
                   </button>
                 )}
@@ -3943,7 +3943,7 @@ export const Editor = () => {
                   <button
                     onClick={() => window.dispatchEvent(new CustomEvent("tabularis:format-sql"))}
                     className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-emerald-300 bg-elevated/80 hover:bg-emerald-900/40 border border-default hover:border-emerald-500/40 transition-all backdrop-blur-sm shadow-sm"
-                    title={t("editor.formatSql.tooltip", { defaultValue: "Định dạng câu truy vấn SQL (Ctrl+Alt+F)" })}
+                    title={t("editor.formatSql.tooltip")}
                   >
                     <Wand2 size={12} className="text-emerald-400" />
                     <span>{t("editor.formatSql.button", { defaultValue: "Format" })}</span>
@@ -3965,8 +3965,8 @@ export const Editor = () => {
                       }`}
                       title={
                         transactionMode === "auto"
-                          ? "Chế độ Auto-Commit: Tự động lưu sau mỗi lệnh"
-                          : "Chế độ Manual: Cần Commit hoặc Rollback thủ công"
+                          ? t("editor.autoCommitTooltip")
+                          : t("editor.manualCommitTooltip")
                       }
                     >
                       {transactionMode === "auto" ? "Auto" : "Manual"}
@@ -3978,20 +3978,20 @@ export const Editor = () => {
                           <button
                             onClick={handleStartTransaction}
                             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-surface-secondary hover:bg-surface-tertiary text-secondary hover:text-primary transition-colors"
-                            title="Bắt đầu Transaction (BEGIN / START TRANSACTION)"
+                            title={t("editor.beginTransactionTooltip")}
                           >
-                            <span>Bắt đầu</span>
+                            <span>{t("editor.beginTransaction")}</span>
                           </button>
                         ) : (
                           <>
                             <span
                               className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"
-                              title="Đang có Transaction mở"
+                              title={t("editor.transactionOpenTooltip")}
                             />
                             <button
                               onClick={handleCommitTransaction}
                               className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-emerald-700/50 hover:bg-emerald-600/60 text-emerald-300 border border-emerald-500/40 font-medium transition-colors"
-                              title="Commit các thay đổi (COMMIT;)"
+                              title={t("editor.commitTooltip")}
                             >
                               <Check size={11} />
                               <span>Commit</span>
@@ -3999,7 +3999,7 @@ export const Editor = () => {
                             <button
                               onClick={handleRollbackTransaction}
                               className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] bg-rose-700/50 hover:bg-rose-600/60 text-rose-300 border border-rose-500/40 font-medium transition-colors"
-                              title="Hoàn tác các thay đổi (ROLLBACK;)"
+                              title={t("editor.rollbackTooltip")}
                             >
                               <RotateCcw size={11} />
                               <span>Rollback</span>
@@ -4016,10 +4016,10 @@ export const Editor = () => {
                     onClick={() => handleDetachResults(tab.id)}
                     disabled={detachedTabIds.has(tab.id)}
                     className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted hover:text-cyan-300 bg-elevated/80 hover:bg-cyan-900/40 border border-default hover:border-cyan-500/40 transition-all backdrop-blur-sm shadow-sm disabled:opacity-30 disabled:pointer-events-none"
-                    title={t("editor.console.detachTooltip", { defaultValue: "Mở Console & Kết quả ra cửa sổ riêng" })}
+                    title={t("editor.console.detachTooltip")}
                   >
                     <ExternalLink size={12} />
-                    <span className="hidden sm:inline">{t("editor.console.detachButton", { defaultValue: "Cửa sổ riêng" })}</span>
+                    <span className="hidden sm:inline">{t("editor.console.detachButton")}</span>
                   </button>
                 )}
                 {/* AI dropdown — only if AI enabled */}
@@ -4304,16 +4304,14 @@ export const Editor = () => {
                             ? "bg-purple-900/40 text-purple-300 border-purple-500/50 hover:bg-purple-900/60"
                             : "bg-surface text-secondary border-default hover:text-primary hover:bg-surface-secondary"
                         }`}
-                        title={t("editor.maskSensitiveData.tooltip", {
-                          defaultValue: "Bảo vệ & che mờ dữ liệu nhạy cảm (Email, Phone, Password, Salary)",
-                        })}
+                        title={t("editor.maskSensitiveData.tooltip")}
                       >
                         {isMaskingEnabled ? (
                           <EyeOff size={12} className="text-purple-400 shrink-0" />
                         ) : (
                           <Eye size={12} className="shrink-0 text-muted" />
                         )}
-                        <span>{t("editor.maskSensitiveData.button", { defaultValue: "Che mờ PII" })}</span>
+                        <span>{t("editor.maskSensitiveData.button")}</span>
                       </button>
 
                       {/* Live Tail Toggle */}
@@ -4381,12 +4379,10 @@ export const Editor = () => {
                           type="button"
                           onClick={() => handleOpenExplainDiff()}
                           className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/40 hover:bg-amber-500/20 transition-all shadow-sm animate-pulse"
-                          title={t("editor.explainDiff.slowQueryTooltip", {
-                            defaultValue: "Truy vấn chạy chậm (>500ms). Nhấn để phân tích cây kế hoạch và tạo index tối ưu!",
-                          })}
+                          title={t("editor.explainDiff.slowQueryTooltip")}
                         >
                           <Zap size={11} className="text-amber-400" />
-                          <span>Tối ưu AI ({activeTab.executionTime.toFixed(0)}ms)</span>
+                          <span>{t("editor.slowQueryButton", { ms: activeTab.executionTime.toFixed(0) })}</span>
                         </button>
                       )}
 
@@ -4767,7 +4763,7 @@ export const Editor = () => {
                   <p className="text-sm font-medium text-primary">
                     {activeTab.activeTable ? (
                       <>
-                        {t("editor.tablePrefix", { defaultValue: "Bảng" })}{" "}
+                        {t("editor.tablePrefix")}{" "}
                         <span className="text-blue-400 font-mono font-semibold">
                           {activeTab.activeTable}
                         </span>
@@ -4777,10 +4773,7 @@ export const Editor = () => {
                     )}
                   </p>
                   <p className="text-xs text-muted max-w-sm">
-                    {t("editor.tableLoadHint", {
-                      defaultValue:
-                        "Dữ liệu bảng chưa được tải hoặc kết nối vừa được khôi phục.",
-                    })}
+                    {t("editor.tableLoadHint")}
                   </p>
                 </div>
                 <button
@@ -4794,9 +4787,7 @@ export const Editor = () => {
                     className={activeTab.isLoading ? "animate-spin" : ""}
                   />
                   <span>
-                    {t("editor.loadTableData", {
-                      defaultValue: "Tải dữ liệu bảng",
-                    })}
+                    {t("editor.loadTableData")}
                   </span>
                 </button>
               </div>
@@ -5141,8 +5132,8 @@ export const Editor = () => {
                 ]),
             {
               label: detachedTabIds.has(tabContextMenu.tabId)
-                ? t("editor.results.reattach", "Reattach Window")
-                : t("editor.results.detach", "Detach Window"),
+                ? t("editor.results.reattach")
+                : t("editor.results.detach"),
               icon: detachedTabIds.has(tabContextMenu.tabId)
                 ? Minimize2
                 : ExternalLink,

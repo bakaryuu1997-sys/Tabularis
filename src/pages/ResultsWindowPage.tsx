@@ -152,7 +152,7 @@ export const ResultsWindowPage = () => {
         ? model.getValueInRange(selection)?.trim()
         : "";
 
-      // 1. If text is highlighted / selected (bôi đen), run ONLY the highlighted text!
+      // 1. If text is highlighted / selected, run ONLY the highlighted text!
       if (selectedText) {
         send({ type: "run-query", query: selectedText });
         return;
@@ -244,7 +244,7 @@ export const ResultsWindowPage = () => {
     return (
       <div className="w-screen h-screen flex flex-col items-center justify-center bg-elevated text-muted text-sm gap-2">
         <Loader2 className="animate-spin text-accent" size={24} />
-        <span>{t("common.loading", "Đang tải dữ liệu cửa sổ riêng...")}</span>
+        <span>{t("common.loading")}</span>
       </div>
     );
   }
@@ -273,7 +273,7 @@ export const ResultsWindowPage = () => {
           {payload.isLoading ? (
             <span className="flex items-center gap-1 text-[11px] text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
               <Loader2 size={11} className="animate-spin" />
-              <span>{t("common.running", "Đang chạy...")}</span>
+              <span>{t("common.running")}</span>
             </span>
           ) : (
             <>
@@ -286,7 +286,7 @@ export const ResultsWindowPage = () => {
               {rowCount !== null && rowCount !== undefined && (
                 <span className="hidden sm:flex items-center gap-1 text-[10px] text-muted font-mono">
                   <Rows3 size={11} />
-                  <span>{rowCount} dòng</span>
+                  <span>{t("resultsWindow.rowCount", { count: rowCount })}</span>
                 </span>
               )}
             </>
@@ -300,24 +300,24 @@ export const ResultsWindowPage = () => {
             onClick={handleRunQuery}
             disabled={payload.isLoading || !query.trim()}
             className="flex items-center gap-1.5 px-3 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-sm transition-all disabled:opacity-50 disabled:pointer-events-none"
-            title="Chạy truy vấn (Ctrl + Enter)"
+            title={t("resultsWindow.runTooltip")}
           >
             {payload.isLoading ? (
               <Loader2 size={12} className="animate-spin" />
             ) : (
               <Play size={12} fill="currentColor" />
             )}
-            <span>{t("common.run", "Chạy (Ctrl+Enter)")}</span>
+            <span>{t("common.run")}</span>
           </button>
 
           {/* SQL Templates (Ctrl+J) Button */}
           <button
             onClick={() => setIsTemplatesOpen(true)}
             className="flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-surface-secondary hover:bg-surface-tertiary text-secondary hover:text-primary border border-default transition-colors"
-            title="Mẫu SQL & Snippets dựng sẵn (Ctrl + J)"
+            title={t("resultsWindow.templatesTooltip")}
           >
             <Zap size={12} className="text-amber-400" />
-            <span className="hidden md:inline">Mẫu SQL</span>
+            <span className="hidden md:inline">{t("resultsWindow.templates")}</span>
           </button>
 
           {/* View Mode Switcher */}
@@ -329,10 +329,10 @@ export const ResultsWindowPage = () => {
                   ? "bg-accent text-white font-medium"
                   : "text-secondary hover:text-primary"
               }`}
-              title="Hiện cả Console & Kết quả"
+              title={t("resultsWindow.showBothTooltip")}
             >
               <Columns2 size={12} />
-              <span className="hidden lg:inline">Cả hai</span>
+              <span className="hidden lg:inline">{t("resultsWindow.both")}</span>
             </button>
             <button
               onClick={() => setViewMode("editor")}
@@ -341,7 +341,7 @@ export const ResultsWindowPage = () => {
                   ? "bg-accent text-white font-medium"
                   : "text-secondary hover:text-primary"
               }`}
-              title="Chỉ hiện Console SQL"
+              title={t("resultsWindow.consoleOnlyTooltip")}
             >
               <Terminal size={12} />
               <span className="hidden lg:inline">Console</span>
@@ -353,10 +353,10 @@ export const ResultsWindowPage = () => {
                   ? "bg-accent text-white font-medium"
                   : "text-secondary hover:text-primary"
               }`}
-              title="Chỉ hiện Bảng Kết quả"
+              title={t("resultsWindow.resultsOnlyTooltip")}
             >
               <TableIcon size={12} />
-              <span className="hidden lg:inline">Kết quả</span>
+              <span className="hidden lg:inline">{t("resultsWindow.results")}</span>
             </button>
           </div>
 
@@ -364,10 +364,10 @@ export const ResultsWindowPage = () => {
           <button
             onClick={() => send({ type: "reattach" })}
             className="flex items-center gap-1 px-2.5 py-1 text-xs rounded bg-surface-secondary hover:bg-surface-tertiary text-secondary hover:text-primary border border-default transition-colors ml-1"
-            title="Gắn lại vào cửa sổ chính (Reattach)"
+            title={t("resultsWindow.reattachTooltip")}
           >
             <Minimize2 size={12} />
-            <span className="hidden sm:inline">Gắn lại</span>
+            <span className="hidden sm:inline">{t("resultsWindow.reattach")}</span>
           </button>
         </div>
       </div>
@@ -413,7 +413,7 @@ export const ResultsWindowPage = () => {
           <div
             onMouseDown={handleDividerMouseDown}
             className="h-1.5 w-full bg-surface-secondary hover:bg-accent/40 active:bg-accent cursor-row-resize flex items-center justify-center transition-colors group z-20"
-            title="Kéo thả để điều chỉnh tỷ lệ Console và Kết quả"
+            title={t("resultsWindow.resizeTooltip")}
           >
             <div className="w-12 h-0.5 bg-muted/40 group-hover:bg-accent rounded-full transition-colors" />
           </div>
@@ -483,7 +483,7 @@ export const ResultsWindowPage = () => {
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-surface-tertiary text-sm gap-2">
                 <Terminal size={32} className="opacity-30 mb-1" />
-                <p>{t("editor.executePrompt", "Nhập câu truy vấn SQL ở trên và nhấn Chạy (Ctrl+Enter) để xem kết quả")}</p>
+                <p>{t("editor.executePrompt")}</p>
               </div>
             )}
           </div>

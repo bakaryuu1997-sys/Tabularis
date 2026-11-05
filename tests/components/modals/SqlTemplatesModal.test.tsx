@@ -17,12 +17,13 @@ describe("SqlTemplatesModal", () => {
     );
 
     expect(screen.getByText(/SELECT \.\.\. FROM \.\.\. WHERE/)).toBeInTheDocument();
-    expect(screen.getAllByText(/JOIN \.\.\. ON/)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/sqlTemplates\.items\.[a-z-]*join[a-z-]*\.name/)[0]).toBeInTheDocument();
 
     const searchInput = screen.getByRole("textbox");
     fireEvent.change(searchInput, { target: { value: "LIMIT" } });
 
-    expect(screen.getAllByText(/Phân trang/)[0]).toBeInTheDocument();
+    // Templates matching "LIMIT" in their SQL are still listed (names render as translation keys in tests).
+    expect(screen.getAllByText(/sqlTemplates\.items\..*\.name/)[0]).toBeInTheDocument();
   });
 
   it("calls onInsert with sql when insert button clicked", () => {
@@ -37,7 +38,7 @@ describe("SqlTemplatesModal", () => {
       />,
     );
 
-    const insertBtns = screen.getAllByText(/Chèn vào code/);
+    const insertBtns = screen.getAllByText(/sqlTemplatesModal.insert/);
     fireEvent.click(insertBtns[0]);
 
     expect(onInsert).toHaveBeenCalledTimes(1);
@@ -59,8 +60,8 @@ describe("SqlTemplatesModal", () => {
       />,
     );
 
-    // Click "Điền tham số" on the first template (SELECT ... FROM ... WHERE)
-    const paramBtns = screen.getAllByText(/Điền tham số/);
+    // Click the fill-parameters button on the first template (SELECT ... FROM ... WHERE)
+    const paramBtns = screen.getAllByText(/sqlTemplatesModal.fillParams/);
     expect(paramBtns.length).toBeGreaterThan(0);
     fireEvent.click(paramBtns[0]);
 
@@ -71,11 +72,11 @@ describe("SqlTemplatesModal", () => {
     // Type a custom table name
     fireEvent.change(tableNameInput, { target: { value: "my_custom_table" } });
 
-    // The card should now show "Đã tùy biến"
-    expect(screen.getByText(/Đã tùy biến/)).toBeInTheDocument();
+    // The card should now be marked as customized
+    expect(screen.getByText(/sqlTemplatesModal.customized/)).toBeInTheDocument();
 
     // Click "Chèn vào code"
-    const insertBtns = screen.getAllByText(/Chèn vào code/);
+    const insertBtns = screen.getAllByText(/sqlTemplatesModal.insert/);
     fireEvent.click(insertBtns[0]);
 
     expect(onInsert).toHaveBeenCalledWith(expect.stringContaining("my_custom_table"));

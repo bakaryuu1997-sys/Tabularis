@@ -87,7 +87,7 @@ export const ExplainSummaryBar = memo(
             className={toggleButtonClass("diff")}
           >
             <Zap size={12} className="text-amber-400" />
-            {t("editor.visualExplain.diffView", { defaultValue: "Plan Diff & Tối ưu" })}
+            {t("editor.visualExplain.diffView")}
           </button>
           <button
             onClick={() => onViewModeChange("raw")}

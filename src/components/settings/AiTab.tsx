@@ -584,7 +584,7 @@ export function AiTab() {
                     {settings.aiCustomModels?.[settings.aiProvider]?.length ? (
                       <div className="flex items-center gap-1.5 text-xs text-green-400 bg-green-900/10 px-2 py-0.5 rounded-full border border-green-900/20">
                         <CheckCircle2 size={11} />
-                        <span>Đang lọc: {settings.aiCustomModels[settings.aiProvider].length} model hoạt động</span>
+                        <span>{t("settings.ai.activeModelsFilter", { count: settings.aiCustomModels[settings.aiProvider].length })}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -593,9 +593,9 @@ export function AiTab() {
                             updateSetting("aiCustomModels", next);
                           }}
                           className="ml-1 text-xs text-muted hover:text-primary underline cursor-pointer"
-                          title="Khôi phục danh sách đầy đủ"
+                          title={t("settings.ai.showAllTooltip")}
                         >
-                          (Hiện tất cả)
+                          {t("settings.ai.showAll")}
                         </button>
                       </div>
                     ) : (
@@ -651,17 +651,17 @@ export function AiTab() {
                         onClick={handleTestModel}
                         disabled={testingModel || !settings.aiModel}
                         className="flex items-center gap-1.5 px-3 py-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 whitespace-nowrap cursor-pointer"
-                        title="Thử gửi câu lệnh kiểm tra phản hồi model"
+                        title={t("settings.ai.testModelTooltip")}
                       >
                         {testingModel ? (
                           <>
                             <RefreshCw size={14} className="animate-spin" />
-                            <span>Đang thử...</span>
+                            <span>{t("settings.ai.testingModel")}</span>
                           </>
                         ) : (
                           <>
                             <Zap size={14} />
-                            <span>Thử model</span>
+                            <span>{t("settings.ai.testModel")}</span>
                           </>
                         )}
                       </button>
@@ -678,12 +678,12 @@ export function AiTab() {
                         {testResult.success ? (
                           <>
                             <CheckCircle2 size={13} className="shrink-0" />
-                            <span>Model phản hồi tốt ({testResult.latencyMs}ms)</span>
+                            <span>{t("settings.ai.modelTestOk", { ms: testResult.latencyMs })}</span>
                           </>
                         ) : (
                           <>
                             <AlertTriangle size={13} className="shrink-0" />
-                            <span className="truncate">Lỗi phản hồi: {testResult.message}</span>
+                            <span className="truncate">{t("settings.ai.modelTestFailed", { message: testResult.message })}</span>
                           </>
                         )}
                       </div>

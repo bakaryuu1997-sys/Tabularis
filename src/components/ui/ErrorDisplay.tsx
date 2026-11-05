@@ -36,7 +36,7 @@ export function ErrorDisplay({ error, query, t }: ErrorDisplayProps) {
             title={t("editor.askAiToFixHint", { defaultValue: "Ask AI to diagnose and fix this SQL query" })}
           >
             <Sparkles size={13} className="text-blue-400 shrink-0" />
-            <span>{t("editor.askAiToFix", { defaultValue: "Hỏi AI sửa lỗi này" })}</span>
+            <span>{t("editor.askAiToFix")}</span>
           </button>
         )}
       </div>

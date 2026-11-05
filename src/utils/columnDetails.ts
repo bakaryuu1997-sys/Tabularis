@@ -1,4 +1,5 @@
 import type { TableColumn, ForeignKey } from "../types/editor";
+import { translate } from "../i18n/translate";
 
 export interface ColumnDetailInfo {
   isPk: boolean;
@@ -11,52 +12,52 @@ export function describeDataTypeValidation(dataType: string, maxLen?: number): s
   if (!dataType) return "";
   const dt = dataType.toLowerCase();
   if (maxLen && maxLen > 0) {
-    return `Chuỗi ký tự (Tối đa ${maxLen} ký tự)`;
+    return translate("columnDetails.types.maxChars", { max: maxLen });
   }
   if (dt.includes("varchar") || dt.includes("char") || dt.includes("text")) {
     const match = dt.match(/\((\d+)\)/);
     if (match) {
-      return `Chuỗi ký tự (Tối đa ${match[1]} ký tự)`;
+      return translate("columnDetails.types.maxChars", { max: match[1] });
     }
-    return "Chuỗi ký tự (Text/String)";
+    return translate("columnDetails.types.text");
   }
   if (dt.includes("tinyint(1)") || dt.includes("bool") || dt.includes("boolean")) {
-    return "Kiểu Logic (Boolean / 0 hoặc 1)";
+    return translate("columnDetails.types.boolean");
   }
   if (dt.includes("bigint")) {
-    return "Số nguyên lớn 64-bit (BIGINT)";
+    return translate("columnDetails.types.bigint");
   }
   if (dt.includes("smallint") || dt.includes("tinyint")) {
-    return "Số nguyên nhỏ (SMALLINT/TINYINT)";
+    return translate("columnDetails.types.smallint");
   }
   if (dt.includes("int")) {
-    return "Số nguyên 32-bit (INTEGER)";
+    return translate("columnDetails.types.integer");
   }
   if (dt.includes("decimal") || dt.includes("numeric")) {
-    return "Số thập phân chính xác cao (DECIMAL)";
+    return translate("columnDetails.types.decimal");
   }
   if (dt.includes("float") || dt.includes("double") || dt.includes("real")) {
-    return "Số thực dấu phẩy động (FLOAT/DOUBLE)";
+    return translate("columnDetails.types.float");
   }
   if (dt.includes("datetime") || dt.includes("timestamp")) {
-    return "Ngày & Giờ (DATETIME/TIMESTAMP)";
+    return translate("columnDetails.types.datetime");
   }
   if (dt.includes("date")) {
-    return "Ngày tháng (DATE: YYYY-MM-DD)";
+    return translate("columnDetails.types.date");
   }
   if (dt.includes("time")) {
-    return "Thời gian (TIME: HH:MM:SS)";
+    return translate("columnDetails.types.time");
   }
   if (dt.includes("json")) {
-    return "Cấu trúc dữ liệu JSON";
+    return translate("columnDetails.types.json");
   }
   if (dt.includes("blob") || dt.includes("bytea") || dt.includes("binary")) {
-    return "Dữ liệu nhị phân (BLOB/Binary)";
+    return translate("columnDetails.types.blob");
   }
   if (dt.includes("uuid")) {
-    return "Mã định danh duy nhất (UUID)";
+    return translate("columnDetails.types.uuid");
   }
-  return `Kiểu dữ liệu: ${dataType.toUpperCase()}`;
+  return translate("columnDetails.types.other", { type: dataType.toUpperCase() });
 }
 
 export function buildColumnTooltip(
@@ -71,30 +72,30 @@ export function buildColumnTooltip(
   lines.push(`${colName}${typeStr}`);
 
   if (isPk) {
-    lines.push("🔑 Khóa chính (Primary Key)");
+    lines.push(translate("columnDetails.primaryKey"));
   }
   if (fk) {
-    lines.push(`🔗 Khóa ngoại ➔ Tham chiếu tới: ${fk.ref_table}.${fk.ref_column}`);
+    lines.push(translate("columnDetails.foreignKey", { table: fk.ref_table, column: fk.ref_column }));
   }
 
   if (meta) {
     if (meta.is_nullable === false) {
-      lines.push("• Ràng buộc: Bắt buộc (NOT NULL)");
+      lines.push(translate("columnDetails.notNull"));
     } else if (meta.is_nullable === true) {
-      lines.push("• Ràng buộc: Cho phép NULL");
+      lines.push(translate("columnDetails.nullable"));
     }
 
     if (meta.is_auto_increment) {
-      lines.push("• Tự động tăng (AUTO_INCREMENT)");
+      lines.push(translate("columnDetails.autoIncrement"));
     }
 
     if (meta.default_value !== undefined && meta.default_value !== null && meta.default_value !== "") {
-      lines.push(`• Mặc định: ${meta.default_value}`);
+      lines.push(translate("columnDetails.defaultValue", { value: meta.default_value }));
     }
 
     const valDesc = describeDataTypeValidation(meta.data_type, meta.character_maximum_length);
     if (valDesc) {
-      lines.push(`• Quy cách: ${valDesc}`);
+      lines.push(translate("columnDetails.spec", { description: valDesc }));
     }
   }
 

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   useState,
   useRef,
@@ -57,7 +58,12 @@ const SESSIONS_KEY = "tabularis.aiChat.sessions";
 const CURRENT_KEY = "tabularis.aiChat.current";
 const SCHEMA_KEY = "tabularis.aiChat.useSchema";
 const MAX_STORED = 100;
-const DEFAULT_TITLE = "Trò chuyện mới";
+/// Untitled sessions keep an empty title and show a translated label. The Vietnamese
+/// text is what older versions stored, so it is still recognised as "untitled".
+const DEFAULT_TITLE = "";
+const LEGACY_DEFAULT_TITLE = "Trò chuyện mới";
+const isDefaultTitle = (title: string | undefined) =>
+  !title || title === DEFAULT_TITLE || title === LEGACY_DEFAULT_TITLE;
 
 function makeSession(messages: ChatMessage[] = []): ChatSession {
   return {
@@ -95,13 +101,13 @@ function loadInitialSessions(): { sessions: ChatSession[]; currentId: string } {
   }
 }
 
-/// Starter prompts shown when the conversation is empty.
-const SUGGESTIONS = [
-  "Viết câu SQL lấy 10 bản ghi mới nhất từ bảng ",
-  "Tối ưu và giải thích câu query sau:\n",
-  "Giải thích cấu trúc và ý nghĩa các cột của bảng ",
-  "Chuyển câu SQL sau sang PostgreSQL:\n",
-];
+/// Translation keys of the starter prompts shown when the conversation is empty.
+const SUGGESTION_KEYS = [
+  "aiChat.suggestions.latestRows",
+  "aiChat.suggestions.optimize",
+  "aiChat.suggestions.explainColumns",
+  "aiChat.suggestions.toPostgres",
+] as const;
 
 
 
@@ -133,6 +139,7 @@ function CodeBlock({
   onRun: (sql: string) => void;
   canInsert: boolean;
 }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   // react-markdown passes the inner <code> element as `children`.
@@ -163,11 +170,11 @@ function CodeBlock({
         <div className="flex items-center gap-1">
           <button
             onClick={copy}
-            title="Copy"
+            title={t("aiChat.copy")}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-secondary hover:text-primary hover:bg-surface-tertiary transition-colors"
           >
             {copied ? <Check size={11} /> : <Copy size={11} />}
-            {copied ? "Đã copy" : "Copy"}
+            {copied ? t("aiChat.copied") : t("aiChat.copy")}
           </button>
           {sqlish && (
             <>
@@ -176,24 +183,24 @@ function CodeBlock({
                 disabled={!canInsert}
                 title={
                   canInsert
-                    ? "Chèn xuống cuối console (giữ nguyên SQL đang có)"
-                    : "Mở một kết nối để chèn SQL"
+                    ? t("aiChat.insertTooltip")
+                    : t("aiChat.openConnectionToInsert")
                 }
                 className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 disabled:opacity-40 disabled:pointer-events-none transition-colors"
               >
-                <FilePlus size={11} /> Chèn
+                <FilePlus size={11} /> {t("aiChat.insert")}
               </button>
               <button
                 onClick={() => onRun(raw)}
                 disabled={!canInsert}
                 title={
                   canInsert
-                    ? "Chèn vào console rồi chạy ngay"
-                    : "Mở một kết nối để chạy SQL"
+                    ? t("aiChat.runTooltip")
+                    : t("aiChat.openConnectionToRun")
                 }
                 className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-green-400 hover:text-green-300 hover:bg-green-900/20 disabled:opacity-40 disabled:pointer-events-none transition-colors"
               >
-                <Play size={11} /> Chạy luôn
+                <Play size={11} /> {t("aiChat.runNow")}
               </button>
             </>
           )}
@@ -224,6 +231,7 @@ const PROSE_CLASSES =
   "[&_strong]:font-semibold [&_strong]:text-primary [&_em]:italic";
 
 export function AiChatWidget() {
+  const { t } = useTranslation();
   const { settings, updateSetting } = useSettings();
   const { activeConnectionId } = useDatabase();
   const { activeTab, addTab, updateTab } = useEditor();
@@ -280,8 +288,8 @@ export function AiChatWidget() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const currentTitle =
-    sessions.find((s) => s.id === currentId)?.title ?? DEFAULT_TITLE;
+  const rawCurrentTitle = sessions.find((s) => s.id === currentId)?.title ?? DEFAULT_TITLE;
+  const currentTitle = isDefaultTitle(rawCurrentTitle) ? t("aiChat.defaultTitle") : rawCurrentTitle;
 
   const provider = settings.aiProvider;
 
@@ -409,7 +417,7 @@ export function AiChatWidget() {
       const code = sql.trim();
       if (!code) return;
       if (!activeConnectionId) {
-        setError("Cần mở một kết nối trước khi chèn SQL vào editor.");
+        setError(t("aiChat.errorNeedConnectionInsert"));
         return;
       }
       if (activeTab && activeTab.type === "console") {
@@ -421,7 +429,7 @@ export function AiChatWidget() {
       }
       navigate("/editor");
     },
-    [activeConnectionId, activeTab, updateTab, addTab, navigate],
+    [activeConnectionId, activeTab, updateTab, addTab, navigate, t],
   );
 
   // Insert the SQL and run it in one shot (via the Editor bridge), then jump to
@@ -431,13 +439,13 @@ export function AiChatWidget() {
       const code = sql.trim();
       if (!code) return;
       if (!activeConnectionId) {
-        setError("Cần mở một kết nối trước khi chạy SQL.");
+        setError(t("aiChat.errorNeedConnectionRun"));
         return;
       }
       requestRunSql(code);
       navigate("/editor");
     },
-    [activeConnectionId, navigate],
+    [activeConnectionId, navigate, t],
   );
 
   const mdComponents = useMemo(
@@ -458,7 +466,7 @@ export function AiChatWidget() {
     const text = (override ?? input).trim();
     if (!text || loading) return;
     if (!provider) {
-      setError("Chưa cấu hình AI provider. Mở Settings › AI.");
+      setError(t("aiChat.errorNoProvider"));
       return;
     }
 
@@ -471,7 +479,7 @@ export function AiChatWidget() {
       const title = text.replace(/\s+/g, " ").trim().slice(0, 40) || DEFAULT_TITLE;
       setSessions((prev) =>
         prev.map((s) =>
-          s.id === currentId && (!s.title || s.title === DEFAULT_TITLE)
+          s.id === currentId && isDefaultTitle(s.title)
             ? { ...s, title }
             : s,
         ),
@@ -525,7 +533,7 @@ export function AiChatWidget() {
         const copy = [...prev];
         copy[copy.length - 1] = {
           role: "assistant",
-          content: acc.trim() ? acc : "_(không có nội dung trả về)_",
+          content: acc.trim() ? acc : t("aiChat.emptyResponse"),
         };
         return copy;
       });
@@ -573,7 +581,7 @@ export function AiChatWidget() {
       const copy = [...prev];
       const last = copy[copy.length - 1];
       if (last && last.role === "assistant" && !last.content) {
-        copy[copy.length - 1] = { role: "assistant", content: "_(đã dừng)_" };
+        copy[copy.length - 1] = { role: "assistant", content: t("aiChat.stopped") };
       }
       return copy;
     });
@@ -690,7 +698,7 @@ export function AiChatWidget() {
             <Bot size={18} className="text-blue-400 shrink-0" />
             <button
               onClick={() => setShowSessions((v) => !v)}
-              title="Danh sách hội thoại"
+              title={t("aiChat.conversations")}
               className="flex flex-col min-w-0 flex-1 text-left"
             >
               <span className="flex items-center gap-1 text-sm font-medium text-primary leading-tight">
@@ -704,20 +712,20 @@ export function AiChatWidget() {
                 />
               </span>
               <span className="text-[11px] text-muted leading-tight truncate">
-                {provider ? getProviderLabel(provider) : "Chưa cấu hình"}
+                {provider ? getProviderLabel(provider) : t("aiChat.notConfigured")}
               </span>
             </button>
             <div className="ml-auto flex items-center gap-1 shrink-0">
               <button
                 onClick={newChat}
-                title="Hội thoại mới"
+                title={t("aiChat.newConversation")}
                 className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-surface-tertiary transition-colors"
               >
                 <Plus size={16} />
               </button>
               <button
                 onClick={handleClear}
-                title="Xóa nội dung hội thoại này"
+                title={t("aiChat.clearConversation")}
                 disabled={messages.length === 0}
                 className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-surface-tertiary disabled:opacity-40 transition-colors"
               >
@@ -725,7 +733,7 @@ export function AiChatWidget() {
               </button>
               <button
                 onClick={() => setOpen(false)}
-                title="Đóng"
+                title={t("aiChat.close")}
                 className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-surface-tertiary transition-colors"
               >
                 <X size={16} />
@@ -760,7 +768,7 @@ export function AiChatWidget() {
                     ) : (
                       <button
                         onClick={() => switchSession(s.id)}
-                        title={s.title}
+                        title={isDefaultTitle(s.title) ? t("aiChat.defaultTitle") : s.title}
                         className={clsx(
                           "flex-1 min-w-0 text-left text-xs truncate",
                           s.id === currentId
@@ -768,13 +776,13 @@ export function AiChatWidget() {
                             : "text-secondary",
                         )}
                       >
-                        {s.title}
+                        {isDefaultTitle(s.title) ? t("aiChat.defaultTitle") : s.title}
                       </button>
                     )}
                     {renamingId === s.id ? (
                       <button
                         onClick={commitRename}
-                        title="Lưu tên"
+                        title={t("aiChat.saveName")}
                         className="p-1 rounded text-green-400 hover:bg-surface-tertiary shrink-0"
                       >
                         <Check size={12} />
@@ -783,14 +791,14 @@ export function AiChatWidget() {
                       <>
                         <button
                           onClick={() => startRename(s)}
-                          title="Đổi tên"
+                          title={t("aiChat.rename")}
                           className="p-1 rounded text-muted hover:text-primary hover:bg-surface-tertiary opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         >
                           <Pencil size={12} />
                         </button>
                         <button
                           onClick={() => deleteSession(s.id)}
-                          title="Xóa hội thoại"
+                          title={t("aiChat.deleteConversation")}
                           className="p-1 rounded text-muted hover:text-red-400 hover:bg-surface-tertiary opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         >
                           <Trash2 size={12} />
@@ -812,14 +820,14 @@ export function AiChatWidget() {
                   value={settings.aiModel}
                   options={models}
                   onChange={(val) => updateSetting("aiModel", val)}
-                  placeholder="Chọn model…"
-                  searchPlaceholder="Tìm model…"
-                  noResultsLabel="Không có model"
+                  placeholder={t("aiChat.pickModel")}
+                  searchPlaceholder={t("aiChat.searchModel")}
+                  noResultsLabel={t("aiChat.noModels")}
                 />
               </div>
               <button
                 onClick={() => loadModels(true)}
-                title="Tải lại danh sách model"
+                title={t("aiChat.reloadModels")}
                 className="p-1.5 rounded-md text-secondary hover:text-primary hover:bg-surface-tertiary transition-colors shrink-0"
               >
                 <RefreshCw size={14} />
@@ -832,7 +840,7 @@ export function AiChatWidget() {
             <div className="flex items-center justify-between px-3 py-1.5 text-[11px] border-b border-default bg-surface/50">
               <button
                 onClick={() => setUseSchema((v) => !v)}
-                title="Cho AI đọc toàn bộ bảng và cấu trúc cơ sở dữ liệu"
+                title={t("aiChat.schemaToggleTooltip")}
                 className={clsx(
                   "flex items-center gap-1.5 transition-colors font-medium truncate",
                   useSchema
@@ -844,15 +852,15 @@ export function AiChatWidget() {
                 <span className="truncate">
                   {useSchema
                     ? schemaTableCount !== null
-                      ? `Đang đọc toàn bộ DB (${schemaTableCount} bảng)`
-                      : "Đang đọc toàn bộ DB"
-                    : "Không gửi schema DB"}
+                      ? t("aiChat.readingDbWithCount", { count: schemaTableCount })
+                      : t("aiChat.readingDb")
+                    : t("aiChat.noSchema")}
                 </span>
               </button>
               {useSchema && (
                 <button
                   onClick={refreshSchema}
-                  title="Làm mới schema DB"
+                  title={t("aiChat.refreshSchema")}
                   className="p-1 rounded text-muted hover:text-primary hover:bg-surface-secondary transition-colors shrink-0 ml-1"
                 >
                   <RefreshCw size={11} />
@@ -869,7 +877,7 @@ export function AiChatWidget() {
             {messages.length === 0 && !error && (
               <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-muted px-3 select-none">
                 <Bot size={32} className="opacity-40" />
-                <p className="text-sm">Hỏi AI bất cứ điều gì.</p>
+                <p className="text-sm">{t("aiChat.askAnything")}</p>
                 {!provider ? (
                   <button
                     onClick={() => {
@@ -878,11 +886,11 @@ export function AiChatWidget() {
                     }}
                     className="mt-1 inline-flex items-center gap-1.5 text-xs text-blue-400 hover:underline"
                   >
-                    <SettingsIcon size={12} /> Cấu hình AI trong Settings
+                    <SettingsIcon size={12} /> {t("aiChat.configureInSettings")}
                   </button>
                 ) : (
                   <div className="flex flex-col gap-1.5 w-full mt-1">
-                    {SUGGESTIONS.map((s) => (
+                    {SUGGESTION_KEYS.map((key) => t(key)).map((s) => (
                       <button
                         key={s}
                         onClick={() => applySuggestion(s)}
@@ -914,7 +922,7 @@ export function AiChatWidget() {
                 >
                   <button
                     onClick={() => handleCopyText(m.content, i)}
-                    title="Sao chép nội dung tin nhắn"
+                    title={t("aiChat.copyMessage")}
                     className={clsx(
                       "absolute top-1.5 right-1.5 p-1 rounded opacity-0 group-hover/bubble:opacity-100 transition-opacity z-10",
                       m.role === "user"
@@ -940,7 +948,7 @@ export function AiChatWidget() {
                   ) : (
                     <div className="flex items-center gap-2 text-muted text-sm py-0.5 select-text">
                       <Loader2 size={14} className="animate-spin" />
-                      Đang trả lời…
+                      {t("aiChat.answering")}
                     </div>
                   )}
                 </div>
@@ -951,7 +959,7 @@ export function AiChatWidget() {
               <div className="flex justify-start">
                 <div className="bg-surface-secondary border border-default rounded-xl px-3 py-2 flex items-center gap-2 text-muted text-sm select-text">
                   <Loader2 size={14} className="animate-spin" />
-                  Đang trả lời…
+                  {t("aiChat.answering")}
                 </div>
               </div>
             )}
@@ -961,7 +969,7 @@ export function AiChatWidget() {
                 <span className="select-text cursor-text">{error}</span>
                 <button
                   onClick={() => handleCopyText(error)}
-                  title="Sao chép thông báo lỗi"
+                  title={t("aiChat.copyError")}
                   className="absolute top-1.5 right-1.5 p-1 rounded bg-red-900/30 hover:bg-red-900/60 text-red-300 hover:text-white transition-colors"
                 >
                   {copiedError ? (
@@ -983,14 +991,14 @@ export function AiChatWidget() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 rows={1}
-                placeholder="Nhập tin nhắn… (Enter để gửi, Shift+Enter xuống dòng)"
+                placeholder={t("aiChat.inputPlaceholder")}
                 className="flex-1 bg-transparent text-sm text-primary resize-none outline-none max-h-[140px] py-1"
               />
               {loading ? (
                 <button
                   onClick={handleStop}
                   className="shrink-0 p-1.5 rounded-md bg-red-600 hover:bg-red-500 text-white transition-colors"
-                  title="Dừng trả lời"
+                  title={t("aiChat.stop")}
                 >
                   <Square size={16} fill="currentColor" />
                 </button>
@@ -999,7 +1007,7 @@ export function AiChatWidget() {
                   onClick={() => handleSend()}
                   disabled={!input.trim()}
                   className="shrink-0 p-1.5 rounded-md bg-blue-600 hover:bg-blue-500 disabled:bg-surface-secondary disabled:text-muted text-white transition-colors"
-                  title="Gửi"
+                  title={t("aiChat.send")}
                 >
                   <Send size={16} />
                 </button>

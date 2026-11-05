@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   ReactFlow, 
   Background, 
@@ -39,6 +40,7 @@ interface TableColumn {
 }
 
 const VisualQueryBuilderContent = () => {
+  const { t } = useTranslation();
   const { activeConnectionId, activeSchema, tables } = useDatabase();
   const { activeTab, activeTabId, updateTab } = useEditor();
   const { screenToFlowPosition } = useReactFlow();
@@ -284,10 +286,10 @@ const VisualQueryBuilderContent = () => {
                 }
               }}
               className="bg-transparent text-xs text-primary font-medium focus:outline-none cursor-pointer pr-2"
-              title="Thêm bảng vào khung thiết kế truy vấn"
+              title={t("visualQuery.addTableTooltip")}
             >
               <option value="" disabled className="bg-elevated text-secondary">
-                + Thêm bảng vào Visual Query...
+                {t("visualQuery.addTable")}
               </option>
               {tables.map((t) => (
                 <option key={t.name} value={t.name} className="bg-elevated text-primary">
@@ -306,10 +308,10 @@ const VisualQueryBuilderContent = () => {
                 <Database size={32} />
               </div>
               <h3 className="text-base font-semibold text-primary mb-1">
-                Truy vấn Trực quan (Visual Query)
+                {t("visualQuery.title")}
               </h3>
               <p className="text-xs text-secondary leading-relaxed mb-6">
-                👈 Kéo bảng từ danh sách bảng bên trái và thả vào đây, hoặc chọn bảng bên dưới để bắt đầu kết nối JOIN và lọc dữ liệu.
+                {t("visualQuery.emptyHint")}
               </p>
 
               {tables && tables.length > 0 && (
@@ -325,7 +327,7 @@ const VisualQueryBuilderContent = () => {
                     className="w-full bg-surface-secondary border border-strong rounded-lg px-3 py-2 text-xs text-primary focus:border-blue-500 focus:outline-none transition-colors cursor-pointer"
                   >
                     <option value="" disabled className="bg-elevated text-secondary">
-                      + Chọn bảng để thêm vào canvas...
+                      {t("visualQuery.pickTable")}
                     </option>
                     {tables.map((t) => (
                       <option key={t.name} value={t.name} className="bg-elevated text-primary">

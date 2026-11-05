@@ -29,22 +29,22 @@ export const ColumnProfileModal = ({
   if (!profile) return null;
 
   const handleCopyReport = async () => {
-    let report = `### Thống kê cột: ${profile.columnName} (${profile.inferredType})\n\n`;
-    report += `- **Tổng số dòng:** ${profile.totalRows}\n`;
-    report += `- **Dòng rỗng (NULL):** ${profile.nullCount} (${profile.nullPercentage}%)\n`;
-    report += `- **Giá trị duy nhất:** ${profile.distinctCount} (${profile.distinctPercentage}%)\n`;
+    let report = `### ${t("columnProfile.report.title", { column: profile.columnName, type: profile.inferredType })}\n\n`;
+    report += `- **${t("columnProfile.report.totalRows")}:** ${profile.totalRows}\n`;
+    report += `- **${t("columnProfile.report.nullRows")}:** ${profile.nullCount} (${profile.nullPercentage}%)\n`;
+    report += `- **${t("columnProfile.report.distinct")}:** ${profile.distinctCount} (${profile.distinctPercentage}%)\n`;
 
     if (profile.numericStats) {
       report += `- **Min:** ${profile.numericStats.min} | **Max:** ${profile.numericStats.max} | **Avg:** ${profile.numericStats.avg}\n`;
     }
     if (profile.dateStats) {
-      report += `- **Sớm nhất:** ${profile.dateStats.earliest} | **Muộn nhất:** ${profile.dateStats.latest}\n`;
+      report += `- **${t("columnProfile.report.earliest")}:** ${profile.dateStats.earliest} | **${t("columnProfile.report.latest")}:** ${profile.dateStats.latest}\n`;
     }
 
     if (profile.topFrequencies.length > 0) {
-      report += `\n**Top giá trị phổ biến nhất:**\n`;
+      report += `\n**${t("columnProfile.report.topValues")}:**\n`;
       for (const item of profile.topFrequencies) {
-        report += `- \`${item.value}\`: ${item.count} lần (${item.percentage}%)\n`;
+        report += `- \`${item.value}\`: ${t("columnProfile.report.occurrences", { count: item.count })} (${item.percentage}%)\n`;
       }
     }
 
@@ -84,9 +84,7 @@ export const ColumnProfileModal = ({
                 </span>
               </div>
               <p className="text-xs text-muted">
-                {t("columnProfile.subtitle", {
-                  defaultValue: "Phân tích thống kê & phân bổ giá trị dữ liệu",
-                })}
+                {t("columnProfile.subtitle")}
               </p>
             </div>
           </div>
@@ -104,7 +102,7 @@ export const ColumnProfileModal = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg bg-surface border border-default">
               <div className="text-xs text-muted font-medium">
-                {t("columnProfile.totalRows", { defaultValue: "Tổng số dòng" })}
+                {t("columnProfile.totalRows")}
               </div>
               <div className="text-xl font-semibold text-primary mt-1 font-mono">
                 {profile.totalRows.toLocaleString()}
@@ -113,7 +111,7 @@ export const ColumnProfileModal = ({
 
             <div className="p-3 rounded-lg bg-surface border border-default">
               <div className="text-xs text-muted font-medium flex items-center justify-between">
-                <span>{t("columnProfile.nullCount", { defaultValue: "Dòng rỗng (NULL)" })}</span>
+                <span>{t("columnProfile.nullCount")}</span>
                 <span className="text-[11px] text-amber-400 font-mono">
                   {profile.nullPercentage}%
                 </span>
@@ -125,7 +123,7 @@ export const ColumnProfileModal = ({
 
             <div className="p-3 rounded-lg bg-surface border border-default">
               <div className="text-xs text-muted font-medium flex items-center justify-between">
-                <span>{t("columnProfile.distinctCount", { defaultValue: "Giá trị duy nhất" })}</span>
+                <span>{t("columnProfile.distinctCount")}</span>
                 <span className="text-[11px] text-indigo-400 font-mono">
                   {profile.distinctPercentage}%
                 </span>
@@ -138,7 +136,7 @@ export const ColumnProfileModal = ({
             {profile.numericStats ? (
               <div className="p-3 rounded-lg bg-surface border border-default">
                 <div className="text-xs text-muted font-medium">
-                  {t("columnProfile.average", { defaultValue: "Trung bình (Avg)" })}
+                  {t("columnProfile.average")}
                 </div>
                 <div className="text-xl font-semibold text-primary mt-1 font-mono">
                   {profile.numericStats.avg.toLocaleString()}
@@ -147,16 +145,16 @@ export const ColumnProfileModal = ({
             ) : profile.stringStats ? (
               <div className="p-3 rounded-lg bg-surface border border-default">
                 <div className="text-xs text-muted font-medium">
-                  {t("columnProfile.lengthRange", { defaultValue: "Độ dài ký tự (Min - Max)" })}
+                  {t("columnProfile.lengthRange")}
                 </div>
                 <div className="text-base font-semibold text-primary mt-1 font-mono">
-                  {profile.stringStats.minLength} - {profile.stringStats.maxLength} ký tự
+                  {profile.stringStats.minLength} - {profile.stringStats.maxLength} {t("columnProfile.characters")}
                 </div>
               </div>
             ) : (
               <div className="p-3 rounded-lg bg-surface border border-default">
                 <div className="text-xs text-muted font-medium">
-                  {t("columnProfile.validRows", { defaultValue: "Dòng có dữ liệu" })}
+                  {t("columnProfile.validRows")}
                 </div>
                 <div className="text-xl font-semibold text-primary mt-1 font-mono">
                   {(profile.totalRows - profile.nullCount).toLocaleString()}
@@ -181,7 +179,7 @@ export const ColumnProfileModal = ({
                 </span>
               </div>
               <div>
-                <span className="text-muted">Tổng (Sum): </span>
+                <span className="text-muted">{t("columnProfile.sum")}</span>
                 <span className="font-mono font-medium text-primary">
                   {profile.numericStats.sum.toLocaleString()}
                 </span>
@@ -192,13 +190,13 @@ export const ColumnProfileModal = ({
           {profile.dateStats && (
             <div className="p-3 rounded-lg bg-surface border border-default flex items-center justify-between text-xs">
               <div>
-                <span className="text-muted">Sớm nhất: </span>
+                <span className="text-muted">{t("columnProfile.earliest")}</span>
                 <span className="font-mono font-medium text-primary">
                   {profile.dateStats.earliest}
                 </span>
               </div>
               <div>
-                <span className="text-muted">Muộn nhất: </span>
+                <span className="text-muted">{t("columnProfile.latest")}</span>
                 <span className="font-mono font-medium text-primary">
                   {profile.dateStats.latest}
                 </span>
@@ -210,15 +208,15 @@ export const ColumnProfileModal = ({
           {profile.topFrequencies.length > 0 && (
             <div className="space-y-2.5">
               <div className="flex items-center justify-between text-xs font-semibold text-secondary">
-                <span>{t("columnProfile.topValues", { defaultValue: "Top giá trị xuất hiện nhiều nhất" })}</span>
-                <span className="text-[11px] text-muted font-normal">Tần suất (%)</span>
+                <span>{t("columnProfile.topValues")}</span>
+                <span className="text-[11px] text-muted font-normal">{t("columnProfile.frequencyPercent")}</span>
               </div>
               <div className="space-y-2">
                 {profile.topFrequencies.map((item, idx) => (
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-mono text-primary truncate max-w-[340px]" title={item.value}>
-                        {item.value || <em className="text-muted">"" (chuỗi rỗng)</em>}
+                        {item.value || <em className="text-muted">{t("columnProfile.emptyString")}</em>}
                       </span>
                       <span className="text-muted font-mono text-[11px]">
                         {item.count.toLocaleString()} ({item.percentage}%)
@@ -245,13 +243,13 @@ export const ColumnProfileModal = ({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-primary bg-surface border border-default hover:border-strong transition-colors"
           >
             {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-            <span>{copied ? t("common.copied", "Đã sao chép!") : t("columnProfile.copyReport", "Sao chép báo cáo")}</span>
+            <span>{copied ? t("common.copied") : t("columnProfile.copyReport")}</span>
           </button>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition-colors"
           >
-            {t("common.close", "Đóng")}
+            {t("common.close")}
           </button>
         </div>
       </div>

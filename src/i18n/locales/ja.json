@@ -29,7 +29,9 @@
     "selectForApplyAll": "すべて適用に含める",
     "valuePlaceholder": "値",
     "fromPlaceholder": "開始",
-    "toPlaceholder": "終了"
+    "toPlaceholder": "終了",
+    "refresh": "テーブルデータを再読み込み",
+    "refreshLabel": "再読み込み"
   },
   "common": {
     "save": "保存",
@@ -45,7 +47,18 @@
     "noResults": "結果が見つかりません",
     "error": "エラー",
     "success": "成功",
-    "ok": "OK"
+    "ok": "OK",
+    "apply": "適用",
+    "copied": "コピーしました",
+    "deselectAll": "すべて選択解除",
+    "done": "完了",
+    "run": "実行 (Ctrl+Enter)",
+    "running": "実行中...",
+    "saved": "Excelファイルを出力しました。",
+    "selectAll": "すべて選択",
+    "clear": "クリア",
+    "refresh": "更新",
+    "untitled": "SQLコンソール"
   },
   "sidebar": {
     "connections": "接続",
@@ -202,7 +215,9 @@
       "renamePlaceholder": "ノートブック名"
     },
     "mockData": "モックデータ生成",
-    "schemaDiff": "スキーマ比較・同期"
+    "schemaDiff": "スキーマ比較・同期",
+    "teamWorkspaceSync": "チームワークスペース同期 (Git)",
+    "actions": "アクション"
   },
   "mcp": {
     "title": "MCP サーバー連携",
@@ -280,7 +295,17 @@
     "export": "接続をエクスポート",
     "import": "接続をインポート",
     "exportTitle": "接続をエクスポート",
-    "exportWarning": "エクスポートされたファイルには、データベースおよび SSH のパスワードが平文で含まれます。安全な場所に保管してください。"
+    "exportWarning": "エクスポートされたファイルには、データベースおよび SSH のパスワードが平文で含まれます。安全な場所に保管してください。",
+    "importFromProject": "プロジェクトの接続: {{folder}}",
+    "noProjectConfig": "このフォルダーにデータベース設定（.env、docker-compose.yml、prisma/schema.prisma）が見つかりません。",
+    "fileFilterConfig": "設定 / バックアップ (*.json)",
+    "fileFilterAll": "すべてのファイル",
+    "importFromDbeaver": "DBeaverから接続をインポート",
+    "importFromTableplus": "TablePlusから接続をインポート",
+    "importedConfig": "Tabularisの設定をインポートしました。",
+    "scanProjectTooltip": "プロジェクトフォルダーからデータベース設定を自動検出（.env、docker-compose、prisma）",
+    "openFromProject": "プロジェクトフォルダーから開く",
+    "importMenuTooltip": "Tabularis、DBeaver、TablePlusから接続をインポート"
   },
   "connectionAppearance": {
     "section": "外観",
@@ -306,7 +331,24 @@
     "errors": {
       "invalidEmoji": "絵文字を 1 つだけ入力してください",
       "invalidHex": "#1a2b3c のような有効な 16 進カラーを入力してください"
-    }
+    },
+    "previewLabel": "プレビュー",
+    "defaultHint": "ドライバーのデフォルトアイコンを使用しています。",
+    "emojiSelected": "選択中の絵文字",
+    "emojiHint": "下の別の絵文字をクリックすると変更できます。",
+    "removeEmoji": "クリア",
+    "safeMode": "安全レベル（セーフモード）",
+    "safeModes": {
+      "silent": "Silent（制限なし）",
+      "alert": "Alert（警告）",
+      "strict": "Strict Guard（確認必須）",
+      "readonly": "Read-Only（読み取り専用）"
+    },
+    "emojiSearch": "絵文字を検索…",
+    "iconNoResults": "一致するアイコンがありません。",
+    "iconResultsTruncated": "{{total}} 件中 {{shown}} 件を表示中 — 検索を絞り込んでください。",
+    "iconSearch": "アイコンを検索…",
+    "noPreview": "プレビューなし"
   },
   "settings": {
     "title": "設定",
@@ -454,7 +496,15 @@
       "endpointUrlDesc": "OpenAI 互換 API のベース URL です。例: https://api.groq.com/openai/v1, http://localhost:8000/v1",
       "customOpenaiModelPlaceholder": "例: llama3-70b-8192, mixtral-8x7b",
       "customOpenaiModelDesc": "OpenAI 互換サービスが提供するモデル名を入力してください。",
-      "customOpenaiModelHelp": "OpenAI 互換プロバイダの正確なモデル名を入力してください。"
+      "customOpenaiModelHelp": "OpenAI 互換プロバイダの正確なモデル名を入力してください。",
+      "activeModelsFilter": "絞り込み中: 有効なモデル {{count}} 件",
+      "modelTestFailed": "テスト失敗: {{message}}",
+      "modelTestOk": "モデルは正常に応答しました ({{ms}}ms)",
+      "showAllTooltip": "完全な一覧に戻す",
+      "showAll": "（すべて表示）",
+      "testModelTooltip": "テストプロンプトを送信してモデルの応答を確認",
+      "testingModel": "テスト中...",
+      "testModel": "モデルをテスト"
     },
     "updates": "アップデート",
     "openSourceLibraries": "オープンソースライブラリ",
@@ -626,9 +676,24 @@
       "notebookRunAll": "すべてのセルを実行",
       "categories_notebook": "ノートブック",
       "pasteImportClipboard": "クリップボードからインポート",
-      "quickNavigator": "クイックナビゲーター"
+      "quickNavigator": "クイックナビゲーター",
+      "saveGridChanges": "保留中の変更を保存"
     },
-    "aiActivity": "AI アクティビティ"
+    "aiActivity": "AI アクティビティ",
+    "detectJsonInTextColumns": "テキスト列のJSONを検出",
+    "detectJsonInTextColumnsDesc": "型指定のないテキストセルにJSONオブジェクトまたは配列が含まれる場合、JSONビューアーを開くボタンを表示します",
+    "resultColors": {
+      "title": "結果の色分け",
+      "enable": "型ごとに値を色分け",
+      "enableDesc": "クエリ結果のセルをデータ型に基づいて色分けします。",
+      "number": "数値",
+      "string": "テキスト",
+      "date": "日付 / 時刻",
+      "boolean": "真偽値",
+      "reset": "テーマの色に戻す",
+      "confirm": "確認",
+      "cancel": "キャンセル"
+    }
   },
   "update": {
     "newVersionAvailable": "新しいバージョンが利用可能",
@@ -732,7 +797,12 @@
       "prefer": "優先",
       "require": "必須",
       "verify-ca": "CAを検証",
-      "verify-full": "完全検証"
+      "verify-full": "完全検証",
+      "disabled": "無効",
+      "preferred": "優先",
+      "required": "必須",
+      "verify_ca": "CAを検証",
+      "verify_identity": "ID検証"
     },
     "advanced": "詳細設定",
     "pipesAsConcat": "接続時に sql_mode PIPES_AS_CONCAT を設定",
@@ -763,7 +833,26 @@
     "startupScriptDescription": "このデータソースへの新規接続ごとに実行される SQL です。SET / set_config（例: RLS のバイパス）などのセッション設定に使用します。複数のステートメントはセミコロンで区切ってください。",
     "startupScriptPlaceholder": "SELECT set_config('app.bypass_rls', 'on', false);",
     "scrollTabsLeft": "タブを左にスクロール",
-    "scrollTabsRight": "タブを右にスクロール"
+    "scrollTabsRight": "タブを右にスクロール",
+    "scanLocalhost": "🔍 localhost をスキャン",
+    "scanning": "スキャン中…",
+    "scanFound": "{{host}}:{{port}} で {{driver}} が見つかりました",
+    "scanNotFound": "localhost に MySQL/PostgreSQL サーバーが見つかりません。",
+    "serverRunning": "ポート {{port}} で稼働中",
+    "serverOff": "ローカルサーバーは検出されませんでした",
+    "connectionString": "接続文字列",
+    "connectionStringPlaceholder": "例: mysql://user:pass@localhost:3306/db",
+    "general": "一般",
+    "loadDatabasesHint": "「データベースを読み込む」をクリックして利用可能なデータベースを取得します。",
+    "noGeneralSettings": "このドライバーには一般設定がありません。",
+    "selectDatabasesHint": "この接続に含めるデータベースを選択してください。",
+    "sshNotAvailable": "このドライバーではSSHを利用できません。",
+    "sslCa": "CA証明書",
+    "sslCert": "クライアント証明書",
+    "sslCertificatesOptional": "証明書のパスは任意です。空欄の場合はシステムのデフォルトを使用します。",
+    "sslDescription": "安全なデータベース接続のためにSSL/TLSを設定します（任意）。",
+    "sslKey": "クライアント秘密鍵",
+    "unnamedConnection": "名前のない接続"
   },
   "sshConnections": {
     "title": "SSH 接続",
@@ -841,7 +930,13 @@
     "openReferenced": "{{table}} で参照行を開く",
     "copyAs": "形式を指定してコピー...",
     "inspectCell": "セルの値を検査 (Value Inspector)",
-    "profileColumn": "カラム統計 (プロファイル)"
+    "profileColumn": "カラム統計 (プロファイル)",
+    "newRow": "新規",
+    "columnNotEditable": "列「{{column}}」は編集できません。テーブル「{{table}}」の直接の列ではありません（エイリアスまたは計算値の可能性があります）。",
+    "pkRequiredToEdit": "この結果を編集するには、SELECT に主キー列「{{pk}}」を含めてください。",
+    "foreignKeyTooltip": "外部キー ➔ {{table}}.{{column}}",
+    "primaryKeyTooltip": "主キー",
+    "copyCsvWithHeader": "CSV（ヘッダー付き）"
   },
   "editRow": {
     "title": "行を編集",
@@ -889,6 +984,17 @@
         "countRows": "行数をカウント",
         "query": "SELECTクエリを実行",
         "copyName": "名前をコピー"
+      },
+      "commands": {
+        "formatSql": "SQLクエリを整形",
+        "newTab": "新しいタブ / クエリコンソール",
+        "openConnections": "接続を管理",
+        "openSettings": "設定を開く",
+        "pasteImport": "クリップボードから貼り付けてインポート",
+        "reopenClosedTab": "閉じたタブを再度開く",
+        "runQuery": "ステートメント / クエリを実行",
+        "showSqlSnippets": "SQLスニペットを表示",
+        "toggleSidebar": "左サイドバーを切り替え"
       }
     },
     "noTabs": "この接続に対して開いているタブはありません。",
@@ -912,15 +1018,6 @@
     "jumpToPage": "クリックでページ移動",
     "loadRowCount": "行数を読み込む",
     "executePrompt": "クエリを実行すると結果が表示されます",
-    "results": {
-      "minimize": "最小化",
-      "maximize": "最大化（エディターを隠す）",
-      "restore": "エディターを復元",
-      "close": "閉じる",
-      "detach": "別ウィンドウに切り離す",
-      "detached": "結果を別ウィンドウに切り離しました",
-      "reattach": "元に戻す"
-    },
     "split": {
       "pin": "分割表示で開く（右）",
       "unpin": "分割表示を閉じる",
@@ -931,7 +1028,11 @@
       "save": "変更を保存",
       "saveHint": "未保存の編集 — メインペインに入れ替えて保存",
       "empty": "このタブを実行すると結果がここに表示されます",
-      "tableLabel": "テーブル"
+      "tableLabel": "テーブル",
+      "splitRight": "右に分割",
+      "splitDown": "下に分割",
+      "switchToHorizontal": "横分割（左右）に切り替え",
+      "switchToVertical": "縦分割（上下）に切り替え"
     },
     "tableRunPrompt": "Run (Ctrl/Command+F5) を押してテーブルデータを読み込んでください",
     "closeTab": "タブを閉じる",
@@ -966,7 +1067,8 @@
       "empty": "一致するSQLテンプレートが見つかりません。",
       "insert": "エディタに挿入",
       "copy": "SQLをコピー",
-      "copied": "コピー完了"
+      "copied": "コピー完了",
+      "subtitle": "用意されたSQLテンプレートを選び、パラメーターを入力するか、そのままエディターに挿入します。"
     },
     "showErrorDetails": "詳細を表示",
     "hideErrorDetails": "詳細を非表示",
@@ -983,8 +1085,9 @@
     "tabSwitcher": {
       "title": "開いているタブ",
       "hint": "Ctrl+Tab",
-      "tabs": "{{count}} タブ",
-      "escHint": "Esc で閉じる"
+      "escHint": "Esc で閉じる",
+      "tabs_one": "{{count}} 個のタブ",
+      "tabs_other": "{{count}} 個のタブ"
     },
     "submitChanges": "変更を送信",
     "rollbackChanges": "変更をロールバック",
@@ -1073,7 +1176,8 @@
       "aiAnalysis": "AI 分析",
       "aiAnalysisTitle": "AI によるクエリ計画分析",
       "aiAnalyzing": "AI でクエリ計画を分析中...",
-      "aiConfigRequired": "AI プロバイダが未設定です。設定 > AI に移動してください。"
+      "aiConfigRequired": "AI プロバイダが未設定です。設定 > AI に移動してください。",
+      "diffView": "プラン差分とインデックスアドバイザー"
     },
     "notebook": {
       "addSqlCell": "SQL セルを追加",
@@ -1155,7 +1259,8 @@
           "stopOnError": "エラー時に停止を切り替え",
           "other": "ノートブックを編集"
         }
-      }
+      },
+      "exportError": "エクスポートに失敗しました"
     },
     "querySelection": {
       "title": "実行するクエリを選択",
@@ -1208,6 +1313,49 @@
       "tooltipKeyset": "主キーを軽量なクエリで確認し、新しい行が届いたときだけグリッドを再読み込みします。挿入のみ検出し、更新と削除は検出しません。",
       "tooltipSnapshot": "一定間隔でこのクエリを再実行して結果を比較します。より軽い確認には、単一の整数主キーを持つテーブルタブを使用してください。",
       "stoppedAfterErrors": "エラーが続いたためライブテールを停止しました: {{error}}"
+    },
+    "rowCount": "{{total}} 行",
+    "askAiToFix": "このエラーの修正をAIに依頼",
+    "console": {
+      "detachButton": "別ウィンドウ",
+      "detachTooltip": "コンソールと結果を別ウィンドウで開く"
+    },
+    "explainDiff": {
+      "slowQueryTooltip": "クエリが遅いです（500ms超）。クリックして実行計画を分析し、インデックスの提案を確認します。"
+    },
+    "slowQueryButton": "最適化 ({{ms}}ms)",
+    "queryHistory": {
+      "button": "履歴",
+      "tooltip": "SQLクエリ履歴 (Ctrl+H)"
+    },
+    "tablePrefix": "テーブル",
+    "transactionCommitted": "トランザクションをコミットしました。",
+    "transactionRolledBack": "トランザクションをロールバックしました。",
+    "transactionStarted": "新しいトランザクションを開始しました。",
+    "autoCommitTooltip": "オートコミット: 各ステートメントの後に自動保存",
+    "manualCommitTooltip": "手動: コミットまたはロールバックを手動で行う必要があります",
+    "beginTransactionTooltip": "トランザクションを開始 (BEGIN / START TRANSACTION)",
+    "transactionOpenTooltip": "トランザクションが開いています",
+    "commitTooltip": "変更をコミット (COMMIT;)",
+    "rollbackTooltip": "変更をロールバック (ROLLBACK;)",
+    "beginTransaction": "開始",
+    "readOnlyBlocked": "読み取り専用モードによりブロックされました",
+    "readOnlyTitle": "読み取り専用セーフモード",
+    "confirmExecute": "このステートメントを実行しますか？",
+    "safeModeTitle": "安全ガード（セーフモード）",
+    "askAiToFixHint": "このSQLクエリの診断と修正をAIに依頼",
+    "nextPage": "次へ",
+    "previousPage": "前へ",
+    "showQueryHistory": "クエリ履歴を表示",
+    "resultsTitle": "結果",
+    "results": {
+      "detach": "結果を別ウィンドウに分離",
+      "detached": "結果は別ウィンドウで開いています。",
+      "reattach": "ウィンドウを戻す",
+      "minimize": "結果を最小化",
+      "maximize": "結果を最大化",
+      "restore": "結果を元のサイズに戻す",
+      "close": "結果を閉じる"
     }
   },
   "createTable": {
@@ -1230,7 +1378,8 @@
     "nameRequired": "テーブル名は必須です",
     "colRequired": "少なくとも 1 つのカラムが必要です",
     "failCreate": "テーブルの作成に失敗しました: ",
-    "requiresExtension": "拡張機能が必要: {{ext}}"
+    "requiresExtension": "拡張機能が必要: {{ext}}",
+    "sqlPreview": "SQLプレビュー"
   },
   "schema": {
     "title": "スキーマ: {{table}}",
@@ -1240,7 +1389,8 @@
     "colNullable": "NULL 許可",
     "colKey": "キー",
     "yes": "はい",
-    "no": "いいえ"
+    "no": "いいえ",
+    "close": "閉じる"
   },
   "generateSQL": {
     "title": "生成された SQL: {{table}}",
@@ -1299,7 +1449,8 @@
     "create": "外部キーを作成",
     "cancel": "キャンセル",
     "colRequired": "ローカルカラムと参照カラムを選択してください",
-    "tableRequired": "参照テーブルを選択してください"
+    "tableRequired": "参照テーブルを選択してください",
+    "nameRequired": "外部キーの名前を入力してください。"
   },
   "healthCheck": {
     "title": "接続が失われました",
@@ -1347,7 +1498,8 @@
     "refreshSuccess": "マテリアライズドビュー「{{view}}」を更新しました",
     "refreshError": "マテリアライズドビューの更新に失敗しました: ",
     "failGetDefinition": "定義の取得に失敗しました: ",
-    "confirmAlter": "ビュー「{{view}}」を変更してもよろしいですか？"
+    "confirmAlter": "ビュー「{{view}}」を変更してもよろしいですか？",
+    "alterView": "ビューを変更"
   },
   "triggers": {
     "createTrigger": "トリガーを作成",
@@ -1435,17 +1587,33 @@
     "placeholder": "JSON を入力...",
     "format": "整形",
     "valid": "有効な JSON",
-    "invalid": "無効な JSON"
+    "invalid": "無効な JSON",
+    "mode": {
+      "code": "コード",
+      "tree": "ツリー",
+      "raw": "生データ"
+    },
+    "expand": "展開",
+    "collapse": "折りたたむ",
+    "search": "検索",
+    "copyPath": "パスをコピー",
+    "copyValue": "値をコピー",
+    "addItem": "項目を追加",
+    "removeItem": "項目を削除",
+    "diff": "差分",
+    "sideBySide": "並べて表示"
   },
   "rowEditor": {
     "title": "行を編集",
     "subtitle": "行 #{{row}}",
     "save": "変更を保存",
     "cancel": "キャンセル",
-    "enterValue": "値を入力..."
+    "enterValue": "値を入力...",
+    "resize": "サイドバーのサイズ変更"
   },
   "contextMenu": {
-    "openSidebar": "サイドバーエディタで開く"
+    "openSidebar": "サイドバーエディタで開く",
+    "openJsonEditor": "JSONエディターで開く"
   },
   "blobInput": {
     "noData": "BLOB データなし",
@@ -1553,7 +1721,10 @@
     "createFirst": "最初のグループを作成して接続を整理しましょう",
     "groupName": "グループ名",
     "dragHint": "接続をここにドラッグ",
-    "createError": "グループの作成に失敗しました"
+    "createError": "グループの作成に失敗しました",
+    "deleteError": "グループの削除に失敗しました",
+    "moveError": "接続の移動に失敗しました",
+    "renameError": "グループの名前変更に失敗しました"
   },
   "queryModal": {
     "database": "データベース",
@@ -1686,7 +1857,9 @@
       "write": "書き込み",
       "ddl": "DDL",
       "unknown": "不明"
-    }
+    },
+    "exportCsv": "CSVをエクスポート",
+    "exportJson": "JSONをエクスポート"
   },
   "aiApproval": {
     "title": "AI がデータベース書き込みを要求しています",
@@ -1755,10 +1928,47 @@
     "queryPreview": "実行予定のステートメント:",
     "waitCountdown": "安全確認のためお待ちください (残り{{seconds}}秒)...",
     "confirmExecute": "リスクを理解した上で実行する",
-    "cancel": "キャンセル"
+    "cancel": "キャンセル",
+    "confirmExecution": "確認して実行",
+    "countdownText": "{{seconds}} 秒後に確認が有効になります...",
+    "safetyGuardSubtitle": "重大なデータ損失を避けるため、実行前にステートメントをよく確認してください。",
+    "unlockedText": "ロック解除されました。ステートメントの実行を確認できます。",
+    "waiting": "待機",
+    "reasons": {
+      "drop": "DROP文はテーブルまたはデータベースの構造を完全に削除します！",
+      "truncate": "TRUNCATE文はテーブル内のすべてのデータを消去します！",
+      "deleteNoWhere": "WHERE句のないDELETE文はすべての行を削除します！",
+      "updateNoWhere": "WHERE句のないUPDATE文はすべての行を上書きします！",
+      "production": "本番（PRODUCTION）環境で直接操作しています！"
+    },
+    "onConnection": " 接続「{{name}}」で",
+    "readonlyBlocked": "[読み取り専用セーフモード] 書き込みステートメントをブロックしました{{suffix}}。この接続はデータまたは構造の変更を許可しない設定です。",
+    "strictConfirm": "[厳格ガード] データまたは構造を変更するステートメントを実行しようとしています{{suffix}}。{{reasons}}\n\n続行してもよろしいですか？",
+    "alertConfirm": "[警告セーフモード] 危険な操作を検出しました{{suffix}}:\n• {{reasons}}\n\nこのステートメントを実行してもよろしいですか？"
   },
   "cellInspector": {
-    "title": "セル値インスペクター"
+    "title": "セル値インスペクター",
+    "characters": "文字",
+    "lines": "行",
+    "notJson": "データはJSONではありません",
+    "viewJsonTree": "JSONツリーで表示",
+    "hexEmpty": "00000000  (空)",
+    "ariaLabel": "セルの詳細を確認",
+    "tabText": "テキスト / 書式",
+    "tabHex": "16進 / バイナリ",
+    "base64Detected": "Base64を検出:",
+    "urlEncodeDetected": "URLエンコードを検出:",
+    "decode": "デコード",
+    "prettifyJson": "JSONを整形",
+    "minifyJson": "JSONを圧縮",
+    "wordWrap": "折り返し",
+    "restoreTooltip": "元の値に戻す",
+    "restore": "元に戻す",
+    "searchPlaceholder": "JSON内のキーまたは値を検索...",
+    "copied": "コピーしました",
+    "copy": "コピー",
+    "saved": "セルに保存しました！",
+    "applyToCell": "セルに適用"
   },
   "queryHistory": {
     "title": "SQLクエリ履歴"
@@ -1773,7 +1983,23 @@
     "lengthRange": "文字長 (最小 - 最大)",
     "validRows": "有効データ行数",
     "topValues": "最頻出データ (Top 5)",
-    "copyReport": "レポートをコピー"
+    "copyReport": "レポートをコピー",
+    "sum": "合計: ",
+    "earliest": "最も古い: ",
+    "latest": "最も新しい: ",
+    "frequencyPercent": "頻度 (%)",
+    "report": {
+      "title": "列の統計: {{column}} ({{type}})",
+      "totalRows": "総行数",
+      "nullRows": "空の行 (NULL)",
+      "distinct": "一意の値",
+      "earliest": "最も古い",
+      "latest": "最も新しい",
+      "topValues": "最も多い値",
+      "occurrences": "{{count}} 回"
+    },
+    "characters": "文字",
+    "emptyString": "\"\"（空文字列）"
   },
   "mockData": {
     "title": "モックデータ生成",
@@ -1787,7 +2013,9 @@
     "insertBtn": "{{count}}行をテーブルに挿入",
     "inserting": "挿入中...",
     "insertSuccess": "{{table}}に{{count}}行のモックデータを正常に挿入しました！",
-    "insertFailure": "モックデータの挿入に失敗しました"
+    "insertFailure": "モックデータの挿入に失敗しました",
+    "loadError": "テーブルの列を読み込めませんでした",
+    "loadingCols": "テーブル構造を読み込み中..."
   },
   "schemaDiff": {
     "title": "スキーマ比較・同期",
@@ -1800,7 +2028,11 @@
     "visualDiff": "構造の差分",
     "migrationSql": "マイグレーションスクリプト",
     "copySql": "SQLをコピー",
-    "openEditor": "エディタで開く"
+    "openEditor": "エディタで開く",
+    "emptyPrompt": "2つの接続を選び、「比較」を押すと構造の差分を検出します。",
+    "error": "スキーマの比較に失敗しました",
+    "readingSchemas": "両方のデータベースからテーブルと列のメタデータを読み込み中...",
+    "selectBoth": "ソースとターゲットの両方の接続を選択してください。"
   },
   "teamSync": {
     "title": "Git連携チームワークスペース同期",
@@ -1863,7 +2095,34 @@
       "committed": "コミットしました。",
       "committedAndPushed": "コミットしてプッシュしました。",
       "committedNoRemote": "コミットしましたが、このリポジトリにはプッシュ先の 'origin' リモートがありません。"
-    }
+    },
+    "connectionCount": "接続 {{count}} 件",
+    "queryCount": "クエリ {{count}} 件",
+    "newConnections": "新しい接続 {{count}} 件",
+    "newQueries": "新しいクエリ {{count}} 件",
+    "skippedDuplicates": "重複 {{count}} 件をスキップ",
+    "applySuccess": "接続 {{connections}} 件とクエリ {{queries}} 件をワークスペースにインポートしました。",
+    "applyFailed": "データのインポートに失敗しました:",
+    "labelConnections": "データベース接続:",
+    "labelQueries": "保存済みクエリ:",
+    "passphrasePlaceholder": "チーム共通のマスターパスフレーズを入力...",
+    "encryptionNote": "パスワードは PBKDF2（60万ラウンド）+ AES-256-GCM で暗号化されるため、Gitリポジトリに安全にコミットできます。",
+    "passwordsStripped": "漏洩を防ぐため、すべての接続パスワードがバンドルから削除されます。",
+    "exporting": "エクスポート中...",
+    "createBundle": "同期バンドルを作成",
+    "downloadJson": "JSONファイルをダウンロード",
+    "copyJson": "JSONをコピー",
+    "pasteLabel": "バンドルファイルの内容（.tabularis-workspace.json）を貼り付け:",
+    "pastePlaceholder": "ここにJSONを貼り付け...",
+    "decryptLabel": "復号用パスフレーズ（バンドルが暗号化されている場合）:",
+    "decryptPlaceholder": "パスフレーズを入力...",
+    "conflictLabel": "重複の処理方法:",
+    "conflictMerge": "既存の項目をスキップ（現在のものを保持）",
+    "conflictOverwrite": "バンドルのデータで上書き",
+    "analyzing": "解析中...",
+    "checkBundle": "バンドルのデータを確認",
+    "bundleValid": "バンドルは有効です。マージの準備ができました:",
+    "applyNow": "今すぐ同期を適用"
   },
   "explainDiff": {
     "title": "インデックスアドバイザー（仮想インデックス分析）",
@@ -1895,5 +2154,445 @@
     "currentPlan": "現在のプラン",
     "projectedPlan": "提案インデックス適用時のプラン",
     "note": "コストは仮想インデックスを使ったデータベースのプランナーによる値です。何も作成されず、クエリも実行されません。"
+  },
+  "jsonViewer": {
+    "close": "閉じる",
+    "save": "保存"
+  },
+  "jsonCell": {
+    "expand": "インラインJSONツリーを切り替え",
+    "openViewer": "JSONビューアーを開く"
+  },
+  "textCell": {
+    "expand": "インラインテキストエディターを切り替え"
+  },
+  "textInput": {
+    "diff": "差分",
+    "sideBySide": "並べて表示"
+  },
+  "textViewer": {
+    "save": "保存"
+  },
+  "foreignKeyPicker": {
+    "backToPicker": "一覧に戻る",
+    "columnNotFound": "{{table}} に列 {{column}} が見つかりません",
+    "manualButton": "手入力",
+    "manualLabel": "値を直接入力:",
+    "noMatch": "一致するレコードがありません。",
+    "searchPlaceholder": "IDまたは名前で検索...",
+    "setNull": "NULLにする",
+    "totalCount": "{{count}} 件のレコード",
+    "useManual": "値を手入力"
+  },
+  "highlight": {
+    "addFirstRule": "最初のルールを追加",
+    "addRule": "ルールを追加",
+    "buttonLabel": "ハイライト",
+    "buttonTitle": "ハイライトルール",
+    "clearAll": "すべて削除",
+    "color": "色:",
+    "column": "列",
+    "emptyDesc": "ルールを作成して、失敗した注文、マイナス残高、重要なステータス、NULLデータをすぐに見つけられます。",
+    "emptyTitle": "ハイライトルールはまだありません",
+    "operator": "条件",
+    "subtitle": "列の値の条件に基づいて、行またはセルの背景色を自動的に変更します。",
+    "target": "適用範囲",
+    "targetCell": "セルのみ",
+    "targetRow": "行全体",
+    "title": "条件付きハイライトルール",
+    "value": "値",
+    "operators": {
+      "eq": "= (等しい)",
+      "neq": "≠ (等しくない)",
+      "gt": "> (より大きい)",
+      "gte": "≥ (以上)",
+      "lt": "< (より小さい)",
+      "lte": "≤ (以下)",
+      "contains": "含む",
+      "notContains": "含まない",
+      "startsWith": "で始まる",
+      "endsWith": "で終わる",
+      "isNull": "NULLである",
+      "isNotNull": "NULLでない"
+    },
+    "valuePlaceholder": "例: failed, 0, admin...",
+    "colors": {
+      "red": "赤",
+      "green": "緑",
+      "amber": "琥珀",
+      "blue": "青",
+      "purple": "紫",
+      "rose": "ローズ",
+      "emerald": "エメラルド",
+      "indigo": "藍色",
+      "cyan": "シアン",
+      "gray": "グレー"
+    }
+  },
+  "projectScanner": {
+    "confirmImport": "{{count}} 件の接続を Tabularis に追加",
+    "foundCount": "一覧に追加できる接続が {{count}} 件見つかりました。",
+    "importError": "接続の保存に失敗しました: {{error}}",
+    "importSuccess": "{{count}} 件の接続を Tabularis にインポートしました。",
+    "modalTitle": "プロジェクトから接続をインポート",
+    "selectedCount": "選択済み: {{selected}} / {{total}}",
+    "connectionNamePlaceholder": "接続名",
+    "passwordDetected": "✓ パスワードを検出",
+    "importing": "インポート中..."
+  },
+  "queryHistoryModal": {
+    "subtitle": "実行したSQLステートメントを検索、コピー、再実行できます",
+    "confirmClear": "すべて削除しますか？",
+    "deleteAll": "すべて削除",
+    "cancel": "キャンセル",
+    "clearHistoryTooltip": "履歴をすべて削除",
+    "clearHistory": "履歴を消去",
+    "searchPlaceholder": "SQL、テーブル名、データベース名で検索...",
+    "filterAll": "すべて",
+    "noResults": "一致するクエリが見つかりません",
+    "empty": "保存された履歴はまだありません",
+    "emptyHint": "コンソールでSQLを実行するかテーブルを開くと、ここに自動的に記録されます。",
+    "rowsAffectedSuffix": " 行に影響",
+    "deleteEntry": "この項目を削除",
+    "copied": "コピーしました",
+    "copy": "コピー",
+    "insertTooltip": "このステートメントをエディターのカーソル位置に挿入",
+    "insert": "エディターに挿入",
+    "runTooltip": "このステートメントをすぐに実行",
+    "run": "今すぐ実行",
+    "success": "成功",
+    "error": "エラー"
+  },
+  "schemaDiffModal": {
+    "columnsDiffer": "{{count}} 列が異なります",
+    "sourceVsTarget": "ソース: {{source}} / ターゲット: {{target}}",
+    "schemaPlaceholder": "スキーマ（任意、例: public）",
+    "identicalTables": "同一のテーブル",
+    "sourceOnly": "ソースのみ",
+    "withDifferences": "列に差異あり",
+    "targetOnly": "ターゲットのみ",
+    "missingInTarget": "ターゲットに存在しません（+ 新規作成）",
+    "identical": "同一",
+    "missingColumn": "+ 不足している列:",
+    "extraColumn": "- ターゲットにのみ存在:",
+    "typeMismatch": "~ 型が異なります:"
+  },
+  "sqlTemplatesModal": {
+    "fillTooltip": "パラメーターをすばやく入力（テーブル、列、条件など）",
+    "collapse": "折りたたむ",
+    "fillParams": "パラメーターを入力",
+    "customized": "カスタマイズ済み",
+    "restoreTooltip": "元のテンプレートに戻す",
+    "insertTooltip": "このSQLをエディターのカーソル位置に挿入",
+    "insert": "コードに挿入",
+    "quickCustomize": "テンプレートの値をすばやくカスタマイズ:",
+    "restoreDefaults": "デフォルトに戻す",
+    "copied": "コピーしました",
+    "copySql": "SQLをコピー"
+  },
+  "resultsWindow": {
+    "rowCount": "{{count}} 行",
+    "runTooltip": "クエリを実行 (Ctrl + Enter)",
+    "templatesTooltip": "用意されたSQLテンプレートとスニペット (Ctrl + J)",
+    "templates": "SQLテンプレート",
+    "showBothTooltip": "コンソールと結果の両方を表示",
+    "both": "両方",
+    "consoleOnlyTooltip": "SQLコンソールのみ表示",
+    "resultsOnlyTooltip": "結果テーブルのみ表示",
+    "reattachTooltip": "メインウィンドウに戻す",
+    "reattach": "戻す",
+    "resizeTooltip": "ドラッグしてコンソールと結果のサイズを調整",
+    "results": "結果"
+  },
+  "schemaDiagram": {
+    "exportTooltip": "ER図をエクスポート",
+    "exportPng": "PNG画像をエクスポート (.png)",
+    "exportSvg": "SVGベクターをエクスポート (.svg)"
+  },
+  "visualQuery": {
+    "addTableTooltip": "クエリデザインキャンバスにテーブルを追加",
+    "addTable": "+ ビジュアルクエリにテーブルを追加...",
+    "title": "ビジュアルクエリ",
+    "emptyHint": "👈 左のテーブル一覧からテーブルをドラッグしてここにドロップするか、下から選択して、JOINとフィルターの作成を始めましょう。",
+    "pickTable": "+ キャンバスに追加するテーブルを選択..."
+  },
+  "aiChat": {
+    "defaultTitle": "新しいチャット",
+    "suggestions": {
+      "latestRows": "テーブルから最新の10件を取得するSQLを書いて: ",
+      "optimize": "次のクエリを最適化して説明して:\n",
+      "explainColumns": "次のテーブルの列の構造と意味を説明して: ",
+      "toPostgres": "次のSQLをPostgreSQLに変換して:\n"
+    },
+    "copied": "コピーしました",
+    "copy": "コピー",
+    "insert": "挿入",
+    "runNow": "今すぐ実行",
+    "configureInSettings": "設定でAIを構成",
+    "readingDbWithCount": "DB全体を読み取り中（{{count}} テーブル）",
+    "insertTooltip": "コンソールの末尾に追加（既存のSQLは保持）",
+    "openConnectionToInsert": "SQLを挿入するには接続を開いてください",
+    "runTooltip": "コンソールに挿入してすぐに実行",
+    "openConnectionToRun": "SQLを実行するには接続を開いてください",
+    "errorNeedConnectionInsert": "SQLをエディターに挿入する前に接続を開いてください。",
+    "errorNeedConnectionRun": "SQLを実行する前に接続を開いてください。",
+    "errorNoProvider": "AIプロバイダーが構成されていません。設定 › AI を開いてください。",
+    "emptyResponse": "_(返された内容がありません)_",
+    "stopped": "_(停止しました)_",
+    "conversations": "会話一覧",
+    "notConfigured": "未構成",
+    "newConversation": "新しい会話",
+    "clearConversation": "この会話の内容を消去",
+    "saveName": "名前を保存",
+    "rename": "名前を変更",
+    "deleteConversation": "会話を削除",
+    "pickModel": "モデルを選択…",
+    "searchModel": "モデルを検索…",
+    "noModels": "モデルがありません",
+    "reloadModels": "モデル一覧を再読み込み",
+    "schemaToggleTooltip": "AIにすべてのテーブルとデータベース構造を読み取らせる",
+    "readingDb": "DB全体を読み取り中",
+    "noSchema": "DBスキーマを送信しない",
+    "refreshSchema": "DBスキーマを更新",
+    "askAnything": "AIに何でも質問してください。",
+    "copyMessage": "メッセージをコピー",
+    "answering": "回答中…",
+    "copyError": "エラーメッセージをコピー",
+    "inputPlaceholder": "メッセージを入力…（Enterで送信、Shift+Enterで改行）",
+    "stop": "回答を停止",
+    "send": "送信",
+    "close": "閉じる"
+  },
+  "columnDetails": {
+    "types": {
+      "maxChars": "文字列（最大 {{max}} 文字）",
+      "text": "文字列（テキスト）",
+      "boolean": "真偽値（true/false または 0/1）",
+      "bigint": "64ビット整数（BIGINT）",
+      "smallint": "小さい整数（SMALLINT/TINYINT）",
+      "integer": "32ビット整数（INTEGER）",
+      "decimal": "高精度の小数（DECIMAL）",
+      "float": "浮動小数点数（FLOAT/DOUBLE）",
+      "datetime": "日付と時刻（DATETIME/TIMESTAMP）",
+      "date": "日付（DATE: YYYY-MM-DD）",
+      "time": "時刻（TIME: HH:MM:SS）",
+      "json": "JSONデータ構造",
+      "blob": "バイナリデータ（BLOB）",
+      "uuid": "一意識別子（UUID）",
+      "other": "データ型: {{type}}"
+    },
+    "primaryKey": "🔑 主キー",
+    "foreignKey": "🔗 外部キー ➔ 参照先: {{table}}.{{column}}",
+    "notNull": "• 制約: 必須（NOT NULL）",
+    "nullable": "• 制約: NULLを許可",
+    "autoIncrement": "• 自動採番（AUTO_INCREMENT）",
+    "defaultValue": "• デフォルト: {{value}}",
+    "spec": "• 仕様: {{description}}"
+  },
+  "aiPrompts": {
+    "fixSqlError": "次のSQLクエリはデータベースでの実行時にエラーになりました:\n\n```sql\n{{query}}\n```\n\nデータベースエンジンからのエラーメッセージ:\n```\n{{error}}\n```\n\nエラーの原因を説明し、修正済みの完全で最適化された正確なSQL文を示してください。"
+  },
+  "sqlSnippets": {
+    "docs": {
+      "sel": "1. SELECT - テーブルから読み取る列を選択\nSELECT文をすばやく入力",
+      "select": "1. SELECT - SELECT句で列を選択",
+      "sc": "SELECT COUNT(*) - 行数を数える",
+      "from": "2. FROM - データの取得元テーブル",
+      "join": "2. JOIN - FROM句でテーブルを結合",
+      "leftjoin": "2. LEFT JOIN - 左テーブルのすべての行を保持",
+      "rightjoin": "2. RIGHT JOIN - 右テーブルのすべての行を保持",
+      "where": "3. WHERE - 行を絞り込む",
+      "groupby": "4. GROUP BY - データをグループ化",
+      "having": "5. HAVING - グループ化後にグループを絞り込む",
+      "orderby": "6. ORDER BY - 結果を並べ替える",
+      "limit": "7. LIMIT / OFFSET - データをページ分割",
+      "ins": "INSERT INTO - テーブルに新しいレコードを追加",
+      "upd": "UPDATE ... SET ... WHERE - データを更新",
+      "del": "DELETE FROM ... WHERE - レコードを削除",
+      "cte": "WITH (CTE) - 共通テーブル式（一時的な名前付き結果）",
+      "case": "CASE - SQLの条件式",
+      "query": "開発者がクエリを書く順序:\n1. SELECT（読み取る列）\n2. FROM と JOIN（取得元テーブル）\n3. WHERE（行の絞り込み）\n4. GROUP BY（グループ化）\n5. HAVING（グループの絞り込み）\n6. ORDER BY（並べ替え）\n7. LIMIT / OFFSET（ページ分割）",
+      "fullquery": "開発者が書く順序に沿った完全なSQLクエリのテンプレート"
+    }
+  },
+  "autocomplete": {
+    "pressEnterTable": "Enterキーでテーブル名をステートメントに挿入します。",
+    "noColumns": "列がないか、読み込み中です...",
+    "columnList": "列一覧 ({{count}}):",
+    "tableEntry": "- テーブル: `{{table}}` ({{type}})",
+    "belongsTo": "所属:",
+    "tableMissing": "⚠️ テーブル「{{name}}」は現在のデータベースに存在しません。",
+    "columnMissingInTable": "⚠️ 列「{{column}}」はテーブル「{{table}}」に存在しません。",
+    "columnMissingInTables": "⚠️ 列「{{column}}」は選択したテーブル（{{tables}}）に存在しません。"
+  },
+  "sqlTemplates": {
+    "items": {
+      "sel-from-where": {
+        "description": "フィルター条件付きの基本的なクエリ"
+      },
+      "sel-count-group": {
+        "description": "件数と合計値をグループ集計"
+      },
+      "sel-group-having": {
+        "description": "グループに対する条件付きの集計"
+      },
+      "sel-pagination-limit": {
+        "name": "SELECT ページ分割 (LIMIT / OFFSET)",
+        "description": "ページサイズでデータをページ分割"
+      },
+      "sel-pagination-keyset": {
+        "name": "SELECT キーセットページ分割（カーソル・高速）",
+        "description": "OFFSETを使わない、数百万行の大きなテーブル向けの高速ページ分割"
+      },
+      "sel-text-search": {
+        "name": "SELECT テキスト検索 (ILIKE / LIKE)",
+        "description": "大文字小文字を区別しないテキスト検索"
+      },
+      "sel-time-series": {
+        "name": "SELECT 時間別の集計 (DATE_TRUNC)",
+        "description": "売上と件数を日別または月別に集計"
+      },
+      "join-inner": {
+        "name": "SELECT ... INNER JOIN ... ON（2つのテーブルを結合）",
+        "description": "外部キーとフィルター条件で2つのテーブルを結合"
+      },
+      "join-orphans": {
+        "name": "SELECT ... LEFT JOIN ... ON（孤立レコードの検索）",
+        "description": "関連行のないレコードを検索（例: 一度も注文していない顧客）"
+      },
+      "join-multi": {
+        "name": "3テーブルのJOIN（注文・顧客・明細）",
+        "description": "ECモデルで複数のテーブルを連鎖して結合"
+      },
+      "join-self": {
+        "name": "SELF JOIN（親子の階層構造）",
+        "description": "自己結合（上司 / 部下、親 / 子フォルダーなど）"
+      },
+      "ins-values": {
+        "description": "テーブルに新しい行を挿入"
+      },
+      "ins-bulk": {
+        "name": "INSERT INTO 複数行（一括挿入）",
+        "description": "1つのステートメントで多数のレコードを挿入"
+      },
+      "ins-select": {
+        "name": "INSERT INTO ... SELECT（データのコピー）",
+        "description": "別のテーブルやアーカイブにデータをロード"
+      },
+      "dml-upsert-pg": {
+        "description": "存在しなければ挿入、キーが重複する場合は更新"
+      },
+      "dml-upsert-mysql": {
+        "description": "MySQL / MariaDB の挿入または更新構文"
+      },
+      "upd-where": {
+        "name": "UPDATE ... SET ... WHERE（安全）",
+        "description": "保護的なWHERE句付きでデータを更新"
+      },
+      "upd-join": {
+        "name": "別テーブルとのJOINによるUPDATE",
+        "description": "関連テーブルに基づいて値を同期または更新"
+      },
+      "del-where": {
+        "name": "DELETE FROM ... WHERE（安全）",
+        "description": "明示的なWHERE句で安全にデータを削除"
+      },
+      "cte-with": {
+        "name": "CTE (WITH ... AS) 一時テーブル",
+        "description": "CTEで複雑なクエリを読みやすく整理"
+      },
+      "cte-recursive": {
+        "name": "再帰CTE（カテゴリツリー）",
+        "description": "任意の深さの親子ツリーを走査"
+      },
+      "window-rank": {
+        "name": "ウィンドウ関数 - ランキング (ROW_NUMBER)",
+        "description": "グループごとに行番号を付けて上位Nをランキング"
+      },
+      "window-running-total": {
+        "name": "ウィンドウ関数 - 累計 (Running Total)",
+        "description": "時系列に沿った累計を計算"
+      },
+      "case-when": {
+        "name": "CASE WHEN による複数条件の分類",
+        "description": "SELECT内の条件分岐式"
+      },
+      "create-table": {
+        "name": "CREATE TABLE（標準の完全版）",
+        "description": "カスタマイズ可能な列定義で新しいテーブルを作成"
+      },
+      "create-table-fk": {
+        "name": "外部キー付き CREATE TABLE",
+        "description": "外部キーと ON DELETE CASCADE を持つ関連テーブルを作成"
+      },
+      "create-index": {
+        "description": "検索を高速化する単一または複合インデックスを作成"
+      },
+      "alter-add-column": {
+        "name": "ALTER TABLE 新しい列の追加",
+        "description": "既存のテーブルに新しい列を安全に追加"
+      },
+      "create-view": {
+        "name": "CREATE OR REPLACE VIEW（ビュー）",
+        "description": "複雑なクエリ用の再利用可能なビューを作成"
+      },
+      "txn-safe": {
+        "name": "安全なトランザクション (BEGIN ... COMMIT ... ROLLBACK)",
+        "description": "ACIDのデータ整合性を保つトランザクションブロック"
+      }
+    },
+    "params": {
+      "ten_bang": "テーブル名",
+      "danh_sach_cot": "列の一覧",
+      "dieu_kien_loc_where": "フィルター条件 (WHERE)",
+      "cot_gom_nhom": "グループ化する列",
+      "cot_tinh_tong": "合計する列",
+      "so_luong_toi_thieu": "最小件数",
+      "so_dong_limit": "行数 (LIMIT)",
+      "vi_tri_bat_dau_offset": "開始位置 (OFFSET)",
+      "id_moc_tiep_theo": "次のカーソルID",
+      "so_dong": "行数",
+      "cot_tim_kiem": "検索する列",
+      "tu_khoa_tim_kiem": "検索キーワード",
+      "cot_ngay_thang": "日付の列",
+      "bang_a_chinh": "テーブルA（メイン）",
+      "bang_b_lien_ket": "テーブルB（関連）",
+      "khoa_ngoai_o_bang_a": "テーブルAの外部キー",
+      "khoa_chinh_o_bang_b": "テーブルBの主キー",
+      "bang_cha": "親テーブル",
+      "bang_con": "子テーブル",
+      "cot_khoa_ngoai_o_bang_con": "子テーブルの外部キー列",
+      "cot_id_cap_tren": "親IDの列",
+      "gia_tri": "値",
+      "bang_dich_luu_tru": "ターゲットテーブル（アーカイブ）",
+      "bang_nguon": "ソーステーブル",
+      "cot_khoa_trung_pk_unique": "競合キー列 (PK/Unique)",
+      "cot_gia_tri_cap_nhat": "更新する列と値",
+      "bang_can_cap_nhat": "更新するテーブル",
+      "bang_nguon_du_lieu": "データソーステーブル",
+      "dieu_kien_xoa_where": "削除条件 (WHERE)",
+      "ten_bang_moi": "新しいテーブル名",
+      "dinh_nghia_cac_cot_thuoc_tinh": "列の定義と属性",
+      "ten_bang_con_moi": "新しい子テーブル名",
+      "bang_cha_lien_ket": "関連する親テーブル",
+      "ten_cot_khoa_ngoai": "外部キー列名",
+      "ten_index": "インデックス名",
+      "cac_cot_danh_index": "インデックスを作成する列",
+      "ten_cot_moi": "新しい列名",
+      "kieu_du_lieu_mac_dinh": "データ型とデフォルト値",
+      "ten_view": "ビュー名"
+    },
+    "categories": {
+      "all": "すべて",
+      "select": "SELECT と分析",
+      "join": "JOIN とリレーション",
+      "ddl": "テーブル作成 (DDL)",
+      "transaction": "安全なトランザクション",
+      "dml": "INSERT / UPDATE / DELETE",
+      "advanced": "CTE と Window"
+    }
+  },
+  "general": {
+    "error": "エラー"
   }
 }

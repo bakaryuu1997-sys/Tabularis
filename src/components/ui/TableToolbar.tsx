@@ -743,7 +743,7 @@ const TableToolbarInternal = ({
           <button
             type="button"
             onClick={() => setIsHighlightModalOpen(true)}
-            title={t("highlight.buttonTitle", { defaultValue: "Quy tắc tô màu dữ liệu (Highlight Rules)" })}
+            title={t("highlight.buttonTitle")}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border transition-colors shrink-0 ${
               activeHighlightCount > 0
                 ? "bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25"
@@ -751,7 +751,7 @@ const TableToolbarInternal = ({
             }`}
           >
             <Highlighter size={12} className={activeHighlightCount > 0 ? "text-amber-400" : ""} />
-            <span>{t("highlight.buttonLabel", { defaultValue: "Tô màu" })}</span>
+            <span>{t("highlight.buttonLabel")}</span>
             {activeHighlightCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-amber-500/25 text-amber-200 text-[10px] font-semibold">
                 {activeHighlightCount}
@@ -773,11 +773,11 @@ const TableToolbarInternal = ({
             }
           }}
           disabled={isLoading}
-          title={t("toolbar.refresh", { defaultValue: "Tải lại dữ liệu bảng (Refresh)" })}
+          title={t("toolbar.refresh")}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border border-default text-muted hover:text-primary hover:bg-surface-secondary transition-colors shrink-0 disabled:opacity-50"
         >
           <RotateCcw size={12} className={isLoading ? "animate-spin text-blue-400" : ""} />
-          <span>{t("toolbar.refreshLabel", { defaultValue: "Tải lại" })}</span>
+          <span>{t("toolbar.refreshLabel")}</span>
         </button>
 
 {/* Apply button — commits WHERE/ORDER BY/LIMIT explicitly (simple mode).

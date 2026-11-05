@@ -1041,7 +1041,7 @@ export const DataGrid = React.memo(
                   title={tooltipText}
                 >
                   {isPk && (
-                    <span title="Khóa chính (Primary Key)" className="inline-flex items-center">
+                    <span title={t("dataGrid.primaryKeyTooltip")} className="inline-flex items-center">
                       <Key
                         size={12}
                         className="text-amber-400 shrink-0"
@@ -1049,7 +1049,7 @@ export const DataGrid = React.memo(
                     </span>
                   )}
                   {fk && (
-                    <span title={`Khóa ngoại ➔ ${fk.ref_table}.${fk.ref_column}`} className="inline-flex items-center">
+                    <span title={t("dataGrid.foreignKeyTooltip", { table: fk.ref_table, column: fk.ref_column })} className="inline-flex items-center">
                       <Link2
                         size={12}
                         className="text-cyan-400 shrink-0"
@@ -1920,7 +1920,7 @@ export const DataGrid = React.memo(
               });
 
               menuItems.push({
-                label: t("dataGrid.copyAs", { defaultValue: "Sao chép dưới dạng..." }),
+                label: t("dataGrid.copyAs"),
                 icon: Copy,
                 submenu: [
                   {
@@ -1948,7 +1948,7 @@ export const DataGrid = React.memo(
                     },
                   },
                   {
-                    label: "CSV (kèm Header)",
+                    label: t("dataGrid.copyCsvWithHeader"),
                     action: async () => {
                       const rows =
                         selectedRowIndices.size > 0
@@ -1988,7 +1988,7 @@ export const DataGrid = React.memo(
               });
 
               menuItems.push({
-                label: t("dataGrid.inspectCell", { defaultValue: "Kiểm tra chi tiết ô (Value Inspector)" }),
+                label: t("dataGrid.inspectCell"),
                 icon: Eye,
                 action: () => {
                   setInspectorCell({
@@ -2064,7 +2064,7 @@ export const DataGrid = React.memo(
               onClose={() => setHeaderContextMenu(null)}
               items={[
                 {
-                  label: t("dataGrid.profileColumn", { defaultValue: "Thống kê cột (Column Profile)" }),
+                  label: t("dataGrid.profileColumn"),
                   icon: BarChart2,
                   action: () => {
                     const colName = headerContextMenu.colName;

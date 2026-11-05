@@ -1,4 +1,5 @@
 import type { Monaco } from "@monaco-editor/react";
+import { translate } from "../i18n/translate";
 import type { editor as MonacoEditorNs, Position as MonacoPosition } from "monaco-editor";
 import { invoke } from "@tauri-apps/api/core";
 import type { TableInfo } from "../contexts/DatabaseContext";
@@ -482,7 +483,7 @@ export const registerSqlAutocomplete = (
         kind: monaco.languages.CompletionItemKind.Class,
         detail: t.schema ? `Table (${t.schema})` : "Table",
         documentation: {
-          value: `### 📁 Table: \`${t.name}\`${t.schema ? `\n*Database/Schema*: \`${t.schema}\`` : ''}\n\n*Nhấn Enter để chèn tên bảng vào câu lệnh.*`,
+          value: `### 📁 Table: \`${t.name}\`${t.schema ? `\n*Database/Schema*: \`${t.schema}\`` : ''}\n\n*${translate("autocomplete.pressEnterTable")}*`,
         },
         ...buildIdentifierInsert(t.name, range),
         sortText: `1_${t.name}`,
@@ -576,7 +577,7 @@ export const registerSqlHover = (
         const columns = await getTableColumns(connectionId, matchedTable.name, matchedTable.schema ?? schema);
         const colList = columns.length > 0
           ? columns.map(c => `- \`${c.label}\`: *${c.detail}*`).join("\n")
-          : "_Không có cột nào hoặc đang tải..._";
+          : `_${translate("autocomplete.noColumns")}_`;
 
         return {
           range: {
@@ -587,7 +588,7 @@ export const registerSqlHover = (
           },
           contents: [
             { value: `### 📁 **Table**: \`${matchedTable.name}\`${matchedTable.schema ? ` (Schema: \`${matchedTable.schema}\`)` : ""}` },
-            { value: `**Danh sách cột (${columns.length}):**\n${colList}` },
+            { value: `**${translate("autocomplete.columnList", { count: columns.length })}**\n${colList}` },
           ],
         };
       }
@@ -604,7 +605,7 @@ export const registerSqlHover = (
       }
 
       if (matchedCols.length > 0) {
-        const info = matchedCols.map(m => `- Bảng: \`${m.table}\` (${m.type})`).join("\n");
+        const info = matchedCols.map(m => translate("autocomplete.tableEntry", { table: m.table, type: m.type })).join("\n");
         return {
           range: {
             startLineNumber: position.lineNumber,
@@ -614,7 +615,7 @@ export const registerSqlHover = (
           },
           contents: [
             { value: `### 🔹 **Column**: \`${word.word}\`` },
-            { value: `**Thuộc về:**\n${info}` },
+            { value: `**${translate("autocomplete.belongsTo")}**\n${info}` },
           ],
         };
       }
@@ -726,7 +727,7 @@ export function validateSqlSchema(
       const endPos = model.getPositionAt(occ.endIndex);
       markers.push({
         severity: markerSeverity,
-        message: `⚠️ Bảng "${occ.name}" không tồn tại trong cơ sở dữ liệu hiện tại.`,
+        message: translate("autocomplete.tableMissing", { name: occ.name }),
         startLineNumber: startPos.lineNumber,
         startColumn: startPos.column,
         endLineNumber: endPos.lineNumber,
@@ -775,7 +776,7 @@ export function validateSqlSchema(
               const endPos = model.getPositionAt(colRef.endIndex);
               colMarkers.push({
                 severity: markerSeverity,
-                message: `⚠️ Cột "${colRef.name}" không tồn tại trong bảng "${targetTableRef?.name || colRef.tableOrAlias}".`,
+                message: translate("autocomplete.columnMissingInTable", { column: colRef.name, table: targetTableRef?.name || colRef.tableOrAlias }),
                 startLineNumber: startPos.lineNumber,
                 startColumn: startPos.column,
                 endLineNumber: endPos.lineNumber,
@@ -792,7 +793,7 @@ export function validateSqlSchema(
                 const endPos = model.getPositionAt(colRef.endIndex);
                 colMarkers.push({
                   severity: markerSeverity,
-                  message: `⚠️ Cột "${colRef.name}" không tồn tại trong bảng "${validTablesInQuery[0].name}".`,
+                  message: translate("autocomplete.columnMissingInTable", { column: colRef.name, table: validTablesInQuery[0].name }),
                   startLineNumber: startPos.lineNumber,
                   startColumn: startPos.column,
                   endLineNumber: endPos.lineNumber,
@@ -812,7 +813,7 @@ export function validateSqlSchema(
                   const tableNamesList = validTablesInQuery.map(t => t.name).join(", ");
                   colMarkers.push({
                     severity: markerSeverity,
-                    message: `⚠️ Cột "${colRef.name}" không tồn tại trong các bảng đã chọn (${tableNamesList}).`,
+                    message: translate("autocomplete.columnMissingInTables", { column: colRef.name, tables: tableNamesList }),
                     startLineNumber: startPos.lineNumber,
                     startColumn: startPos.column,
                     endLineNumber: endPos.lineNumber,

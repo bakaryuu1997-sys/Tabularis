@@ -5,19 +5,19 @@ import type { TableColumn, ForeignKey } from "../../src/types/editor";
 describe("columnDetails", () => {
   describe("describeDataTypeValidation", () => {
     it("describes character types with maximum length", () => {
-      expect(describeDataTypeValidation("varchar(255)", 255)).toContain("Tối đa 255 ký tự");
-      expect(describeDataTypeValidation("char(8)", 8)).toContain("Tối đa 8 ký tự");
+      expect(describeDataTypeValidation("varchar(255)", 255)).toContain("up to 255 characters");
+      expect(describeDataTypeValidation("char(8)", 8)).toContain("up to 8 characters");
     });
 
     it("describes numeric types correctly", () => {
-      expect(describeDataTypeValidation("int")).toContain("Số nguyên 32-bit");
-      expect(describeDataTypeValidation("bigint")).toContain("Số nguyên lớn 64-bit");
-      expect(describeDataTypeValidation("decimal(10,2)")).toContain("Số thập phân");
+      expect(describeDataTypeValidation("int")).toContain("32-bit integer");
+      expect(describeDataTypeValidation("bigint")).toContain("64-bit big integer");
+      expect(describeDataTypeValidation("decimal(10,2)")).toContain("High-precision decimal");
     });
 
     it("describes boolean and date types", () => {
       expect(describeDataTypeValidation("tinyint(1)")).toContain("Boolean");
-      expect(describeDataTypeValidation("datetime")).toContain("Ngày & Giờ");
+      expect(describeDataTypeValidation("datetime")).toContain("Date & time");
       expect(describeDataTypeValidation("json")).toContain("JSON");
     });
   });
@@ -32,12 +32,12 @@ describe("columnDetails", () => {
         is_auto_increment: true,
       };
 
-      const tooltip = buildColumnTooltip("id", meta, true, undefined, "Click để sắp xếp");
+      const tooltip = buildColumnTooltip("id", meta, true, undefined, "Click to sort");
       expect(tooltip).toContain("id [BIGINT]");
-      expect(tooltip).toContain("🔑 Khóa chính (Primary Key)");
-      expect(tooltip).toContain("Bắt buộc (NOT NULL)");
-      expect(tooltip).toContain("Tự động tăng (AUTO_INCREMENT)");
-      expect(tooltip).toContain("Click để sắp xếp");
+      expect(tooltip).toContain("🔑 Primary key");
+      expect(tooltip).toContain("required (NOT NULL)");
+      expect(tooltip).toContain("Auto-increment (AUTO_INCREMENT)");
+      expect(tooltip).toContain("Click to sort");
     });
 
     it("builds detailed tooltip for a FK column with reference", () => {
@@ -57,9 +57,9 @@ describe("columnDetails", () => {
 
       const tooltip = buildColumnTooltip("customer_id", meta, false, fk);
       expect(tooltip).toContain("customer_id [VARCHAR(36)]");
-      expect(tooltip).toContain("🔗 Khóa ngoại ➔ Tham chiếu tới: customers.id");
-      expect(tooltip).toContain("Cho phép NULL");
-      expect(tooltip).toContain("Tối đa 36 ký tự");
+      expect(tooltip).toContain("🔗 Foreign key ➔ references: customers.id");
+      expect(tooltip).toContain("allows NULL");
+      expect(tooltip).toContain("up to 36 characters");
     });
   });
 });

@@ -116,7 +116,7 @@ export function QueryHistoryModal({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold text-primary">
-                  {t("queryHistory.title", { defaultValue: "Lịch sử truy vấn SQL" })}
+                  {t("queryHistory.title")}
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-purple-900/30 text-purple-300 border border-purple-800/40">
                   Ctrl+H
@@ -126,7 +126,7 @@ export function QueryHistoryModal({
                 </span>
               </div>
               <p className="text-xs text-muted mt-0.5">
-                Tìm kiếm, chép lại hoặc chạy ngay các câu lệnh SQL đã thực thi
+                {t("queryHistoryModal.subtitle")}
               </p>
             </div>
           </div>
@@ -135,7 +135,7 @@ export function QueryHistoryModal({
             {entries.length > 0 && (
               confirmClear ? (
                 <div className="flex items-center gap-1.5 bg-red-950/40 border border-red-800/50 rounded px-2 py-1">
-                  <span className="text-xs text-red-300">Xác nhận xóa?</span>
+                  <span className="text-xs text-red-300">{t("queryHistoryModal.confirmClear")}</span>
                   <button
                     onClick={async () => {
                       await clearHistory();
@@ -143,23 +143,23 @@ export function QueryHistoryModal({
                     }}
                     className="text-xs px-2 py-0.5 bg-red-600 hover:bg-red-500 text-white rounded font-medium"
                   >
-                    Xóa hết
+                    {t("queryHistoryModal.deleteAll")}
                   </button>
                   <button
                     onClick={() => setConfirmClear(false)}
                     className="text-xs px-1.5 py-0.5 hover:text-white text-muted"
                   >
-                    Hủy
+                    {t("queryHistoryModal.cancel")}
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setConfirmClear(true)}
                   className="flex items-center gap-1 text-xs text-muted hover:text-red-400 p-1.5 rounded hover:bg-surface-secondary transition-colors"
-                  title="Xóa toàn bộ lịch sử"
+                  title={t("queryHistoryModal.clearHistoryTooltip")}
                 >
                   <Trash2 size={14} />
-                  <span>Xóa lịch sử</span>
+                  <span>{t("queryHistoryModal.clearHistory")}</span>
                 </button>
               )
             )}
@@ -184,7 +184,7 @@ export function QueryHistoryModal({
               autoFocus
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm theo lệnh SQL, tên bảng, database..."
+              placeholder={t("queryHistoryModal.searchPlaceholder")}
               className="w-full pl-9 pr-3 py-1.5 bg-surface-secondary border border-strong rounded-lg text-xs text-primary placeholder-muted focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
           </div>
@@ -198,7 +198,7 @@ export function QueryHistoryModal({
                   : "text-muted hover:text-primary"
               }`}
             >
-              Tất cả ({entries.length})
+              {t("queryHistoryModal.filterAll")} ({entries.length})
             </button>
             <button
               onClick={() => setFilterStatus("success")}
@@ -208,7 +208,7 @@ export function QueryHistoryModal({
                   : "text-muted hover:text-primary"
               }`}
             >
-              Thành công
+              {t("queryHistoryModal.success")}
             </button>
             <button
               onClick={() => setFilterStatus("error")}
@@ -218,7 +218,7 @@ export function QueryHistoryModal({
                   : "text-muted hover:text-primary"
               }`}
             >
-              Lỗi
+              {t("queryHistoryModal.error")}
             </button>
           </div>
         </div>
@@ -230,11 +230,11 @@ export function QueryHistoryModal({
               <History size={40} className="stroke-1 text-muted/40 mb-3" />
               <p className="text-sm font-medium text-secondary">
                 {searchQuery
-                  ? "Không tìm thấy câu truy vấn phù hợp"
-                  : "Chưa có lịch sử câu lệnh nào được lưu"}
+                  ? t("queryHistoryModal.noResults")
+                  : t("queryHistoryModal.empty")}
               </p>
               <p className="text-xs text-muted mt-1 max-w-sm">
-                Khi bạn thực thi câu lệnh SQL trong Console hoặc mở bảng, lịch sử sẽ tự động được ghi lại tại đây.
+                {t("queryHistoryModal.emptyHint")}
               </p>
             </div>
           ) : (
@@ -249,12 +249,12 @@ export function QueryHistoryModal({
                     {item.status === "success" ? (
                       <span className="flex items-center gap-1 text-emerald-400 font-medium">
                         <CheckCircle2 size={13} />
-                        <span>Thành công</span>
+                        <span>{t("queryHistoryModal.success")}</span>
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-red-400 font-medium">
                         <AlertCircle size={13} />
-                        <span>Lỗi</span>
+                        <span>{t("queryHistoryModal.error")}</span>
                       </span>
                     )}
 
@@ -275,7 +275,7 @@ export function QueryHistoryModal({
                     {item.rowsAffected !== null && item.rowsAffected > 0 && (
                       <span className="flex items-center gap-1 text-muted text-[11px]">
                         <Layers size={11} />
-                        <span>{item.rowsAffected} dòng ảnh hưởng</span>
+                        <span>{item.rowsAffected}{t("queryHistoryModal.rowsAffectedSuffix")}</span>
                       </span>
                     )}
                   </div>
@@ -287,7 +287,7 @@ export function QueryHistoryModal({
                     <button
                       onClick={() => deleteEntry(item.id)}
                       className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-0.5 rounded transition-all"
-                      title="Xóa mục này"
+                      title={t("queryHistoryModal.deleteEntry")}
                     >
                       <Trash2 size={12} />
                     </button>
@@ -315,12 +315,12 @@ export function QueryHistoryModal({
                     {copiedId === item.id ? (
                       <>
                         <Check size={12} className="text-green-400" />
-                        <span className="text-green-400">Đã chép</span>
+                        <span className="text-green-400">{t("queryHistoryModal.copied")}</span>
                       </>
                     ) : (
                       <>
                         <Copy size={12} />
-                        <span>Sao chép</span>
+                        <span>{t("queryHistoryModal.copy")}</span>
                       </>
                     )}
                   </button>
@@ -331,10 +331,10 @@ export function QueryHistoryModal({
                       onClose();
                     }}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface hover:bg-surface-tertiary border border-strong text-xs text-secondary hover:text-primary transition-colors"
-                    title="Chèn câu lệnh này vào vị trí con trỏ trong Editor"
+                    title={t("queryHistoryModal.insertTooltip")}
                   >
                     <CornerDownLeft size={12} />
-                    <span>Chèn vào Editor</span>
+                    <span>{t("queryHistoryModal.insert")}</span>
                   </button>
 
                   <button
@@ -343,10 +343,10 @@ export function QueryHistoryModal({
                       onClose();
                     }}
                     className="flex items-center gap-1.5 px-3 py-1 rounded bg-purple-600 hover:bg-purple-500 text-xs font-medium text-white transition-colors"
-                    title="Chạy ngay câu lệnh này"
+                    title={t("queryHistoryModal.runTooltip")}
                   >
                     <Play size={12} fill="currentColor" />
-                    <span>Chạy ngay</span>
+                    <span>{t("queryHistoryModal.run")}</span>
                   </button>
                 </div>
               </div>

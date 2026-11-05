@@ -60,8 +60,8 @@ export function ProductionSafetyModal({
             <div className="flex items-center gap-2">
               <h3 className="text-base font-semibold text-red-400">
                 {isProduction
-                  ? t("safety.productionWarningTitle", { defaultValue: "CẢNH BÁO MÔI TRƯỜNG PRODUCTION" })
-                  : t("safety.dangerousQueryTitle", { defaultValue: "CẢNH BÁO TRUY VẤN NGUY HIỂM" })}
+                  ? t("safety.productionWarningTitle")
+                  : t("safety.dangerousQueryTitle")}
               </h3>
               {isProduction && (
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white">
@@ -70,9 +70,7 @@ export function ProductionSafetyModal({
               )}
             </div>
             <p className="text-xs text-muted mt-0.5">
-              {t("safety.safetyGuardSubtitle", {
-                defaultValue: "Vui lòng kiểm tra kỹ câu lệnh trước khi thực thi để tránh mất mát dữ liệu nghiêm trọng.",
-              })}
+              {t("safety.safetyGuardSubtitle")}
             </p>
           </div>
           <button
@@ -101,7 +99,7 @@ export function ProductionSafetyModal({
           {/* SQL Preview */}
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-secondary uppercase tracking-wider">
-              {t("safety.queryPreview", { defaultValue: "Câu lệnh SQL chuẩn bị chạy:" })}
+              {t("safety.queryPreview")}
             </span>
             <pre className="p-3 bg-surface-secondary/70 border border-strong rounded-lg text-xs font-mono text-primary max-h-40 overflow-y-auto whitespace-pre-wrap break-all select-text">
               {query}
@@ -116,12 +114,11 @@ export function ProductionSafetyModal({
               <span className="text-amber-400 font-mono">
                 {t("safety.countdownText", {
                   seconds: secondsLeft,
-                  defaultValue: `Mở khóa xác nhận sau ${secondsLeft}s...`,
                 })}
               </span>
             ) : (
               <span className="text-emerald-400 font-medium">
-                {t("safety.unlockedText", { defaultValue: "Đã mở khóa. Bạn có thể xác nhận chạy lệnh." })}
+                {t("safety.unlockedText")}
               </span>
             )}
           </div>
@@ -131,7 +128,7 @@ export function ProductionSafetyModal({
               onClick={onClose}
               className="px-4 py-2 rounded-lg text-sm text-secondary hover:text-primary bg-surface-secondary hover:bg-surface-tertiary border border-default transition-colors"
             >
-              {t("common.cancel", { defaultValue: "Hủy bỏ" })}
+              {t("common.cancel")}
             </button>
             <button
               disabled={secondsLeft > 0}
@@ -148,8 +145,8 @@ export function ProductionSafetyModal({
             >
               <Play size={14} />
               {secondsLeft > 0
-                ? `${t("safety.waiting", { defaultValue: "Chờ" })} (${secondsLeft}s)`
-                : t("safety.confirmExecution", { defaultValue: "Xác nhận & Tiếp tục chạy" })}
+                ? `${t("safety.waiting")} (${secondsLeft}s)`
+                : t("safety.confirmExecution")}
             </button>
           </div>
         </div>

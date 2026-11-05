@@ -26,19 +26,19 @@ interface HighlightRulesModalProps {
   tableName?: string | null;
 }
 
-const OPERATOR_LABELS: Record<HighlightOperator, string> = {
-  "=": "= (Bằng / Equals)",
-  "!=": "≠ (Khác / Not equals)",
-  ">": "> (Lớn hơn / Greater than)",
-  ">=": "≥ (Lớn hơn hoặc bằng / Greater or equal)",
-  "<": "< (Nhỏ hơn / Less than)",
-  "<=": "≤ (Nhỏ hơn hoặc bằng / Less or equal)",
-  contains: "Chứa chuỗi (Contains)",
-  not_contains: "Không chứa (Does not contain)",
-  starts_with: "Bắt đầu với (Starts with)",
-  ends_with: "Kết thúc với (Ends with)",
-  is_null: "Là NULL (Is NULL)",
-  is_not_null: "Không phải NULL (Is NOT NULL)",
+const OPERATOR_LABEL_KEYS: Record<HighlightOperator, string> = {
+  "=": "highlight.operators.eq",
+  "!=": "highlight.operators.neq",
+  ">": "highlight.operators.gt",
+  ">=": "highlight.operators.gte",
+  "<": "highlight.operators.lt",
+  "<=": "highlight.operators.lte",
+  contains: "highlight.operators.contains",
+  not_contains: "highlight.operators.notContains",
+  starts_with: "highlight.operators.startsWith",
+  ends_with: "highlight.operators.endsWith",
+  is_null: "highlight.operators.isNull",
+  is_not_null: "highlight.operators.isNotNull",
 };
 
 const COLOR_KEYS: HighlightColorScheme[] = [
@@ -115,7 +115,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-semibold text-primary flex items-center gap-2">
-                <span>{t("highlight.title", { defaultValue: "Quy tắc tô màu dữ liệu (Conditional Highlight)" })}</span>
+                <span>{t("highlight.title")}</span>
                 {tableName && (
                   <span className="text-xs px-2 py-0.5 rounded bg-surface-tertiary text-secondary font-mono">
                     {tableName}
@@ -123,9 +123,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                 )}
               </h2>
               <p className="text-xs text-muted mt-0.5">
-                {t("highlight.subtitle", {
-                  defaultValue: "Tự động đổi màu nền hàng hoặc ô dữ liệu dựa trên điều kiện giá trị cột.",
-                })}
+                {t("highlight.subtitle")}
               </p>
             </div>
           </div>
@@ -143,12 +141,10 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
             <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-default rounded-xl bg-surface-secondary/20">
               <Sliders size={32} className="text-muted/60 mb-3" />
               <p className="text-sm font-medium text-secondary">
-                {t("highlight.emptyTitle", { defaultValue: "Chưa có quy tắc tô màu nào" })}
+                {t("highlight.emptyTitle")}
               </p>
               <p className="text-xs text-muted max-w-md mt-1">
-                {t("highlight.emptyDesc", {
-                  defaultValue: "Tạo quy tắc để nhanh chóng nhận diện đơn hàng lỗi, số dư âm, trạng thái quan trọng hoặc dữ liệu NULL.",
-                })}
+                {t("highlight.emptyDesc")}
               </p>
               <button
                 type="button"
@@ -156,7 +152,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                 className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm"
               >
                 <Plus size={14} />
-                <span>{t("highlight.addFirstRule", { defaultValue: "Thêm quy tắc đầu tiên" })}</span>
+                <span>{t("highlight.addFirstRule")}</span>
               </button>
             </div>
           ) : (
@@ -193,7 +189,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                         <span
                           className={`text-[11px] px-2 py-0.5 rounded border font-medium ${styleDef.badgeClass}`}
                         >
-                          {rule.target === "row" ? "Toàn bộ hàng (Row)" : "Chỉ ô (Cell)"}
+                          {rule.target === "row" ? t("highlight.targetRow") : t("highlight.targetCell")}
                         </span>
                       </div>
 
@@ -202,7 +198,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                           type="button"
                           onClick={() => handleDeleteRule(rule.id)}
                           className="p-1 rounded text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                          title={t("common.delete", { defaultValue: "Xoá quy tắc" })}
+                          title={t("common.delete")}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -214,7 +210,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                       {/* Column */}
                       <div className="sm:col-span-3">
                         <label className="block text-[10px] text-muted mb-1 uppercase tracking-wider">
-                          {t("highlight.column", { defaultValue: "Cột" })}
+                          {t("highlight.column")}
                         </label>
                         <select
                           value={rule.column}
@@ -232,7 +228,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                       {/* Operator */}
                       <div className="sm:col-span-3">
                         <label className="block text-[10px] text-muted mb-1 uppercase tracking-wider">
-                          {t("highlight.operator", { defaultValue: "Điều kiện" })}
+                          {t("highlight.operator")}
                         </label>
                         <select
                           value={rule.operator}
@@ -243,9 +239,9 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                           }
                           className="w-full text-xs bg-base border border-default rounded px-2 py-1.5 text-primary outline-none focus:border-blue-500"
                         >
-                          {Object.entries(OPERATOR_LABELS).map(([op, label]) => (
+                          {Object.entries(OPERATOR_LABEL_KEYS).map(([op, labelKey]) => (
                             <option key={op} value={op}>
-                              {label}
+                              {t(labelKey)}
                             </option>
                           ))}
                         </select>
@@ -254,13 +250,13 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                       {/* Value (if not null op) */}
                       <div className={isNullOp ? "hidden" : "sm:col-span-3"}>
                         <label className="block text-[10px] text-muted mb-1 uppercase tracking-wider">
-                          {t("highlight.value", { defaultValue: "Giá trị" })}
+                          {t("highlight.value")}
                         </label>
                         <input
                           type="text"
                           value={rule.value}
                           onChange={(e) => handleUpdateRule(rule.id, { value: e.target.value })}
-                          placeholder="Ví dụ: failed, 0, admin..."
+                          placeholder={t("highlight.valuePlaceholder")}
                           className="w-full text-xs bg-base border border-default rounded px-2 py-1.5 text-primary outline-none focus:border-blue-500 font-mono placeholder:text-muted/50"
                         />
                       </div>
@@ -268,7 +264,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                       {/* Target: Row vs Cell */}
                       <div className={isNullOp ? "sm:col-span-3" : "sm:col-span-3"}>
                         <label className="block text-[10px] text-muted mb-1 uppercase tracking-wider">
-                          {t("highlight.target", { defaultValue: "Phạm vi" })}
+                          {t("highlight.target")}
                         </label>
                         <select
                           value={rule.target}
@@ -279,8 +275,8 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                           }
                           className="w-full text-xs bg-base border border-default rounded px-2 py-1.5 text-primary outline-none focus:border-blue-500"
                         >
-                          <option value="row">{t("highlight.targetRow", { defaultValue: "Toàn bộ hàng (Row)" })}</option>
-                          <option value="cell">{t("highlight.targetCell", { defaultValue: "Chỉ ô đó (Cell)" })}</option>
+                          <option value="row">{t("highlight.targetRow")}</option>
+                          <option value="cell">{t("highlight.targetCell")}</option>
                         </select>
                       </div>
                     </div>
@@ -288,7 +284,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                     {/* Color selection row */}
                     <div className="mt-3 flex items-center gap-2 pt-2 border-t border-default/50">
                       <span className="text-[11px] text-muted shrink-0">
-                        {t("highlight.color", { defaultValue: "Màu sắc:" })}
+                        {t("highlight.color")}
                       </span>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {COLOR_KEYS.map((cKey) => {
@@ -299,7 +295,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                               key={cKey}
                               type="button"
                               onClick={() => handleUpdateRule(rule.id, { colorScheme: cKey })}
-                              title={cDef.label}
+                              title={t(`highlight.colors.${cKey}`)}
                               className={`w-5 h-5 rounded-full border transition-all flex items-center justify-center ${
                                 isSelected
                                   ? "scale-110 ring-2 ring-blue-500 ring-offset-1 ring-offset-base"
@@ -329,7 +325,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-surface-secondary hover:bg-surface-tertiary border border-default text-primary transition-colors"
             >
               <Plus size={13} />
-              <span>{t("highlight.addRule", { defaultValue: "Thêm quy tắc" })}</span>
+              <span>{t("highlight.addRule")}</span>
             </button>
             {localRules.length > 0 && (
               <button
@@ -337,7 +333,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
                 onClick={handleClearAll}
                 className="text-xs text-muted hover:text-red-400 px-2 py-1.5 transition-colors"
               >
-                {t("highlight.clearAll", { defaultValue: "Xoá tất cả" })}
+                {t("highlight.clearAll")}
               </button>
             )}
           </div>
@@ -347,7 +343,7 @@ export const HighlightRulesModal: React.FC<HighlightRulesModalProps> = ({
             onClick={onClose}
             className="px-4 py-1.5 text-xs font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors shadow-sm"
           >
-            {t("common.done", { defaultValue: "Hoàn tất" })}
+            {t("common.done")}
           </button>
         </div>
       </div>

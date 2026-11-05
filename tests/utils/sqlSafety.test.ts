@@ -56,7 +56,7 @@ describe("evaluateSafeMode", () => {
     const writeCheck = evaluateSafeMode("DELETE FROM users WHERE id = 1", "readonly", "Production DB");
     expect(writeCheck.allowed).toBe(false);
     expect(writeCheck.requiresConfirmation).toBe(false);
-    expect(writeCheck.reason).toContain("Chế độ Chỉ đọc");
+    expect(writeCheck.reason).toContain("Read-Only Safe Mode");
 
     const readCheck = evaluateSafeMode("SELECT * FROM users", "readonly", "Production DB");
     expect(readCheck.allowed).toBe(true);
@@ -67,7 +67,7 @@ describe("evaluateSafeMode", () => {
     const writeCheck = evaluateSafeMode("UPDATE users SET active = 1 WHERE id = 5", "strict", "Prod");
     expect(writeCheck.allowed).toBe(true);
     expect(writeCheck.requiresConfirmation).toBe(true);
-    expect(writeCheck.reason).toContain("Bảo vệ nghiêm ngặt");
+    expect(writeCheck.reason).toContain("Strict Guard");
 
     const readCheck = evaluateSafeMode("SELECT * FROM users", "strict", "Prod");
     expect(readCheck.allowed).toBe(true);
@@ -82,7 +82,7 @@ describe("evaluateSafeMode", () => {
     const dangerousDelete = evaluateSafeMode("DELETE FROM users", "alert");
     expect(dangerousDelete.allowed).toBe(true);
     expect(dangerousDelete.requiresConfirmation).toBe(true);
-    expect(dangerousDelete.reason).toContain("DELETE không có điều kiện WHERE");
+    expect(dangerousDelete.reason).toContain("DELETE without a WHERE clause");
 
     const dropTable = evaluateSafeMode("DROP TABLE users", "alert");
     expect(dropTable.allowed).toBe(true);

@@ -103,6 +103,17 @@ vi.mock("@monaco-editor/react", () => ({
   },
 }));
 
+// Real i18next instance (English) for non-React code that uses src/i18n/translate.ts.
+import i18nextInstance from "i18next";
+import enResources from "../src/i18n/locales/en.json";
+void i18nextInstance.init({
+  lng: "en",
+  fallbackLng: "en",
+  resources: { en: { translation: enResources } },
+  interpolation: { escapeValue: false },
+  initAsync: false,
+});
+
 // Mock lucide-react icons
 vi.mock("lucide-react", () => ({
   Trash2: () => null,
