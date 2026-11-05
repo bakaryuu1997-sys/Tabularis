@@ -4,6 +4,14 @@ import { useTranslation } from "react-i18next";
 import { reconstructTableQuery } from "../utils/editor";
 import { onRunSql } from "../utils/aiRunBus";
 import { serializePkKey, buildPkMap } from "../utils/dataGrid";
+import {
+  applyPendingChange,
+  applyPendingInsertionChange,
+  discardPendingInsertion,
+  duplicateRowAsInsertion,
+  markRowsForDeletion,
+  revertPendingDeletion,
+} from "../utils/pendingEdits";
 import { isMultiDatabaseCapable } from "../utils/database";
 import { isReadonly } from "../utils/driverCapabilities";
 import {
@@ -63,7 +71,9 @@ import {
   EyeOff,
   Radio,
 } from "lucide-react";
-import { exportQueryResultToExcel } from "../utils/excelExport";
+import { useResultExport } from "../hooks/useResultExport";
+import { useTransactionControl } from "../hooks/useTransactionControl";
+import { useTabRename } from "../hooks/useTabRename";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
 import { TableToolbar } from "../components/ui/TableToolbar";
@@ -103,10 +113,7 @@ import { QueryParamsModal } from "../components/modals/QueryParamsModal";
 import { ErrorModal } from "../components/modals/ErrorModal";
 import { VisualQueryBuilder } from "../components/ui/VisualQueryBuilder";
 import { ContextMenu } from "../components/ui/ContextMenu";
-import {
-  ExportProgressModal,
-  type ExportStatus,
-} from "../components/modals/ExportProgressModal";
+import { ExportProgressModal } from "../components/modals/ExportProgressModal";
 import { splitQueries, extractTableName, getExplainableQueries, statementLabel } from "../utils/sql";
 import { splitStatements, findStatementAtOffset } from "../utils/sqlSplitter";
 import { validateSqlSchema } from "../utils/autocomplete";
@@ -139,9 +146,9 @@ import { SqlEditorWrapper } from "../components/ui/SqlEditorWrapper";
 import { canRenameTab } from "../utils/tabRename";
 import { NotebookView } from "../components/notebook/NotebookView";
 import { useSqlAutocompleteRegistration } from "../hooks/useSqlAutocompleteRegistration";
-import { createNotebook, renameNotebook } from "../utils/notebookStore";
+import { createNotebook } from "../utils/notebookStore";
 import { type OnMount, type Monaco } from "@monaco-editor/react";
-import { save, ask } from "@tauri-apps/plugin-dialog";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { resolveConnectionSafeMode, evaluateSafeMode } from "../utils/sqlSafety";
 import { useAlert } from "../hooks/useAlert";
 import { useDatabase } from "../hooks/useDatabase";
@@ -188,10 +195,6 @@ interface EditorState {
   targetConnectionId?: string;
   title?: string;
   splitRight?: boolean;
-}
-
-interface ExportProgress {
-  rows_processed: number;
 }
 
 const CHEVRON_SELECT_STYLE: React.CSSProperties = {
@@ -259,26 +262,11 @@ export const Editor = () => {
     y: number;
     tabId: string;
   } | null>(null);
-  const [editingTabId, setEditingTabId] = useState<string | null>(null);
-  const [editingTabTitle, setEditingTabTitle] = useState("");
 
   const [errorModal, setErrorModal] = useState<{
     isOpen: boolean;
     message: string;
   }>({ isOpen: false, message: "" });
-
-  const [exportState, setExportState] = useState<{
-    isOpen: boolean;
-    status: ExportStatus;
-    rowsProcessed: number;
-    fileName: string;
-    errorMessage?: string;
-  }>({
-    isOpen: false,
-    status: "exporting",
-    rowsProcessed: 0,
-    fileName: "",
-  });
 
   const [activeFkQuery, setActiveFkQuery] = useState<{
     fk: ForeignKey;
@@ -290,47 +278,11 @@ export const Editor = () => {
     setActiveFkQuery(null);
   }, [activeTabId]);
 
-  useEffect(() => {
-    const unlisten = listen<ExportProgress>("export_progress", (event) => {
-      setExportState((prev) => ({
-        ...prev,
-        rowsProcessed: event.payload.rows_processed,
-      }));
-    });
-    return () => {
-      unlisten.then((f) => f());
-    };
-  }, []);
-
   const handleTabContextMenu = (e: React.MouseEvent, tabId: string) => {
     e.preventDefault();
     e.stopPropagation();
     setTabContextMenu({ x: e.clientX, y: e.clientY, tabId });
   };
-
-  const startTabRename = useCallback((tabId: string) => {
-    const tab = tabsRef.current.find((t) => t.id === tabId);
-    if (!tab) return;
-    setEditingTabId(tabId);
-    setEditingTabTitle(tab.title);
-  }, []);
-
-  const commitTabRename = useCallback(() => {
-    const tabId = editingTabId;
-    if (!tabId) return;
-    setEditingTabId(null);
-    const title = editingTabTitle.trim();
-    const tab = tabsRef.current.find((t) => t.id === tabId);
-    if (!tab || !title || title === tab.title) return;
-    updateTab(tabId, { title });
-    // Persist the rename to the notebook file too (covers background tabs whose
-    // NotebookView isn't mounted to sync the title automatically).
-    if (tab.type === "notebook" && tab.notebookId && tab.connectionId) {
-      renameNotebook(tab.notebookId, tab.connectionId, title).catch((e) =>
-        console.error("Failed to rename notebook:", e),
-      );
-    }
-  }, [editingTabId, editingTabTitle, updateTab]);
 
   const handleConvertToConsole = useCallback(
     (tabId: string) => {
@@ -377,7 +329,6 @@ export const Editor = () => {
   });
 
   const [showNewRowModal, setShowNewRowModal] = useState(false);
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [editorHeight, setEditorHeight] = useState(300);
   const editorHeightRef = useRef(300);
   const [isResultsCollapsed, setIsResultsCollapsed] = useState(false);
@@ -535,8 +486,6 @@ export const Editor = () => {
     },
   });
 
-  const [transactionMode, setTransactionMode] = useState<"auto" | "manual">("auto");
-  const [isTransactionActive, setIsTransactionActive] = useState(false);
   const [isEditingPage, setIsEditingPage] = useState(false);
   const [tempPage, setTempPage] = useState("1");
   const [isCountLoading, setIsCountLoading] = useState(false);
@@ -656,6 +605,15 @@ export const Editor = () => {
   }, [activeTabType, activeTabQuery, selectableQueries]);
 
   const tabsRef = useRef<Tab[]>([]);
+
+  const {
+    editingTabId,
+    editingTabTitle,
+    setEditingTabTitle,
+    startTabRename,
+    cancelTabRename,
+    commitTabRename,
+  } = useTabRename({ tabsRef, updateTab });
   const activeTabIdRef = useRef<string | null>(null);
   // Last executed SQL per tab — used to preserve the loaded row count across
   // pagination of the SAME query while resetting it when the query changes.
@@ -2165,41 +2123,9 @@ export const Editor = () => {
     (pkVal: unknown, colName: string, value: unknown, tabIdArg?: string) => {
       const tabId = tabIdArg ?? activeTabIdRef.current;
       if (!tabId) return;
-
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
-
-      const pkKey = serializePkKey(pkVal as Record<string, unknown>);
-      const currentPending = currentTab.pendingChanges || {};
-      const rowEntry = currentPending[pkKey] || {
-        pkOriginalValue: pkVal,
-        changes: {},
-      };
-
-      // Create new changes object
-      const newChanges = { ...rowEntry.changes };
-
-      if (value === undefined) {
-        // Remove change
-        delete newChanges[colName];
-      } else {
-        // Update change
-        newChanges[colName] = value;
-      }
-
-      const newPending = { ...currentPending };
-
-      // If no changes left for this row, remove the row entry
-      if (Object.keys(newChanges).length === 0) {
-        delete newPending[pkKey];
-      } else {
-        newPending[pkKey] = {
-          ...rowEntry,
-          changes: newChanges,
-        };
-      }
-
-      updateTab(tabId, { pendingChanges: newPending });
+      updateTab(tabId, applyPendingChange(currentTab, pkVal, colName, value));
     },
     [updateTab],
   );
@@ -2270,30 +2196,10 @@ export const Editor = () => {
     (tempId: string, colName: string, value: unknown, tabIdArg?: string) => {
       const tabId = tabIdArg ?? activeTabIdRef.current;
       if (!tabId) return;
-
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
-
-      const currentPendingInsertions = currentTab.pendingInsertions || {};
-      const insertion = currentPendingInsertions[tempId];
-      if (!insertion) return;
-
-      const newData = { ...insertion.data };
-      if (value === undefined) {
-        delete newData[colName];
-      } else {
-        newData[colName] = value;
-      }
-
-      const newPendingInsertions = {
-        ...currentPendingInsertions,
-        [tempId]: {
-          ...insertion,
-          data: newData,
-        },
-      };
-
-      updateTab(tabId, { pendingInsertions: newPendingInsertions });
+      const patch = applyPendingInsertionChange(currentTab, tempId, colName, value);
+      if (patch) updateTab(tabId, patch);
     },
     [updateTab],
   );
@@ -2303,12 +2209,9 @@ export const Editor = () => {
       const tabId = tabIdArg ?? activeTabIdRef.current;
       if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
-      if (!currentTab?.pendingInsertions) return;
-
-      const newPendingInsertions = { ...currentTab.pendingInsertions };
-      delete newPendingInsertions[tempId];
-
-      updateTab(tabId, { pendingInsertions: newPendingInsertions });
+      if (!currentTab) return;
+      const patch = discardPendingInsertion(currentTab, tempId);
+      if (patch) updateTab(tabId, patch);
     },
     [updateTab],
   );
@@ -2318,18 +2221,9 @@ export const Editor = () => {
       const tabId = tabIdArg ?? activeTabIdRef.current;
       if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
-      if (!currentTab?.pendingDeletions) return;
-
-      const pkKey = serializePkKey(pkVal as Record<string, unknown>);
-      const newPendingDeletions = { ...currentTab.pendingDeletions };
-      delete newPendingDeletions[pkKey];
-
-      updateTab(tabId, {
-        pendingDeletions:
-          Object.keys(newPendingDeletions).length > 0
-            ? newPendingDeletions
-            : undefined,
-      });
+      if (!currentTab) return;
+      const patch = revertPendingDeletion(currentTab, pkVal);
+      if (patch) updateTab(tabId, patch);
     },
     [updateTab],
   );
@@ -2340,15 +2234,7 @@ export const Editor = () => {
       if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
-
-      const pkKey = serializePkKey(pkVal as Record<string, unknown>);
-      const currentPendingDeletions = currentTab.pendingDeletions || {};
-      const newPendingDeletions = {
-        ...currentPendingDeletions,
-        [pkKey]: pkVal,
-      };
-
-      updateTab(tabId, { pendingDeletions: newPendingDeletions });
+      updateTab(tabId, markRowsForDeletion(currentTab, [pkVal]));
     },
     [updateTab],
   );
@@ -2359,13 +2245,7 @@ export const Editor = () => {
       if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
-
-      const newPendingDeletions = { ...(currentTab.pendingDeletions || {}) };
-      for (const pkVal of pkVals) {
-        newPendingDeletions[serializePkKey(pkVal as Record<string, unknown>)] = pkVal;
-      }
-
-      updateTab(tabId, { pendingDeletions: newPendingDeletions });
+      updateTab(tabId, markRowsForDeletion(currentTab, pkVals));
     },
     [updateTab],
   );
@@ -2376,25 +2256,7 @@ export const Editor = () => {
       if (!tabId) return;
       const currentTab = tabsRef.current.find((t) => t.id === tabId);
       if (!currentTab) return;
-
-      const autoIncrementCols = currentTab.autoIncrementColumns ?? [];
-      const data: Record<string, unknown> = { ...rowData };
-      autoIncrementCols.forEach((col) => {
-        data[col] = null;
-      });
-
-      const tempId = generateTempId();
-      const currentPendingInsertions = currentTab.pendingInsertions || {};
-      const existingRowCount = currentTab.result?.rows.length || 0;
-      const insertionCount = Object.keys(currentPendingInsertions).length;
-      const displayIndex = existingRowCount + insertionCount;
-
-      updateTab(tabId, {
-        pendingInsertions: {
-          ...currentPendingInsertions,
-          [tempId]: { tempId, data, displayIndex },
-        },
-      });
+      updateTab(tabId, duplicateRowAsInsertion(currentTab, rowData, generateTempId()));
     },
     [updateTab],
   );
@@ -3136,118 +2998,25 @@ export const Editor = () => {
     document.addEventListener("mouseup", onUp);
   };
 
-  const cancelExport = useCallback(async () => {
-    if (!activeConnectionId) return;
-    try {
-      await invoke("cancel_export", { connectionId: activeConnectionId });
-      setExportState((prev) => ({
-        ...prev,
-        isOpen: false,
-      }));
-    } catch (e) {
-      console.error("Failed to cancel export", e);
-    }
-  }, [activeConnectionId]);
-
-  const closeExportModal = useCallback(() => {
-    setExportState((prev) => ({ ...prev, isOpen: false }));
-  }, []);
-
-  const handleExportCommon = async (format: "csv" | "json") => {
-    if (!activeTab || !activeConnectionId) return;
-
-    const effectiveSchema =
-      activeCapabilities?.schemas === true ? activeTab.schema : undefined;
-    const tabForQuery = { ...activeTab, schema: effectiveSchema };
-    const query =
-      activeTab.type === "table" && activeTab.activeTable
-        ? reconstructTableQuery(tabForQuery, activeDriver ?? undefined)
-        : activeTab.query;
-
-    if (!query || !query.trim()) return;
-
-    try {
-      const filePath = await save({
-        filters: [{ name: format.toUpperCase(), extensions: [format] }],
-        defaultPath: `result_${Date.now()}.${format}`,
-      });
-
-      if (!filePath) return;
-
-      setExportState({
-        isOpen: true,
-        status: "exporting",
-        rowsProcessed: 0,
-        fileName: filePath.split(/[/\\]/).pop() || filePath, // Show only filename
-      });
-      setExportMenuOpen(false);
-
-      // On multi-database connections (e.g. MySQL) scope the export to the
-      // selected database so the query runs against the database the user is
-      // viewing rather than the connection's primary database. The tab may not
-      // carry its own schema (e.g. a console query), so fall back to the active
-      // database — mirroring how execute_query resolves the schema.
-      const targetDatabase = activeTab?.schema ?? activeSchema ?? undefined;
-      const databaseParam =
-        isMultiDatabaseCapable(activeCapabilities) && targetDatabase
-          ? { database: targetDatabase }
-          : {};
-
-      await invoke("export_query_to_file", {
-        connectionId: activeConnectionId,
-        query,
-        filePath,
-        format,
-        csvDelimiter: format === "csv" ? csvDelimiter : undefined,
-        ...databaseParam,
-      });
-
-      // Success: update modal state instead of showing toast
-      setExportState((prev) => ({
-        ...prev,
-        status: "completed",
-      }));
-    } catch (e) {
-      // Error: update modal state
-      setExportState((prev) => ({
-        ...prev,
-        status: "error",
-        errorMessage: String(e),
-      }));
-    }
-  };
-
-  const handleExportCSV = () => handleExportCommon("csv");
-  const handleExportJSON = () => handleExportCommon("json");
-
-  const handleExportExcel = async () => {
-    if (!activeTab?.result) return;
-    const { columns, rows } = activeTab.result;
-    if (!columns.length || !rows.length) return;
-
-    setExportMenuOpen(false);
-    try {
-      const defaultName = activeTab.title
-        ? `${activeTab.title.replace(/[^a-zA-Z0-9_\-\u00C0-\u024F\u1EA0-\u1EF9]/g, "_")}_${Date.now()}.xlsx`
-        : `result_${Date.now()}.xlsx`;
-
-      const savedPath = await exportQueryResultToExcel({
-        columns,
-        rows,
-        defaultFileName: defaultName,
-        sheetName: activeTab.title ? activeTab.title.slice(0, 31) : "Results",
-      });
-
-      if (savedPath) {
-        showAlert(t("common.saved"), {
-          kind: "info",
-        });
-      }
-    } catch (err) {
-      console.error("Export Excel error:", err);
-      showAlert(String(err), { kind: "error" });
-    }
-  };
+  const {
+    exportState,
+    exportMenuOpen,
+    setExportMenuOpen,
+    cancelExport,
+    closeExportModal,
+    exportCsv: handleExportCSV,
+    exportJson: handleExportJSON,
+    exportExcel: handleExportExcel,
+  } = useResultExport({
+    activeTab,
+    connectionId: activeConnectionId,
+    capabilities: activeCapabilities,
+    driver: activeDriver,
+    activeSchema,
+    csvDelimiter,
+    showAlert,
+    t,
+  });
 
   const handleRunDropdownToggle = useCallback(() => {
     if (!isRunDropdownOpen) {
@@ -3278,48 +3047,20 @@ export const Editor = () => {
     setIsRunDropdownOpen((prev) => !prev);
   }, [isRunDropdownOpen, activeTab, activeDialect]);
 
-  const handleStartTransaction = useCallback(async () => {
-    if (!activeConnectionId) return;
-    try {
-      const sql = activeDriver === "postgres" || activeDriver === "sqlite" ? "BEGIN;" : "START TRANSACTION;";
-      await runQuery(sql, 1);
-      setIsTransactionActive(true);
-      showAlert(t("editor.transactionStarted"), {
-        title: "Transaction",
-        kind: "info",
-      });
-    } catch (e) {
-      showAlert(String(e), { title: "Transaction Error", kind: "error" });
-    }
-  }, [activeConnectionId, activeDriver, runQuery, showAlert, t]);
-
-  const handleCommitTransaction = useCallback(async () => {
-    if (!activeConnectionId) return;
-    try {
-      await runQuery("COMMIT;", 1);
-      setIsTransactionActive(false);
-      showAlert(t("editor.transactionCommitted"), {
-        title: "Transaction",
-        kind: "info",
-      });
-    } catch (e) {
-      showAlert(String(e), { title: "Commit Error", kind: "error" });
-    }
-  }, [activeConnectionId, runQuery, showAlert, t]);
-
-  const handleRollbackTransaction = useCallback(async () => {
-    if (!activeConnectionId) return;
-    try {
-      await runQuery("ROLLBACK;", 1);
-      setIsTransactionActive(false);
-      showAlert(t("editor.transactionRolledBack"), {
-        title: "Transaction",
-        kind: "info",
-      });
-    } catch (e) {
-      showAlert(String(e), { title: "Rollback Error", kind: "error" });
-    }
-  }, [activeConnectionId, runQuery, showAlert, t]);
+  const {
+    transactionMode,
+    setTransactionMode,
+    isTransactionActive,
+    startTransaction: handleStartTransaction,
+    commitTransaction: handleCommitTransaction,
+    rollbackTransaction: handleRollbackTransaction,
+  } = useTransactionControl({
+    connectionId: activeConnectionId,
+    driver: activeDriver,
+    runQuery,
+    showAlert,
+    t,
+  });
 
   const handleInsertSqlTemplate = useCallback(
     (templateSql: string) => {
@@ -3529,7 +3270,7 @@ export const Editor = () => {
                   onKeyDown={(e) => {
                     e.stopPropagation();
                     if (e.key === "Enter") commitTabRename();
-                    if (e.key === "Escape") setEditingTabId(null);
+                    if (e.key === "Escape") cancelTabRename();
                   }}
                   className="flex-1 min-w-0 bg-surface-secondary border rounded px-1 py-0.5 text-xs text-primary focus:outline-none"
                   style={{ borderColor: `${tabAccentColor}80` }}
