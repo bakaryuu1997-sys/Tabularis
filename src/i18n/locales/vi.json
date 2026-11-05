@@ -31,7 +31,10 @@
     "fromPlaceholder": "từ",
     "toPlaceholder": "đến",
     "refresh": "Tải lại dữ liệu bảng",
-    "refreshLabel": "Tải lại"
+    "refreshLabel": "Tải lại",
+    "colorByTypeActive": "Đang bật tô màu theo kiểu dữ liệu (Nhấp để tắt)",
+    "colorByTypeInactive": "Đang tắt tô màu theo kiểu dữ liệu (Nhấp để bật)",
+    "colorByType": "Màu kiểu"
   },
   "common": {
     "save": "Lưu",
@@ -937,7 +940,14 @@
     "profileColumn": "Thống kê cột (Column Profile)",
     "foreignKeyTooltip": "Khóa ngoại ➔ {{table}}.{{column}}",
     "primaryKeyTooltip": "Khóa chính (Primary Key)",
-    "copyCsvWithHeader": "CSV (kèm Header)"
+    "copyCsvWithHeader": "CSV (kèm Header)",
+    "columnType": "Kiểu dữ liệu",
+    "quickStatsHint": "Nhấp để xem thống kê nhanh",
+    "noDataTitle": "Bảng chưa có dữ liệu",
+    "noDataDesc": "Không có dòng dữ liệu nào hiển thị. Bạn có thể thêm dòng mới hoặc làm mới dữ liệu.",
+    "addFirstRow": "Thêm dòng đầu tiên",
+    "copySummary": "Sao chép tóm tắt thống kê",
+    "distributionTitle": "Hợp lệ: {{valid}} dòng ({{validPct}}%) | NULL: {{nulls}} dòng ({{nullPct}}%)"
   },
   "editRow": {
     "title": "Sửa hàng",
@@ -1357,7 +1367,8 @@
       "maximize": "Phóng to kết quả",
       "restore": "Khôi phục kết quả",
       "close": "Đóng kết quả"
-    }
+    },
+    "maskingProfileTitle": "Chế độ che: Smart (Thông minh), Full (Toàn bộ), Redacted ([BẢO MẬT])"
   },
   "createTable": {
     "title": "Tạo bảng mới",
@@ -2018,7 +2029,17 @@
       "occurrences": "{{count}} lần"
     },
     "characters": "ký tự",
-    "emptyString": "\"\" (chuỗi rỗng)"
+    "emptyString": "\"\" (chuỗi rỗng)",
+    "validValues": "Hợp lệ",
+    "validRowsTitle": "Hợp lệ: {{count}} dòng",
+    "nullRowsTitle": "NULL: {{count}} dòng",
+    "rows": "Tổng dòng",
+    "distinct": "Duy nhất",
+    "numericStats": "Thống kê số lượng",
+    "dateRange": "Khoảng thời gian",
+    "stringLength": "Độ dài chuỗi",
+    "emptyStrings": "Chuỗi rỗng ('')",
+    "viewFullReport": "Xem phân tích đầy đủ"
   },
   "mockData": {
     "title": "Sinh dữ liệu mẫu (Mock Data Generator)",

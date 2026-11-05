@@ -21,7 +21,7 @@ export function ResultColorsSection() {
   const [openType, setOpenType] = useState<ResultValueType | null>(null);
   const [snapshot, setSnapshot] = useState<string | undefined>(undefined);
 
-  const enabled = settings.resultColorByType ?? false;
+  const enabled = settings.resultColorByType ?? true;
   const overrides = settings.resultTypeColors ?? {};
 
   const effectiveColor = (type: ResultValueType) =>

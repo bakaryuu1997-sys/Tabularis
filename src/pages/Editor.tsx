@@ -79,6 +79,7 @@ import { listen, emit } from "@tauri-apps/api/event";
 import { TableToolbar } from "../components/ui/TableToolbar";
 import { buildHighlightStorageKey } from "../utils/highlightRules";
 import { DataGrid } from "../components/ui/DataGrid";
+import type { MaskingProfile } from "../utils/dataMasking";
 import { MultiResultPanel } from "../components/ui/MultiResultPanel";
 import { SplitResultsPane } from "../components/ui/SplitResultsPane";
 import {
@@ -221,7 +222,7 @@ export const Editor = () => {
   } = useDatabase();
   const { allDrivers } = useDrivers();
   const { explorerConnectionId } = useConnectionLayoutContext();
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const { saveQuery } = useSavedQueries();
   const { addEntry: addHistoryEntry } = useQueryHistory();
   const {
@@ -4050,24 +4051,38 @@ export const Editor = () => {
                           {t("editor.autoPaginated")}
                         </span>
                       )}
-                      {/* PII Masking Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => setIsMaskingEnabled((prev) => !prev)}
-                        className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium transition-colors border ${
-                          isMaskingEnabled
-                            ? "bg-purple-900/40 text-purple-300 border-purple-500/50 hover:bg-purple-900/60"
-                            : "bg-surface text-secondary border-default hover:text-primary hover:bg-surface-secondary"
-                        }`}
-                        title={t("editor.maskSensitiveData.tooltip")}
-                      >
-                        {isMaskingEnabled ? (
-                          <EyeOff size={12} className="text-purple-400 shrink-0" />
-                        ) : (
-                          <Eye size={12} className="shrink-0 text-muted" />
+                      {/* PII Masking Toggle & Preset Picker */}
+                      <div className="flex items-center rounded overflow-hidden border border-default">
+                        <button
+                          type="button"
+                          onClick={() => setIsMaskingEnabled((prev) => !prev)}
+                          className={`flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                            isMaskingEnabled
+                              ? "bg-purple-900/40 text-purple-300 hover:bg-purple-900/60"
+                              : "bg-surface text-secondary hover:text-primary hover:bg-surface-secondary"
+                          }`}
+                          title={t("editor.maskSensitiveData.tooltip")}
+                        >
+                          {isMaskingEnabled ? (
+                            <EyeOff size={12} className="text-purple-400 shrink-0" />
+                          ) : (
+                            <Eye size={12} className="shrink-0 text-muted" />
+                          )}
+                          <span>{t("editor.maskSensitiveData.button")}</span>
+                        </button>
+                        {isMaskingEnabled && (
+                          <select
+                            value={settings.maskingProfile || "smart"}
+                            onChange={(e) => updateSetting("maskingProfile", e.target.value as MaskingProfile)}
+                            className="bg-base text-secondary text-[10px] font-mono px-1.5 py-0.5 border-l border-default outline-none cursor-pointer hover:text-primary"
+                            title={t("editor.maskingProfileTitle")}
+                          >
+                            <option value="smart">Smart</option>
+                            <option value="full">Full</option>
+                            <option value="redacted">Redacted</option>
+                          </select>
                         )}
-                        <span>{t("editor.maskSensitiveData.button")}</span>
-                      </button>
+                      </div>
 
                       {/* Live Tail Toggle */}
                       <div className="flex items-center gap-1">
@@ -4461,6 +4476,11 @@ export const Editor = () => {
                       }
                       connectionId={activeConnectionId}
                       onRefresh={handleRefresh}
+                      onAddRow={
+                        activeTab.type === "table" && !driverReadonly && !isSafeModeReadonly
+                          ? handleNewRow
+                          : undefined
+                      }
                       pendingChanges={activeTab.pendingChanges}
                       pendingDeletions={activeTab.pendingDeletions}
                       pendingInsertions={activeTab.pendingInsertions}
@@ -4484,6 +4504,8 @@ export const Editor = () => {
                           : undefined
                       }
                       isMaskingEnabled={isMaskingEnabled}
+                      maskingProfile={settings.maskingProfile || "smart"}
+                      showCellDataBars={settings.showCellDataBars ?? true}
                       readonly={driverReadonly || !!activeTab.materialized || isSafeModeReadonly}
                       columnVisibilityKey={
                         activeTab.activeTable

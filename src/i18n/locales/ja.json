@@ -31,7 +31,10 @@
     "fromPlaceholder": "開始",
     "toPlaceholder": "終了",
     "refresh": "テーブルデータを再読み込み",
-    "refreshLabel": "再読み込み"
+    "refreshLabel": "再読み込み",
+    "colorByTypeActive": "データ型による色分けが有効です（クリックで無効）",
+    "colorByTypeInactive": "データ型による色分けが無効です（クリックで有効）",
+    "colorByType": "型の色"
   },
   "common": {
     "save": "保存",
@@ -937,7 +940,14 @@
     "pkRequiredToEdit": "この結果を編集するには、SELECT に主キー列「{{pk}}」を含めてください。",
     "foreignKeyTooltip": "外部キー ➔ {{table}}.{{column}}",
     "primaryKeyTooltip": "主キー",
-    "copyCsvWithHeader": "CSV（ヘッダー付き）"
+    "copyCsvWithHeader": "CSV（ヘッダー付き）",
+    "columnType": "データ型",
+    "quickStatsHint": "クリックでクイック統計を表示",
+    "noDataTitle": "このテーブルにはデータがありません",
+    "noDataDesc": "表示する行がありません。新しい行を追加するか、データを更新してください。",
+    "addFirstRow": "最初の行を追加",
+    "copySummary": "統計の概要をコピー",
+    "distributionTitle": "有効: {{valid}} 行 ({{validPct}}%) | NULL: {{nulls}} 行 ({{nullPct}}%)"
   },
   "editRow": {
     "title": "行を編集",
@@ -1357,7 +1367,8 @@
       "maximize": "結果を最大化",
       "restore": "結果を元のサイズに戻す",
       "close": "結果を閉じる"
-    }
+    },
+    "maskingProfileTitle": "マスキングモード: スマート、完全、墨消し ([REDACTED])"
   },
   "createTable": {
     "title": "新規テーブルを作成",
@@ -2000,7 +2011,17 @@
       "occurrences": "{{count}} 回"
     },
     "characters": "文字",
-    "emptyString": "\"\"（空文字列）"
+    "emptyString": "\"\"（空文字列）",
+    "validValues": "有効",
+    "validRowsTitle": "有効: {{count}} 行",
+    "nullRowsTitle": "NULL: {{count}} 行",
+    "rows": "総行数",
+    "distinct": "一意",
+    "numericStats": "数値の統計",
+    "dateRange": "期間",
+    "stringLength": "文字列の長さ",
+    "emptyStrings": "空文字列 ('')",
+    "viewFullReport": "完全な分析を表示"
   },
   "mockData": {
     "title": "モックデータ生成",

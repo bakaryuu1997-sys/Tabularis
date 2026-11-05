@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TableToolbar } from '../../../src/components/ui/TableToolbar';
 import { useDatabase } from '../../../src/hooks/useDatabase';
+import { SettingsContext, DEFAULT_SETTINGS } from '../../../src/contexts/SettingsContext';
 
 vi.mock('../../../src/hooks/useDatabase', () => ({
   useDatabase: vi.fn(),
@@ -401,5 +402,31 @@ describe('TableToolbar', () => {
 
     const refreshBtn = screen.getByTitle('toolbar.refresh');
     expect(refreshBtn).toBeDisabled();
+  });
+
+  it('renders data type color toggle button and toggles setting when clicked', () => {
+    const mockUpdateSetting = vi.fn();
+    render(
+      <SettingsContext.Provider
+        value={{
+          settings: { ...DEFAULT_SETTINGS, resultColorByType: true },
+          updateSetting: mockUpdateSetting,
+          isLoading: false,
+          loadSettings: vi.fn(),
+          resetSettings: vi.fn(),
+        }}
+      >
+        <TableToolbar
+          {...defaultProps}
+          columnMetadata={[{ name: 'id', data_type: 'integer', is_nullable: false, is_primary_key: true }]}
+        />
+      </SettingsContext.Provider>
+    );
+
+    const colorBtn = screen.getByTitle('toolbar.colorByTypeActive');
+    expect(colorBtn).toBeInTheDocument();
+    fireEvent.click(colorBtn);
+
+    expect(mockUpdateSetting).toHaveBeenCalledWith('resultColorByType', false);
   });
 });

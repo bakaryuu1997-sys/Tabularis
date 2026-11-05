@@ -157,6 +157,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
           }
 
           // Ensure resultPageSize has a valid default
+          if (finalSettings.resultColorByType === undefined || finalSettings.resultColorByType === null) {
+            finalSettings.resultColorByType = true;
+          }
+
           if (!finalSettings.resultPageSize || finalSettings.resultPageSize < 0) {
             finalSettings.resultPageSize = DEFAULT_SETTINGS.resultPageSize;
           }

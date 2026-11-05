@@ -3,6 +3,8 @@
  * (Personally Identifiable Information) in DataGrid and exports.
  */
 
+export type MaskingProfile = "smart" | "full" | "redacted";
+
 const SENSITIVE_COLUMN_PATTERNS = [
   /password/i,
   /passwd/i,
@@ -12,16 +14,34 @@ const SENSITIVE_COLUMN_PATTERNS = [
   /auth/i,
   /credit[_-]?card/i,
   /card[_-]?num/i,
+  /pan/i,
   /cvv/i,
+  /cvc/i,
   /ssn/i,
   /social[_-]?security/i,
   /phone/i,
   /mobile/i,
   /tel/i,
+  /cell/i,
   /email/i,
+  /mail/i,
   /salary/i,
   /wage/i,
+  /compensation/i,
   /private[_-]?key/i,
+  /cccd/i,
+  /cmnd/i,
+  /citizen[_-]?id/i,
+  /national[_-]?id/i,
+  /identity[_-]?card/i,
+  /id[_-]?card/i,
+  /identity[_-]?num/i,
+  /tax[_-]?id/i,
+  /mst/i,
+  /bank[_-]?acc/i,
+  /account[_-]?num/i,
+  /iban/i,
+  /swift/i,
 ];
 
 /**
@@ -34,9 +54,15 @@ export function isSensitiveColumn(columnName: string): boolean {
 }
 
 /**
- * Masks an email address: e.g. "alexander@example.com" -> "al***@example.com"
+ * Masks an email address:
+ * - smart: "alexander@example.com" -> "al***@example.com"
+ * - full: "••••••••"
+ * - redacted: "[REDACTED EMAIL]"
  */
-export function maskEmail(email: string): string {
+export function maskEmail(email: string, profile: MaskingProfile = "smart"): string {
+  if (profile === "redacted") return "[REDACTED EMAIL]";
+  if (profile === "full") return "••••••••";
+
   const atIndex = email.indexOf("@");
   if (atIndex <= 0) {
     return "••••••••";
@@ -51,9 +77,15 @@ export function maskEmail(email: string): string {
 }
 
 /**
- * Masks a phone number: e.g. "0901234567" -> "090*****67"
+ * Masks a phone number:
+ * - smart: "0901234567" -> "090*****67"
+ * - full: "••••••••"
+ * - redacted: "[REDACTED PHONE]"
  */
-export function maskPhone(phone: string): string {
+export function maskPhone(phone: string, profile: MaskingProfile = "smart"): string {
+  if (profile === "redacted") return "[REDACTED PHONE]";
+  if (profile === "full") return "••••••••";
+
   const digits = phone.trim();
   if (digits.length <= 4) {
     return "••••";
@@ -64,9 +96,69 @@ export function maskPhone(phone: string): string {
 }
 
 /**
- * Masks a general sensitive string value depending on inferred pattern.
+ * Masks Citizen Identity / CCCD / CMND / National ID:
+ * - smart: "001234567890" -> "001******890"
+ * - full: "••••••••••••"
+ * - redacted: "[REDACTED CCCD]"
  */
-export function maskSensitiveValue(value: unknown, columnName?: string): string {
+export function maskCitizenId(id: string, profile: MaskingProfile = "smart"): string {
+  if (profile === "redacted") return "[REDACTED ID]";
+  if (profile === "full") return "••••••••••••";
+
+  const clean = id.trim();
+  if (clean.length <= 6) {
+    return "••••••••";
+  }
+  const prefix = clean.slice(0, 3);
+  const suffix = clean.slice(-3);
+  return `${prefix}******${suffix}`;
+}
+
+/**
+ * Masks Credit Card / Debit Card number:
+ * - smart: "4532123456789012" -> "•••• •••• •••• 9012"
+ * - full: "•••• •••• •••• ••••"
+ * - redacted: "[REDACTED CARD]"
+ */
+export function maskCreditCard(card: string, profile: MaskingProfile = "smart"): string {
+  if (profile === "redacted") return "[REDACTED CARD]";
+  if (profile === "full") return "•••• •••• •••• ••••";
+
+  const clean = card.replace(/\s+/g, "");
+  if (clean.length < 8) {
+    return "••••••••";
+  }
+  const last4 = clean.slice(-4);
+  return `•••• •••• •••• ${last4}`;
+}
+
+/**
+ * Masks Bank Account number:
+ * - smart: "190367890123" -> "190*****0123"
+ * - full: "••••••••••••"
+ * - redacted: "[REDACTED ACCOUNT]"
+ */
+export function maskBankAccount(account: string, profile: MaskingProfile = "smart"): string {
+  if (profile === "redacted") return "[REDACTED ACCOUNT]";
+  if (profile === "full") return "••••••••••••";
+
+  const clean = account.trim();
+  if (clean.length <= 6) {
+    return "••••••••";
+  }
+  const prefix = clean.slice(0, 3);
+  const suffix = clean.slice(-4);
+  return `${prefix}*****${suffix}`;
+}
+
+/**
+ * Masks a general sensitive string value depending on inferred pattern and profile.
+ */
+export function maskSensitiveValue(
+  value: unknown,
+  columnName?: string,
+  profile: MaskingProfile = "smart",
+): string {
   if (value === null || value === undefined) {
     return "NULL";
   }
@@ -76,20 +168,62 @@ export function maskSensitiveValue(value: unknown, columnName?: string): string 
     return str;
   }
 
+  if (profile === "redacted") {
+    return "[REDACTED]";
+  }
+  if (profile === "full") {
+    return "••••••••";
+  }
+
   const name = (columnName ?? "").toLowerCase();
 
-  // If email
-  if (name.includes("email") || (str.includes("@") && str.includes("."))) {
-    return maskEmail(str);
+  // CCCD / CMND / National ID
+  if (
+    name.includes("cccd") ||
+    name.includes("cmnd") ||
+    name.includes("citizen") ||
+    name.includes("national_id") ||
+    name.includes("id_card") ||
+    name.includes("tax_id") ||
+    name.includes("mst")
+  ) {
+    return maskCitizenId(str, profile);
   }
 
-  // If phone / mobile / tel
-  if (name.includes("phone") || name.includes("mobile") || name.includes("tel")) {
-    return maskPhone(str);
+  // Credit Card / Debit Card / PAN
+  if (
+    name.includes("credit") ||
+    name.includes("card_num") ||
+    name.includes("card_no") ||
+    name.includes("cardnumber") ||
+    name.includes("pan")
+  ) {
+    return maskCreditCard(str, profile);
   }
 
-  // If salary / wage / amount
-  if (name.includes("salary") || name.includes("wage")) {
+  // Bank Account / IBAN
+  if (
+    name.includes("bank_acc") ||
+    name.includes("account_num") ||
+    name.includes("account_no") ||
+    name.includes("acc_no") ||
+    name.includes("iban")
+  ) {
+    return maskBankAccount(str, profile);
+  }
+
+  // Email
+  if (name.includes("email") || name.includes("mail") || (str.includes("@") && str.includes("."))) {
+    return maskEmail(str, profile);
+  }
+
+  // Phone / mobile / tel
+  if (name.includes("phone") || name.includes("mobile") || name.includes("tel") || name.includes("cell")) {
+    return maskPhone(str, profile);
+  }
+
+  // Salary / wage / amount
+  if (name.includes("salary") || name.includes("wage") || name.includes("compensation")) {
     return "***,***";
   }
 

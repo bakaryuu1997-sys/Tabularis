@@ -1,8 +1,9 @@
 import { createContext } from "react";
 import type { AppLanguage } from "../i18n/config";
 import type { AutocompleteKeywordCase } from "../utils/autocomplete";
+import type { MaskingProfile } from "../utils/dataMasking";
 
-export type { AppLanguage };
+export type { AppLanguage, MaskingProfile };
 export type CopyFormat = "csv" | "json" | "sql-insert" | "markdown" | "typescript";
 export type AiProvider =
   | "openai"
@@ -47,6 +48,10 @@ export interface Settings {
   csvDelimiter?: string;
   /** Whether copied CSV output includes a header row. Default: true. */
   csvIncludeHeaders?: boolean;
+  /** PII Data Masking Profile: "smart" (partial mask), "full" (all bullets), "redacted" ([REDACTED]). Default: "smart". */
+  maskingProfile?: MaskingProfile;
+  /** Whether to show subtle numeric distribution data bars in DataGrid cells. Default: true. */
+  showCellDataBars?: boolean;
   activeExternalDrivers?: string[];
   plugins?: Record<string, PluginConfig>;
   editorTheme?: string;
@@ -102,8 +107,10 @@ export const DEFAULT_SETTINGS: Settings = {
   displayTimezone: "auto",
   fontFamily: "System",
   fontSize: 14,
-  resultColorByType: false,
+  resultColorByType: true,
   resultTypeColors: {},
+  maskingProfile: "smart",
+  showCellDataBars: true,
   aiEnabled: false,
   aiProvider: null,
   aiModel: null,

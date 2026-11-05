@@ -31,7 +31,10 @@
     "fromPlaceholder": "from",
     "toPlaceholder": "to",
     "refresh": "Reload table data",
-    "refreshLabel": "Reload"
+    "refreshLabel": "Reload",
+    "colorByTypeActive": "Coloring by data type is on (click to turn off)",
+    "colorByTypeInactive": "Coloring by data type is off (click to turn on)",
+    "colorByType": "Type colors"
   },
   "common": {
     "save": "Save",
@@ -937,7 +940,14 @@
     "profileColumn": "Column Profile",
     "foreignKeyTooltip": "Foreign key ➔ {{table}}.{{column}}",
     "primaryKeyTooltip": "Primary key",
-    "copyCsvWithHeader": "CSV (with header)"
+    "copyCsvWithHeader": "CSV (with header)",
+    "columnType": "Data type",
+    "quickStatsHint": "Click for quick statistics",
+    "noDataTitle": "This table has no data",
+    "noDataDesc": "There are no rows to display. Add a new row or refresh the data.",
+    "addFirstRow": "Add the first row",
+    "copySummary": "Copy statistics summary",
+    "distributionTitle": "Valid: {{valid}} rows ({{validPct}}%) | NULL: {{nulls}} rows ({{nullPct}}%)"
   },
   "editRow": {
     "title": "Edit Row",
@@ -1357,7 +1367,8 @@
       "maximize": "Maximize the results",
       "restore": "Restore the results",
       "close": "Close the results"
-    }
+    },
+    "maskingProfileTitle": "Masking mode: Smart, Full, Redacted ([REDACTED])"
   },
   "createTable": {
     "title": "Create New Table",
@@ -2018,7 +2029,17 @@
       "occurrences": "{{count}} times"
     },
     "characters": "characters",
-    "emptyString": "\"\" (empty string)"
+    "emptyString": "\"\" (empty string)",
+    "validValues": "Valid",
+    "validRowsTitle": "Valid: {{count}} rows",
+    "nullRowsTitle": "NULL: {{count}} rows",
+    "rows": "Total rows",
+    "distinct": "Distinct",
+    "numericStats": "Numeric statistics",
+    "dateRange": "Date range",
+    "stringLength": "String length",
+    "emptyStrings": "Empty strings ('')",
+    "viewFullReport": "View the full analysis"
   },
   "mockData": {
     "title": "Mock Data Generator",
