@@ -217,7 +217,8 @@
     "mockData": "Sinh dữ liệu mẫu (Mock Data)",
     "schemaDiff": "So sánh cấu trúc CSDL (Schema Compare)",
     "teamWorkspaceSync": "Đồng bộ Workspace nhóm (Git)",
-    "actions": "Thao tác"
+    "actions": "Thao tác",
+    "dataCompare": "So sánh dữ liệu…"
   },
   "mcp": {
     "title": "Tích hợp máy chủ MCP",
@@ -2594,5 +2595,38 @@
   },
   "general": {
     "error": "Lỗi"
+  },
+  "dataCompare": {
+    "title": "So sánh dữ liệu",
+    "subtitle": "So sánh các dòng của hai bảng và tạo script đưa bảng đích về giống bảng nguồn",
+    "source": "Nguồn (chuẩn)",
+    "target": "Đích (cần cập nhật)",
+    "selectConnection": "Chọn kết nối…",
+    "selectTable": "Chọn bảng…",
+    "keyColumns": "Cột khóa (xác định một dòng)",
+    "noKey": "Hãy chọn ít nhất một cột khóa. Bảng này không có khóa chính.",
+    "viewDiff": "Khác biệt",
+    "viewSql": "Script đồng bộ",
+    "compare": "So sánh",
+    "comparing": "Đang so sánh…",
+    "emptyPrompt": "Chọn bảng nguồn và bảng đích, kiểm tra cột khóa rồi nhấn So sánh.",
+    "reading": "Đang đọc cả hai bảng…",
+    "truncated": "Chỉ đọc {{count}} dòng đầu của bảng nên kết quả so sánh chưa đầy đủ và không tạo script đồng bộ.",
+    "duplicateKeys": "Phát hiện {{count}} khóa trùng; chỉ so sánh dòng đầu tiên của mỗi khóa.",
+    "columnsSkipped": "Các cột chỉ có ở một phía không được so sánh: {{columns}}",
+    "identical": "Dòng giống nhau",
+    "onlyInSource": "Chỉ có ở nguồn (sẽ thêm)",
+    "changed": "Dòng thay đổi (sẽ cập nhật)",
+    "onlyInTarget": "Chỉ có ở đích (sẽ xóa)",
+    "noDifferences": "Hai bảng có dữ liệu giống nhau.",
+    "sqlUnavailable": "Không tạo script đồng bộ vì có bảng mới chỉ được đọc một phần.",
+    "includeDeletes": "Xóa cả các dòng chỉ có ở đích (không thể hoàn tác)",
+    "skippedRows": "Bỏ qua {{count}} dòng vì có giá trị không thể ghi an toàn thành SQL.",
+    "scriptSummary": "{{inserts}} thêm, {{updates}} cập nhật, {{deletes}} xóa",
+    "reviewNote": "Script không bao giờ tự chạy. Hãy xem lại, sao lưu bảng đích và chạy trong một giao dịch.",
+    "copySql": "Chép SQL",
+    "openInEditor": "Mở trong trình soạn thảo",
+    "keyMissing": "Thiếu cột khóa ở một phía: {{columns}}",
+    "error": "So sánh thất bại:"
   }
 }

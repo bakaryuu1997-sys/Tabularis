@@ -217,7 +217,8 @@
     "mockData": "モックデータ生成",
     "schemaDiff": "スキーマ比較・同期",
     "teamWorkspaceSync": "チームワークスペース同期 (Git)",
-    "actions": "アクション"
+    "actions": "アクション",
+    "dataCompare": "データを比較…"
   },
   "mcp": {
     "title": "MCP サーバー連携",
@@ -2594,5 +2595,38 @@
   },
   "general": {
     "error": "エラー"
+  },
+  "dataCompare": {
+    "title": "データ比較",
+    "subtitle": "2つのテーブルの行を比較し、ターゲットをソースに一致させるスクリプトを生成します",
+    "source": "ソース（基準）",
+    "target": "ターゲット（更新対象）",
+    "selectConnection": "接続を選択…",
+    "selectTable": "テーブルを選択…",
+    "keyColumns": "キー列（行を識別）",
+    "noKey": "キー列を1つ以上選択してください。このテーブルには主キーがありません。",
+    "viewDiff": "差分",
+    "viewSql": "同期スクリプト",
+    "compare": "比較",
+    "comparing": "比較中…",
+    "emptyPrompt": "ソースとターゲットのテーブルを選び、キー列を確認して「比較」を押してください。",
+    "reading": "両方のテーブルを読み込み中…",
+    "truncated": "テーブルの先頭 {{count}} 行のみを読み込んだため、比較は部分的であり、同期スクリプトは提供されません。",
+    "duplicateKeys": "重複キーが {{count}} 件見つかりました。各キーの最初の行のみを比較しました。",
+    "columnsSkipped": "片方にしかない列は比較していません: {{columns}}",
+    "identical": "同一の行",
+    "onlyInSource": "ソースのみ（挿入）",
+    "changed": "変更された行（更新）",
+    "onlyInTarget": "ターゲットのみ（削除）",
+    "noDifferences": "テーブルのデータは同一です。",
+    "sqlUnavailable": "テーブルを部分的にしか読み込んでいないため、同期スクリプトは提供されません。",
+    "includeDeletes": "ターゲットにのみ存在する行も削除する（破壊的）",
+    "skippedRows": "値をSQLとして安全に記述できないため、{{count}} 行をスキップしました。",
+    "scriptSummary": "挿入 {{inserts}} 件、更新 {{updates}} 件、削除 {{deletes}} 件",
+    "reviewNote": "スクリプトは自動実行されません。内容を確認し、ターゲットをバックアップして、トランザクション内で実行してください。",
+    "copySql": "SQLをコピー",
+    "openInEditor": "エディターで開く",
+    "keyMissing": "片方にキー列がありません: {{columns}}",
+    "error": "比較に失敗しました:"
   }
 }

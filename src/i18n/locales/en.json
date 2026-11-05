@@ -217,7 +217,8 @@
     "mockData": "Generate Mock Data",
     "schemaDiff": "Schema Compare & Sync",
     "teamWorkspaceSync": "Team workspace sync (Git)",
-    "actions": "Actions"
+    "actions": "Actions",
+    "dataCompare": "Compare data…"
   },
   "mcp": {
     "title": "MCP Server Integration",
@@ -2594,5 +2595,38 @@
   },
   "general": {
     "error": "Error"
+  },
+  "dataCompare": {
+    "title": "Data Compare",
+    "subtitle": "Compare the rows of two tables and generate a script that makes the target match the source",
+    "source": "Source (reference)",
+    "target": "Target (to update)",
+    "selectConnection": "Select a connection…",
+    "selectTable": "Select a table…",
+    "keyColumns": "Key columns (identify a row)",
+    "noKey": "Pick at least one key column. The table has no primary key.",
+    "viewDiff": "Differences",
+    "viewSql": "Sync script",
+    "compare": "Compare",
+    "comparing": "Comparing…",
+    "emptyPrompt": "Choose a source and a target table, confirm the key columns and press Compare.",
+    "reading": "Reading both tables…",
+    "truncated": "Only the first {{count}} rows of a table were read, so the comparison is partial and no sync script is offered.",
+    "duplicateKeys": "{{count}} duplicate key(s) were found; only the first row of each was compared.",
+    "columnsSkipped": "Columns present on only one side were not compared: {{columns}}",
+    "identical": "Identical rows",
+    "onlyInSource": "Only in source (to insert)",
+    "changed": "Changed rows (to update)",
+    "onlyInTarget": "Only in target (to delete)",
+    "noDifferences": "The tables contain the same data.",
+    "sqlUnavailable": "No sync script is offered because a table was only read partially.",
+    "includeDeletes": "Also delete rows that exist only in the target (destructive)",
+    "skippedRows": "{{count}} row(s) were skipped because a value cannot be written safely as SQL.",
+    "scriptSummary": "{{inserts}} insert(s), {{updates}} update(s), {{deletes}} delete(s)",
+    "reviewNote": "The script is never run automatically. Review it, back up the target and run it inside a transaction.",
+    "copySql": "Copy SQL",
+    "openInEditor": "Open in editor",
+    "keyMissing": "Key column(s) missing on one side: {{columns}}",
+    "error": "Comparison failed:"
   }
 }

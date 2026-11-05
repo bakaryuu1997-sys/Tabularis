@@ -98,6 +98,7 @@ import { NewRowModal } from "../components/modals/NewRowModal";
 import { ProductionSafetyModal } from "../components/modals/ProductionSafetyModal";
 import { MockDataModal } from "../components/modals/MockDataModal";
 import { SchemaDiffModal } from "../components/modals/SchemaDiffModal";
+import { DataCompareModal } from "../components/modals/DataCompareModal";
 import { VisualExplainDiffModal } from "../components/modals/VisualExplainDiffModal";
 import { TeamWorkspaceSyncModal } from "../components/modals/TeamWorkspaceSyncModal";
 import { useLiveTail } from "../hooks/useLiveTail";
@@ -452,6 +453,10 @@ export const Editor = () => {
   const [isMaskingEnabled, setIsMaskingEnabled] = useState(false);
   const [mockDataModal, setMockDataModal] = useState<{ isOpen: boolean; tableName: string; schema?: string } | null>(null);
   const [isSchemaDiffOpen, setIsSchemaDiffOpen] = useState(false);
+  const [dataCompare, setDataCompare] = useState<{
+    isOpen: boolean;
+    initial: { connectionId?: string; table?: string; schema?: string } | null;
+  }>({ isOpen: false, initial: null });
   const [isTeamSyncOpen, setIsTeamSyncOpen] = useState(false);
   const [isExplainDiffOpen, setIsExplainDiffOpen] = useState(false);
   const [explainDiffPlan, setExplainDiffPlan] = useState<ExplainPlan | null>(null);
@@ -3110,6 +3115,14 @@ export const Editor = () => {
     const handleOpenSchemaDiff = () => {
       setIsSchemaDiffOpen(true);
     };
+    const handleOpenDataCompare = (e: Event) => {
+      const detail = (e as CustomEvent).detail ?? {};
+      setDataCompare({
+        isOpen: true,
+        initial: { connectionId: detail.connectionId, table: detail.tableName, schema: detail.schema },
+      });
+    };
+    window.addEventListener("tabularis:open-data-compare", handleOpenDataCompare);
     window.addEventListener("tabularis:open-mock-data", handleOpenMockData);
     window.addEventListener("tabularis:open-schema-diff", handleOpenSchemaDiff);
     const handleOpenTeamSync = () => setIsTeamSyncOpen(true);
@@ -3121,6 +3134,7 @@ export const Editor = () => {
       window.removeEventListener("tabularis:open-query-history", handleOpenHistory);
       window.removeEventListener("tabularis:open-mock-data", handleOpenMockData);
       window.removeEventListener("tabularis:open-schema-diff", handleOpenSchemaDiff);
+      window.removeEventListener("tabularis:open-data-compare", handleOpenDataCompare);
       window.removeEventListener("tabularis:open-team-sync", handleOpenTeamSync);
       window.removeEventListener("tabularis:open-explain-diff", handleOpenExplainDiffEvent);
     };
@@ -4762,6 +4776,13 @@ export const Editor = () => {
           onOpenInEditor={(sql) => addTab({ type: "console", query: sql })}
         />
       )}
+      <DataCompareModal
+        key={dataCompare.isOpen ? "open" : "closed"}
+        isOpen={dataCompare.isOpen}
+        initial={dataCompare.initial}
+        onClose={() => setDataCompare({ isOpen: false, initial: null })}
+        onOpenInEditor={(sql) => addTab({ type: "console", query: sql })}
+      />
       <SchemaDiffModal
         isOpen={isSchemaDiffOpen}
         onClose={() => setIsSchemaDiffOpen(false)}

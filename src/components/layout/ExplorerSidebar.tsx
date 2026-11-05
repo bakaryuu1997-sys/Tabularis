@@ -1863,6 +1863,17 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                       icon: Clipboard,
                       action: () => setIsClipboardImportOpen(true),
                     } : null,
+                    {
+                      label: t("sidebar.dataCompare"),
+                      icon: GitCompare,
+                      action: () => {
+                        window.dispatchEvent(
+                          new CustomEvent("tabularis:open-data-compare", {
+                            detail: { connectionId: activeConnectionId, tableName: contextMenu.id, schema: ctxSchema },
+                          }),
+                        );
+                      },
+                    },
                     supportsManageTables(activeCapabilities) ? {
                       label: t("sidebar.mockData"),
                       icon: Sparkles,
