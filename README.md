@@ -4,6 +4,8 @@
 
 # tabularis
 
+> 📖 **Hướng dẫn sử dụng (tiếng Việt, có sơ đồ):** [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md)
+
 <p align="center">
   <strong>Tabularis is an open-source desktop SQL workspace for PostgreSQL, MySQL/MariaDB, SQLite and 13+ more databases like DuckDB, ClickHouse, Redis and Firestore.<br />
   Its built-in MCP server lets Claude, Cursor and Devin (formerly Windsurf) read your schema and run queries in the same app you already use.</strong>

@@ -38,3 +38,15 @@ i18n
       caches: ['localStorage', 'cookie'],
     },
   });
+
+/**
+ * Keep <html lang> in step with the UI language. Browsers use it to pick fallback fonts, so Vietnamese or
+ * Japanese text is drawn with a font suited to that language instead of the system's default one.
+ */
+function syncHtmlLang(language: string | undefined) {
+  if (typeof document !== "undefined" && language) document.documentElement.lang = language;
+}
+
+i18n.on("initialized", () => syncHtmlLang(i18n.language));
+i18n.on("languageChanged", syncHtmlLang);
+syncHtmlLang(i18n.language);

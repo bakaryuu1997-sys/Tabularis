@@ -3,6 +3,7 @@ import type {
   AppLanguage,
   AiProvider,
 } from "../contexts/SettingsContext";
+import { withVietnameseSafeFont } from "./fontStack";
 
 export const FONT_MAP: Record<string, string> = {
   System:
@@ -31,7 +32,7 @@ export interface MigrationResult {
 }
 
 export function getFontCSS(fontFamily: string): string {
-  return FONT_MAP[fontFamily] || fontFamily || FONT_MAP["System"];
+  return withVietnameseSafeFont(FONT_MAP[fontFamily] || fontFamily || FONT_MAP["System"]);
 }
 
 export function createFontCSSVariables(

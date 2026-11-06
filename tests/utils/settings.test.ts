@@ -20,6 +20,7 @@ import {
   type FontCache,
   type DetectedAIConfig,
 } from '../../src/utils/settings';
+import { withVietnameseSafeFont } from '../../src/utils/fontStack';
 import { DEFAULT_SETTINGS } from '../../src/contexts/SettingsContext';
 import type { Settings, AppLanguage, AiProvider } from '../../src/contexts/SettingsContext';
 
@@ -67,16 +68,16 @@ describe('settings', () => {
 
   describe('getFontCSS', () => {
     it('should return mapped font for predefined fonts', () => {
-      expect(getFontCSS('System')).toBe(FONT_MAP['System']);
-      expect(getFontCSS('Roboto')).toBe(FONT_MAP['Roboto']);
+      expect(getFontCSS('System')).toBe(withVietnameseSafeFont(FONT_MAP['System']));
+      expect(getFontCSS('Roboto')).toBe(withVietnameseSafeFont(FONT_MAP['Roboto']));
     });
 
-    it('should return custom font as-is if not in map', () => {
-      expect(getFontCSS('Custom Font')).toBe('Custom Font');
+    it('should return a custom font unchanged apart from the Vietnamese-safe fallback', () => {
+      expect(getFontCSS('Custom Font')).toBe('Custom Font, "Segoe UI"');
     });
 
     it('should return System font as fallback for empty string', () => {
-      expect(getFontCSS('')).toBe(FONT_MAP['System']);
+      expect(getFontCSS('')).toBe(withVietnameseSafeFont(FONT_MAP['System']));
     });
   });
 
@@ -85,7 +86,7 @@ describe('settings', () => {
       const result = createFontCSSVariables('Roboto', 16);
       
       expect(result).toEqual({
-        '--font-base': FONT_MAP['Roboto'],
+        '--font-base': withVietnameseSafeFont(FONT_MAP['Roboto']),
         '--font-size-base': '16px',
       });
     });
@@ -93,7 +94,7 @@ describe('settings', () => {
     it('should handle custom font family', () => {
       const result = createFontCSSVariables('Custom Font', 14);
       
-      expect(result['--font-base']).toBe('Custom Font');
+      expect(result['--font-base']).toBe('Custom Font, "Segoe UI"');
     });
 
     it('should use default size when size is 0', () => {
@@ -438,7 +439,7 @@ describe('settings', () => {
       
       expect(document.documentElement.style.setProperty).toHaveBeenCalledWith(
         '--font-base',
-        FONT_MAP['Roboto']
+        withVietnameseSafeFont(FONT_MAP['Roboto'])
       );
       expect(document.documentElement.style.setProperty).toHaveBeenCalledWith(
         '--font-size-base',
@@ -449,7 +450,7 @@ describe('settings', () => {
     it('should apply font directly to body', () => {
       applyFontToDocument('System', 14);
       
-      expect(document.body.style.fontFamily).toBe(FONT_MAP['System']);
+      expect(document.body.style.fontFamily).toBe(withVietnameseSafeFont(FONT_MAP['System']));
       expect(document.body.style.fontSize).toBe('14px');
     });
 

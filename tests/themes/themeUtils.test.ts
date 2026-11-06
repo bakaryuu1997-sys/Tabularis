@@ -164,8 +164,9 @@ describe("themeUtils", () => {
       expect(root.style.getPropertyValue("--bg-base")).toBe("#1a1a1a");
       expect(root.style.getPropertyValue("--text-primary")).toBe("#ffffff");
       expect(root.style.getPropertyValue("--accent-primary")).toBe("#3b82f6");
+      // "Segoe UI" is inserted before system-ui so Vietnamese letters draw correctly.
       expect(root.style.getPropertyValue("--font-base")).toBe(
-        "Inter, system-ui, sans-serif",
+        'Inter, "Segoe UI", system-ui, sans-serif',
       );
       expect(root.style.getPropertyValue("--radius-base")).toBe("0.375rem");
     });

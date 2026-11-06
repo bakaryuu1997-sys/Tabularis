@@ -1,6 +1,7 @@
 import type { Theme, MonacoThemeDefinition } from "../types/theme";
 import type * as monaco from "monaco-editor";
 import { lighten } from "./colorUtils";
+import { withVietnameseSafeFont } from "../utils/fontStack";
 
 // Static imports for monaco-themes (copied locally for Vite compatibility)
 import MonokaiTheme from "./monaco/Monokai.json";
@@ -129,7 +130,7 @@ export function applyThemeToCSS(theme: Theme): void {
   root.style.setProperty("--semantic-new", theme.colors.semantic.new);
 
   // Typography
-  root.style.setProperty("--font-base", theme.typography.fontFamily.base);
+  root.style.setProperty("--font-base", withVietnameseSafeFont(theme.typography.fontFamily.base));
   root.style.setProperty("--font-mono", theme.typography.fontFamily.mono);
 
   // Layout
