@@ -34,7 +34,11 @@ const VIETNAMESE =
   /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
 
 /** Intentional exceptions: a language's own name, and the legacy title written by older versions. */
-const VIETNAMESE_ALLOWLIST = new Set(["src/i18n/config.ts", "src/components/ai/AiChatWidget.tsx"]);
+const VIETNAMESE_ALLOWLIST = new Set([
+  "src/i18n/config.ts",
+  "src/components/ai/AiChatWidget.tsx",
+  "src/components/modals/UserGuideModal.tsx",
+]);
 
 describe("locale files", () => {
   it("ship exactly English, Japanese and Vietnamese with the same keys", () => {

@@ -309,8 +309,15 @@
     "importedConfig": "Đã nhập thành công cấu hình Tabularis!",
     "scanProjectTooltip": "Tự động quét cấu hình CSDL từ thư mục dự án (.env, docker-compose, prisma)",
     "openFromProject": "Mở từ thư mục dự án",
-    "importMenuTooltip": "Nhập kết nối từ Tabularis, DBeaver hoặc TablePlus"
+    "importMenuTooltip": "Nhập kết nối từ Tabularis, DBeaver hoặc TablePlus",
+    "userGuide": "Hướng dẫn sử dụng",
+    "userGuideTooltip": "Xem sổ tay hướng dẫn sử dụng Tabularis (có sơ đồ luồng)"
   },
+  "userGuide": {
+    "title": "Sổ tay Hướng dẫn Sử dụng Tabularis",
+    "subtitle": "Hướng dẫn nhanh các tính năng, phím tắt và thao tác chuẩn"
+  },
+ 
   "connectionAppearance": {
     "section": "Giao diện",
     "environment": "Môi trường (Production Guard)",

@@ -309,8 +309,15 @@
     "importedConfig": "Tabularis configuration imported successfully!",
     "scanProjectTooltip": "Automatically scan database configuration from a project folder (.env, docker-compose, prisma)",
     "openFromProject": "Open from project folder",
-    "importMenuTooltip": "Import connections from Tabularis, DBeaver or TablePlus"
+    "importMenuTooltip": "Import connections from Tabularis, DBeaver or TablePlus",
+    "userGuide": "User Guide",
+    "userGuideTooltip": "View Tabularis quick user guide (with workflow diagrams)"
   },
+  "userGuide": {
+    "title": "Tabularis User Guide",
+    "subtitle": "Quick guide for core features, shortcuts and best practices"
+  },
+ 
   "connectionAppearance": {
     "section": "Appearance",
     "environment": "Environment (Production Guard)",

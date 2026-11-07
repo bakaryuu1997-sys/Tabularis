@@ -309,8 +309,15 @@
     "importedConfig": "Tabularisの設定をインポートしました。",
     "scanProjectTooltip": "プロジェクトフォルダーからデータベース設定を自動検出（.env、docker-compose、prisma）",
     "openFromProject": "プロジェクトフォルダーから開く",
-    "importMenuTooltip": "Tabularis、DBeaver、TablePlusから接続をインポート"
+    "importMenuTooltip": "Tabularis、DBeaver、TablePlusから接続をインポート",
+    "userGuide": "利用ガイド",
+    "userGuideTooltip": "Tabularisクイック利用ガイドを表示（フロー図付き）"
   },
+  "userGuide": {
+    "title": "Tabularis 利用ガイド",
+    "subtitle": "主要機能、ショートカット、操作手順のクイックリファレンス"
+  },
+ 
   "connectionAppearance": {
     "section": "外観",
     "environment": "環境 (Production Guard)",

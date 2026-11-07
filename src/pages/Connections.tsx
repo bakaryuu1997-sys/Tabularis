@@ -22,7 +22,9 @@ import {
   Download,
   Upload,
   Loader2,
+  BookOpen,
 } from "lucide-react";
+import { UserGuideModal } from "../components/modals/UserGuideModal";
 import { useAlert } from "../hooks/useAlert";
 import { ProjectImportModal } from "../components/modals/ProjectImportModal";
 import { scanProjectDirectory, type DetectedConnection } from "../utils/projectScanner";
@@ -50,6 +52,7 @@ export const Connections = () => {
   const [isProjectImportOpen, setIsProjectImportOpen] = useState(false);
   const [importSourceTitle, setImportSourceTitle] = useState("");
   const [isScanningFolder, setIsScanningFolder] = useState(false);
+  const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const {
@@ -627,6 +630,14 @@ export const Connections = () => {
 
         <div className="relative flex items-center gap-2.5">
           <button
+            onClick={() => setIsUserGuideOpen(true)}
+            title={t("connections.userGuideTooltip")}
+            className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 hover:border-emerald-500/50 px-3.5 py-2.5 rounded-xl font-semibold text-xs transition-all shadow-xs hover:-translate-y-px"
+          >
+            <BookOpen size={14} className="text-emerald-400" />
+            <span>{t("connections.userGuide")}</span>
+          </button>
+          <button
             onClick={handleScanProjectFolder}
             disabled={isScanningFolder}
             title={t("connections.scanProjectTooltip")}
@@ -978,6 +989,10 @@ export const Connections = () => {
         )}
       </div>
 
+      <UserGuideModal
+        isOpen={isUserGuideOpen}
+        onClose={() => setIsUserGuideOpen(false)}
+      />
       <NewConnectionModal
         isOpen={isModalOpen}
         onClose={() => {
