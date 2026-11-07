@@ -1,436 +1,329 @@
-# Hướng dẫn sử dụng Tabularis
+# Sổ tay Hướng dẫn Sử dụng Tabularis
 
-> Tài liệu dành cho người dùng bản **0.13.28** (giao diện tiếng Việt, tiếng Anh và tiếng Nhật).
-> Tabularis là ứng dụng desktop để xem, truy vấn và quản lý cơ sở dữ liệu: PostgreSQL, MySQL/MariaDB, SQLite
-> và nhiều loại khác thông qua plugin.
-
-## Mục lục
-
-1. [Cài đặt và mở app lần đầu](#1-cài-đặt-và-mở-app-lần-đầu)
-2. [Làm quen với giao diện](#2-làm-quen-với-giao-diện)
-3. [Kết nối tới cơ sở dữ liệu](#3-kết-nối-tới-cơ-sở-dữ-liệu)
-4. [Viết và chạy truy vấn SQL](#4-viết-và-chạy-truy-vấn-sql)
-5. [Xem và sửa dữ liệu trong bảng](#5-xem-và-sửa-dữ-liệu-trong-bảng)
-6. [Chế độ an toàn (Safe Mode) cho môi trường thật](#6-chế-độ-an-toàn-safe-mode-cho-môi-trường-thật)
-7. [Tối ưu truy vấn chậm: Explain và gợi ý chỉ mục](#7-tối-ưu-truy-vấn-chậm-explain-và-gợi-ý-chỉ-mục)
-8. [Theo dõi dòng mới: Live Tail](#8-theo-dõi-dòng-mới-live-tail)
-9. [So sánh dữ liệu giữa hai bảng](#9-so-sánh-dữ-liệu-giữa-hai-bảng)
-10. [So sánh cấu trúc hai cơ sở dữ liệu](#10-so-sánh-cấu-trúc-hai-cơ-sở-dữ-liệu)
-11. [Chia sẻ cấu hình với nhóm qua Git](#11-chia-sẻ-cấu-hình-với-nhóm-qua-git)
-12. [Các công cụ khác](#12-các-công-cụ-khác)
-13. [Kết nối trợ lý AI (MCP)](#13-kết-nối-trợ-lý-ai-mcp)
-14. [Cài đặt, ngôn ngữ và phím tắt](#14-cài-đặt-ngôn-ngữ-và-phím-tắt)
-15. [Xử lý sự cố thường gặp](#15-xử-lý-sự-cố-thường-gặp)
-
----
-
-## 1. Cài đặt và mở app lần đầu
-
-**Windows**
-
-1. Chạy file `tabularis_<phiên bản>_x64-setup.exe` (hoặc `setup.exe`) và làm theo trình cài đặt.
-2. Mở **Tabularis** từ Start Menu.
-3. Lần đầu, app mở màn hình **Kết nối** (danh sách trống).
-
-**macOS / Linux** (nếu bạn dùng): xem mục *Installation* trong [README.md](README.md) (Homebrew, Snap, Flatpak, AppImage, AUR).
-
-Dữ liệu của app (danh sách kết nối, truy vấn đã lưu, cài đặt) được lưu trong thư mục cấu hình của bạn
-(`%APPDATA%\tabularis` trên Windows, `~/.config/tabularis` trên Linux). Mật khẩu kết nối có thể được lưu trong
-kho khóa của hệ điều hành nếu bạn chọn như vậy khi tạo kết nối.
+> **Dành cho người dùng bản 0.13.28+ (Hỗ trợ tiếng Việt, English, 日本語).**
+> Tabularis là ứng dụng desktop hiện đại, tốc độ cao để xem, truy vấn, tối ưu và quản lý các hệ cơ sở dữ liệu: **PostgreSQL, MySQL / MariaDB, SQLite**, cùng hơn 13 loại cơ sở dữ liệu khác (DuckDB, ClickHouse, Redis, MongoDB, Google Sheets...) thông qua hệ thống Plugin.
 
 ```mermaid
 flowchart LR
-  A[Cài đặt app] --> B[Mở Tabularis]
-  B --> C[Thêm kết nối]
-  C --> D[Duyệt bảng ở thanh bên]
-  D --> E[Mở bảng để xem dữ liệu<br/>hoặc mở Console để viết SQL]
+  A["1. Kết nối DB<br/>Chuỗi kết nối / Dự án / DBeaver"] --> B["2. Duyệt Cấu trúc<br/>Bảng, View, Khóa ngoại"]
+  B --> C["3. Truy vấn SQL<br/>Console / Snippets / Visual Builder"]
+  B --> D["4. Thao tác Dữ liệu<br/>Lưới ảo / Sửa ô / Quick Stats / Live Tail"]
+  C --> E["5. Tối ưu & So sánh<br/>Explain / Index Advisor / Data Compare"]
+  D --> E
 ```
 
 ---
 
-## 2. Làm quen với giao diện
+## Mục lục
 
-Sơ đồ dưới đây là **bản đồ minh họa** (không phải ảnh chụp màn hình) để bạn biết mỗi khu vực nằm ở đâu.
+1. [Làm quen với giao diện](#1-làm-quen-với-giao-diện)
+2. [Kết nối tới cơ sở dữ liệu](#2-kết-nối-tới-cơ-sở-dữ-liệu)
+3. [Viết và chạy truy vấn SQL](#3-viết-và-chạy-truy-vấn-sql)
+4. [Xem, phân tích và sửa dữ liệu trong bảng](#4-xem-phân-tích-và-sửa-dữ-liệu-trong-bảng)
+5. [Chế độ an toàn (Safe Mode & Production Guard)](#5-chế-độ-an-toàn-safe-mode--production-guard)
+6. [Tối ưu truy vấn chậm: Explain và gợi ý chỉ mục](#6-tối-ưu-truy-vấn-chậm-explain-và-gợi-ý-chỉ-mục)
+7. [Theo dõi dòng mới thời gian thực: Live Tail](#7-theo-dõi-dòng-mới-thời-gian-thực-live-tail)
+8. [So sánh dữ liệu giữa hai bảng (Data Compare & Sync)](#8-so-sánh-dữ-liệu-giữa-hai-bảng-data-compare--sync)
+9. [So sánh cấu trúc (Schema Diff) và Sơ đồ ER](#9-so-sánh-cấu-trúc-schema-diff-và-sơ-đồ-er)
+10. [Chia sẻ cấu hình nhóm qua Git (Team Sync)](#10-chia-sẻ-cấu-hình-nhóm-qua-git-team-sync)
+11. [Các công cụ mở rộng (Tách cửa sổ, Chia đôi màn hình)](#11-các-công-cụ-mở-rộng)
+12. [Kết nối trợ lý AI và Máy chủ MCP (Claude Desktop, Cursor)](#12-kết-nối-trợ-lý-ai-và-máy-chủ-mcp)
+13. [Bảng phím tắt toàn tập](#13-bảng-phím-tắt-toàn-tập)
+14. [Xử lý sự cố thường gặp (Troubleshooting)](#14-xử-lý-sự-cố-thường-gặp)
+
+---
+
+## 1. Làm quen với giao diện
+
+Sơ đồ trực quan giúp bạn nắm bắt ngay vị trí các khu vực thao tác:
 
 ```text
 ┌──────────┬────────────────────────────────────────────────────────────────┐
-│ THANH    │  [Tab 1: Console] [Tab 2: customers] [Tab 3: Notebook]  [ + ]  │  ← thanh tab
+│ THANH    │  [Tab 1: Console] [Tab 2: customers] [Tab 3: Notebook]  [ + ]  │  ← Thanh Tab
 │ BÊN      ├────────────────────────────────────────────────────────────────┤
-│          │  Trình soạn thảo SQL                                           │
+│          │  Trình soạn thảo SQL (Monaco Editor offline)                   │
 │ Kết nối  │  SELECT * FROM customers WHERE status = 'active';              │
 │ ───────  │                                              [▶ Chạy] [Xuất ▾] │
 │ ▸ Kết nối├────────────────────────────────────────────────────────────────┤
-│   Máy chủ│  Kết quả / Lưới dữ liệu                                        │
+│   Máy chủ│  Kết quả / Lưới dữ liệu ảo hóa                                 │
 │   MCP    │  ┌────┬───────────┬──────────┐  Che mờ PII · Live Tail · Tô màu│
-│   Cài đặt│  │ id │ name      │ email    │  (thanh công cụ của lưới)       │
+│   Cài đặt│  │ id │ name      │ email    │  (Thanh công cụ của lưới)       │
 │          │  ├────┼───────────┼──────────┤                                 │
-│ Trình    │  │ 1  │ Ann       │ a***@x   │                                 │
-│ khám phá │  │ 2  │ Bob       │ b***@y   │            ◂ Trang 1 ▸          │
+│ Trình    │  │ 1  │ Nguyen A  │ a***@x   │                                 │
+│ khám phá │  │ 2  │ Tran B    │ b***@y   │            ◂ Trang 1 ▸          │
 │ ▾ Bảng   │  └────┴───────────┴──────────┘                                 │
 │ ▾ View   │                                                                │
 └──────────┴────────────────────────────────────────────────────────────────┘
 ```
 
-| Khu vực | Dùng để làm gì |
+| Khu vực | Chức năng chính |
 |---|---|
-| **Thanh bên – Kết nối / Máy chủ MCP / Cài đặt** | Chuyển giữa danh sách kết nối, tích hợp AI và cài đặt. |
-| **Thanh bên – Trình khám phá** | Cây bảng, view, hàm, trigger của kết nối đang mở. Chuột phải vào mục để xem các thao tác. |
-| **Thanh tab** | Mỗi tab là một Console SQL, một bảng, một sơ đồ truy vấn trực quan hoặc một Notebook. |
-| **Trình soạn thảo** | Viết SQL có tô màu cú pháp, gợi ý tên bảng/cột và báo lỗi tên bảng/cột không tồn tại. |
-| **Lưới kết quả** | Xem, sắp xếp, lọc, sửa dữ liệu, che mờ dữ liệu nhạy cảm, xuất file. |
+| **Thanh bên (Sidebar)** | Chuyển đổi giữa danh sách **Kết nối**, tích hợp **Máy chủ MCP** và **Cài đặt**. |
+| **Trình khám phá (Explorer)** | Cây phân cấp Bảng, View, Hàm, Trigger của cơ sở dữ liệu đang chọn. Chuột phải vào bất kỳ mục nào để thao tác nhanh. |
+| **Thanh Tab (Tabs Rail)** | Mỗi tab là một Console SQL, một bảng dữ liệu, Visual Query Builder hoặc Notebook. Kéo thả để sắp xếp hoặc tách cửa sổ. |
+| **Trình soạn thảo SQL** | Soạn thảo mã SQL với tô màu cú pháp, gợi ý tên bảng/cột tự động và phát hiện lỗi ngữ cảnh. |
+| **Lưới dữ liệu (DataGrid)** | Hiển thị dữ liệu ảo hóa siêu mượt, hỗ trợ sửa ô, phân tích nhanh cột, lọc, sắp xếp, che mờ PII và xuất file. |
 
-**Mẹo:** `Ctrl+P` mở **Điều hướng nhanh** để nhảy tới bảng, tab hoặc lệnh bằng cách gõ tên.
-`Ctrl+B` ẩn/hiện thanh bên.
+> [!TIP]
+> **Phím tắt điều hướng nhanh:**
+> - `Ctrl + P`: Mở **Điều hướng nhanh (Quick Navigator)** để nhảy ngay tới bảng, tab hoặc lệnh bằng cách gõ tên.
+> - `Ctrl + B`: Bật/tắt thanh bên để mở rộng tối đa không gian làm việc.
 
 ---
 
-## 3. Kết nối tới cơ sở dữ liệu
+## 2. Kết nối tới cơ sở dữ liệu
 
-### 3.1 Tạo kết nối mới
-
-1. Vào **Kết nối** ở thanh bên, nhấn **Thêm kết nối** (hoặc `Ctrl+Shift+N`).
-2. Chọn loại cơ sở dữ liệu (driver), nhập **máy chủ, cổng, tên đăng nhập, mật khẩu, database**.
-3. Tùy chọn nâng cao (các tab trong hộp thoại):
-   - **SSL/TLS**: chế độ *Tắt / Ưu tiên / Bắt buộc / Xác minh CA / Xác minh danh tính* và đường dẫn chứng chỉ (không bắt buộc).
-   - **SSH**: đi qua máy trung gian (bastion) nếu database không mở ra ngoài.
-   - **Kubernetes**: kết nối vào database trong cluster.
-   - **Giao diện**: đặt màu, biểu tượng, **Môi trường** và **Cấp độ an toàn** (xem [mục 6](#6-chế-độ-an-toàn-safe-mode-cho-môi-trường-thật)).
-4. Nhấn kiểm tra kết nối (nếu có) rồi **Lưu**.
-
-### 3.2 Các cách nhanh hơn
-
-- **Chuỗi kết nối**: dán thẳng `postgres://user:pass@host:5432/db` hoặc `mysql://...` vào ô *Chuỗi kết nối*.
-- **Mở từ thư mục dự án**: chọn thư mục code của bạn; app tự dò cấu hình trong `.env`, `docker-compose.yml`
-  hoặc `prisma/schema.prisma` và đề xuất các kết nối để thêm.
-- **Nhập kết nối**: lấy kết nối từ Tabularis (file sao lưu), **DBeaver** hoặc **TablePlus**.
-- **Quét localhost**: tìm MySQL/PostgreSQL đang chạy trên máy.
+### 2.1 Các cách thêm kết nối nhanh nhất
 
 ```mermaid
 flowchart TD
-  S[Thêm kết nối] --> T{Bạn có gì sẵn?}
-  T -->|Thông tin từng ô| M[Điền thủ công]
-  T -->|Chuỗi kết nối| C[Dán chuỗi kết nối]
-  T -->|Thư mục dự án| P[Mở từ thư mục dự án]
-  T -->|DBeaver / TablePlus| I[Nhập kết nối]
-  M --> OK[Lưu kết nối]
-  C --> OK
+  S["Thêm kết nối"] --> T{"Bạn có dữ liệu gì?"}
+  T -->|"Chuỗi URL"| C["Dán chuỗi kết nối"]
+  T -->|"Thư mục code"| P["Mở từ thư mục dự án"]
+  T -->|"App khác"| I["Nhập từ DBeaver / TablePlus"]
+  T -->|"Nhập tay"| M["Điền form thông tin"]
+  C --> OK["Lưu kết nối"]
   P --> OK
   I --> OK
-  OK --> U[Mở kết nối ở thanh bên]
+  M --> OK
+  OK --> U["Mở & duyệt ở thanh bên"]
 ```
 
-### 3.3 Loại cơ sở dữ liệu hỗ trợ
+1. **Dán chuỗi kết nối (Connection String):**
+   - Dán thẳng chuỗi kết nối chuẩn như `postgres://user:pass@localhost:5432/my_db` hoặc `mysql://...` vào ô chuỗi kết nối, app sẽ tự động phân tích và điền toàn bộ thông tin.
+2. **Mở từ thư mục dự án (Open Project Folder):**
+   - Nhấn nút **Mở từ thư mục dự án** và chọn folder mã nguồn của bạn.
+   - Tabularis tự động quét các file cấu hình quen thuộc: `.env`, `.env.local`, `docker-compose.yml`, `prisma/schema.prisma` và đề xuất cấu hình kết nối ngay lập tức.
+3. **Nhập kết nối từ DBeaver hoặc TablePlus:**
+   - Nhấn **Nhập kết nối** để import tự động danh sách các kết nối có sẵn từ DBeaver (`data-sources.json`) hoặc TablePlus.
+4. **Quét Localhost:**
+   - Tự động dò tìm các instance PostgreSQL / MySQL đang chạy ngầm trên máy cá nhân để kết nối 1-click.
 
-PostgreSQL, MySQL/MariaDB và SQLite có sẵn. Các loại khác cài qua **Cài đặt → Plugin** (ví dụ DuckDB,
-ClickHouse, Redis, MongoDB, Google Sheets, thư mục CSV…).
-
----
-
-## 4. Viết và chạy truy vấn SQL
-
-1. Mở một **Console mới** (`Ctrl+T`) khi đã chọn kết nối.
-2. Gõ SQL. Trình soạn thảo gợi ý tên bảng/cột; gõ tắt như `sel`, `fullquery` rồi `Tab` để chèn mẫu.
-3. Chạy:
-   - `Ctrl+Enter`: chạy câu lệnh tại con trỏ (hoặc phần bạn bôi đen).
-   - `Ctrl+F5`: chạy toàn bộ nội dung.
-   - Có nhiều câu lệnh cách nhau bằng `;` thì mỗi câu cho ra một tab kết quả.
-4. Xem lịch sử các câu đã chạy: nút **Lịch sử** hoặc `Ctrl+H`. Bạn có thể tìm kiếm, chép lại, chèn vào editor hoặc chạy lại ngay.
-
-**Mẫu SQL dựng sẵn:** nhấn `Ctrl+J` để mở thư viện mẫu (SELECT, JOIN, INSERT, CTE, window function,
-CREATE TABLE, giao dịch an toàn…). Chọn **Điền tham số** để thay tên bảng/cột rồi **Chèn vào code**.
-
-**Truy vấn có tham số:** viết tham số dạng `:ten_tham_so` (ví dụ `WHERE id = :id`); app hỏi giá trị trước khi chạy.
-
-**Lưu truy vấn:** dùng **Lưu truy vấn**; các truy vấn đã lưu xuất hiện ở thanh bên (*Truy vấn đã lưu*).
-
-**Notebook:** tab Notebook trộn ô SQL và ô Markdown, truyền biến giữa các ô, vẽ biểu đồ và chạy tất cả bằng
-`Ctrl+Shift+Enter`.
-
-**Visual Query Builder:** kéo bảng vào khung thiết kế để nối JOIN và lọc bằng chuột, app sinh SQL cho bạn.
-
-**Giao dịch thủ công:** thanh công cụ có chế độ **Auto / Manual**. Ở Manual, nhấn *Bắt đầu* (BEGIN), rồi
-*Commit* hoặc *Rollback* khi xong.
+### 2.2 Tùy chọn nâng cao khi tạo kết nối
+- **SSL / TLS:** Hỗ trợ 5 chế độ: *Tắt / Ưu tiên / Bắt buộc / Xác minh CA / Xác minh danh tính* cùng tùy chọn chứng chỉ riêng.
+- **SSH Bastion Tunnel:** Đi xuyên qua máy chủ trung gian an toàn nếu cơ sở dữ liệu nằm trong mạng riêng (VPC).
+- **Kubernetes Port-Forward:** Kết nối trực tiếp vào pod database trong cụm K8s.
+- **Giao diện & Cấp độ an toàn:** Đặt màu sắc, biểu tượng, gán **Môi trường** (*Production, Staging, Dev, Local*) và **Cấp độ Safe Mode** (*Strict, Alert, Silent, Read-Only*).
 
 ---
 
-## 5. Xem và sửa dữ liệu trong bảng
+## 3. Viết và chạy truy vấn SQL
 
-- **Mở bảng:** nhấp đúp vào bảng ở thanh bên. Lưới hiển thị dữ liệu theo trang (`Ctrl+→` / `Ctrl+←` để đổi trang).
-- **Sắp xếp / lọc:** nhấn tiêu đề cột để sắp xếp; dùng thanh bộ lọc để lọc theo điều kiện.
-- **Xem nhanh một cột:** nhấp vào tiêu đề để xem thống kê (số dòng hợp lệ, NULL, giá trị duy nhất, giá trị phổ biến nhất).
-- **Xem nội dung dài / JSON:** mở trình kiểm tra ô để xem dạng văn bản, cây JSON hoặc hex, giải mã Base64/URL.
-- **Nhảy theo khóa ngoại:** nhấp vào giá trị khóa ngoại để mở bản ghi liên quan.
+### 3.1 Thao tác soạn thảo & phím tắt
+- **Mở Console mới:** Nhấn `Ctrl + T` khi đã chọn cơ sở dữ liệu.
+- **Thực thi câu lệnh:**
+  - `Ctrl + Enter`: Chạy câu lệnh SQL tại vị trí con trỏ (hoặc đoạn văn bản đang bôi đen).
+  - `Ctrl + F5`: Chạy toàn bộ nội dung trong Console.
+  - Khi có nhiều câu lệnh ngăn cách bởi dấu chấm phẩy `;`, mỗi câu lệnh sẽ xuất ra một tab kết quả riêng biệt.
+- **Lịch sử truy vấn:** Nhấn `Ctrl + H` để tìm lại, chép lại hoặc chạy lại các câu lệnh trước đó.
 
-### Sửa dữ liệu
+### 3.2 Các tiện ích tăng tốc
+- **Mẫu SQL dựng sẵn (Snippets):** Nhấn `Ctrl + J` để mở kho mẫu truy vấn (SELECT, JOIN, CTE, Window Function, CREATE TABLE...). Chọn *Điền tham số* để app hỗ trợ thay tên bảng/cột trước khi chèn vào code.
+- **Truy vấn có tham số động:** Khai báo tham số dưới dạng `:ten_tham_so` (ví dụ `WHERE user_id = :id AND status = :status`). App sẽ tự động hiển thị popup nhập giá trị trước khi chạy.
+- **Quản lý giao dịch (Transaction Control):** Trên thanh công cụ có nút gạt **Auto / Manual**:
+  - Ở chế độ **Manual**: Nhấn *Bắt đầu* (BEGIN), kiểm tra kết quả, sau đó chủ động chọn *Commit* hoặc *Rollback*.
+- **Visual Query Builder:** Kéo thả bảng vào khung canvas để tạo quan hệ JOIN và bộ lọc trực quan bằng chuột, app sẽ tự sinh mã SQL chuẩn xác.
+- **Notebooks:** Trộn lẫn giữa các ô ghi chú Markdown và các ô truy vấn SQL, cho phép chia sẻ biến giữa các ô và vẽ biểu đồ phân tích.
+
+---
+
+## 4. Xem, phân tích và sửa dữ liệu trong bảng
+
+Nhấp đúp chuột vào bất kỳ bảng nào ở thanh bên để mở giao diện lưới dữ liệu:
 
 ```mermaid
 flowchart LR
-  A[Sửa ô / thêm dòng / đánh dấu xóa] --> B[Thay đổi nằm ở trạng thái CHỜ<br/>chưa ghi vào database]
-  B --> C{Xem lại}
-  C -->|Hủy| D[Hoàn tác thay đổi]
-  C -->|Đồng ý| E[Lưu: Ctrl+S]
-  E --> F[Gửi UPDATE / INSERT / DELETE]
+  A["Sửa ô / Thêm dòng / Đánh dấu xóa"] --> B["Dữ liệu ở trạng thái CHỜ (Pending)<br/>Chưa ghi vào Database"]
+  B --> C{"Xem lại thay đổi"}
+  C -->|"Hủy"| D["Hoàn tác thay đổi"]
+  C -->|"Đồng ý"| E["Nhấn Lưu: Ctrl + S"]
+  E --> F["Gửi UPDATE / INSERT / DELETE an toàn"]
 ```
 
-- Bảng cần có **khóa chính** để sửa an toàn. Kết quả của câu `SELECT` phải chứa cột khóa chính thì mới sửa được.
-- Mọi thay đổi chỉ được ghi khi bạn lưu (`Ctrl+S`). Bạn có thể nhân đôi dòng, đánh dấu xóa rồi hoàn tác.
+### 4.1 Tính năng phân tích dữ liệu trực quan (Mới)
+- **Column Quick Statistics Popover:**
+  - Nhấp chuột trái vào **Badge kiểu dữ liệu** (`INT`, `VARCHAR`, `TIMESTAMP`...) ở Header cột.
+  - Hiển thị tức thì: Tổng dòng, % dữ liệu hợp lệ vs NULL, số giá trị độc nhất (**Distinct Count**), `Min / Max / Avg / Sum` (cho cột số), và **Top 3 giá trị phổ biến nhất** kèm thanh tỷ lệ % phân bổ.
+  - Nút *Sao chép tóm tắt* 1-click dạng Markdown để gửi cho đồng đội.
+- **Dải phân bổ Header (2.5px):** Một đường viền mỏng dưới chân Header biểu thị trực quan tỷ lệ dữ liệu hợp lệ (xanh) so với NULL (đỏ nhạt).
+- **Thanh độ lớn ô số (Cell Data Bars):** Tự động vẽ thanh nền mờ biểu thị tỷ lệ `(value - min) / (max - min) * 100%`, giúp quét nhanh dữ liệu lớn/nhỏ mà không cần đọc từng con số.
 
-### Che mờ dữ liệu nhạy cảm (PII)
+### 4.2 Bảo vệ dữ liệu nhạy cảm (PII Masking Presets)
+Bật nút **Che mờ PII** trên thanh công cụ khi cần chia sẻ màn hình hoặc quay video. Hỗ trợ **3 Profile** linh hoạt:
+- **`Smart` (Khuyên dùng):** Che thông minh, giữ lại vài ký tự đầu và cuối để nhận diện định dạng (ví dụ `090****567`, `****-****-****-1234`). Áp dụng cho CCCD/CMND, Thẻ tín dụng, Tài khoản ngân hàng, Email, Số điện thoại, Lương, Secrets/API Keys.
+- **`Full`:** Che phủ hoàn toàn chuỗi ký tự bằng `***`.
+- **`Redacted`:** Hiển thị nhãn cố định `[REDACTED]`.
+> *Lưu ý: Che mờ chỉ áp dụng trên tầng hiển thị, không làm thay đổi dữ liệu gốc trong database.*
 
-Bật nút **Che mờ PII** trên thanh công cụ khi chia sẻ màn hình. App che email, số điện thoại, mật khẩu, token…
-theo **tên cột** (có ba chế độ: Smart, Full, Redacted). Việc che chỉ áp dụng khi hiển thị; dữ liệu trong database
-không đổi.
+### 4.3 Chỉnh sửa dữ liệu an toàn
+- Nhấp đúp vào ô để sửa giá trị, nhấn nút *Thêm dòng*, hoặc chọn dòng rồi nhấn *Xóa*.
+- Mọi thao tác đều nằm ở trạng thái **Chờ lưu (Pending Edits)** có viền màu đánh dấu. Bạn có thể tự do hoàn tác.
+- Nhấn `Ctrl + S` để áp dụng các thay đổi xuống cơ sở dữ liệu.
 
-### Tô màu theo điều kiện
-
-Nút **Tô màu** cho phép tạo quy tắc như "đơn hàng lỗi → nền đỏ" hoặc "số dư âm → ô đỏ".
-
-### Xuất dữ liệu
-
-Nút **Xuất** cho phép xuất kết quả ra **CSV**, **JSON** hoặc **Excel (.xlsx)**. CSV và JSON chạy lại câu truy vấn
-và ghi trực tiếp ra file (phù hợp kết quả lớn, có thanh tiến trình và nút hủy).
+### 4.4 Xuất dữ liệu (Export)
+Nhấn nút **Xuất** để xuất kết quả ra **CSV**, **JSON** hoặc **Excel (.xlsx)**:
+- Cơ chế stream trực tiếp ra file chống tràn RAM, có thanh tiến trình và nút hủy cho các bảng dữ liệu lớn hàng trăm ngàn dòng.
 
 ---
 
-## 6. Chế độ an toàn (Safe Mode) cho môi trường thật
+## 5. Chế độ an toàn (Safe Mode & Production Guard)
 
-Mỗi kết nối có hai thiết lập trong tab **Giao diện** của hộp thoại kết nối:
-
-- **Môi trường (Production Guard):** Production, Staging, Development hoặc Local.
-- **Cấp độ an toàn (Safe Mode):** quyết định app làm gì trước khi chạy lệnh ghi.
-
-| Cấp độ | Hành vi |
-|---|---|
-| **Silent** | Không kiểm tra gì. |
-| **Alert** | Hỏi xác nhận với lệnh nguy hiểm: `DROP`, `TRUNCATE`, `DELETE`/`UPDATE` không có `WHERE`. |
-| **Strict Guard** | Hỏi xác nhận với **mọi** lệnh ghi hoặc thay đổi cấu trúc. |
-| **Read-Only** | Chặn hoàn toàn lệnh ghi. |
-
-Nếu bạn **không chọn** cấp độ, app dùng mặc định theo môi trường: **Production → Strict Guard**,
-**Staging → Alert**, các môi trường còn lại → Silent. Với lệnh nguy hiểm trên production, hộp thoại cảnh báo có
-đếm ngược vài giây trước khi cho phép xác nhận.
+Tabularis cung cấp cơ chế bảo vệ nhiều lớp nhằm ngăn chặn rủi ro vô tình xóa nhầm hoặc cập nhật sai dữ liệu trên môi trường thật:
 
 ```mermaid
 flowchart TD
-  Q[Bạn chạy một câu SQL] --> L{Cấp độ của kết nối}
-  L -->|Silent| R[Chạy ngay]
-  L -->|Alert| D{Lệnh nguy hiểm?}
-  D -->|Không| R
-  D -->|Có| X[Hỏi xác nhận]
-  L -->|Strict| W{Lệnh ghi?}
-  W -->|Không| R
-  W -->|Có| X
-  L -->|Read-Only| B{Lệnh ghi?}
-  B -->|Không| R
-  B -->|Có| N[Bị chặn]
-  X -->|Đồng ý| R
-  X -->|Hủy| S[Không chạy]
+  Q["Thực thi câu lệnh SQL"] --> L{"Cấp độ Safe Mode"}
+  L -->|"Silent (Dev)"| R["Chạy ngay lập tức"]
+  L -->|"Alert (Staging)"| D{"Lệnh nguy hiểm?<br/>DROP/TRUNCATE/UPDATE không WHERE"}
+  D -->|"Không"| R
+  D -->|"Có"| X["Hiển thị cảnh báo xác nhận"]
+  L -->|"Strict Guard (Prod)"| W{"Lệnh ghi dữ liệu?<br/>INSERT/UPDATE/DELETE/DDL"}
+  W -->|"Không (SELECT)"| R
+  W -->|"Có"| X
+  L -->|"Read-Only"| B{"Lệnh ghi dữ liệu?"}
+  B -->|"Không"| R
+  B -->|"Có"| N["Chặn hoàn toàn câu lệnh"]
+  X -->|"Xác nhận"| R
+  X -->|"Hủy bỏ"| S["Dừng câu lệnh"]
 ```
 
-**Khuyến nghị:** đặt mọi kết nối production ở mức **Strict Guard** hoặc **Read-Only**.
+| Cấp độ | Hành vi chi tiết |
+|---|---|
+| **Silent** | Dành cho môi trường phát triển cục bộ (Local). Chạy mọi câu lệnh không cần hỏi. |
+| **Alert** | Dành cho Staging. Tự động cảnh báo với các lệnh rủi ro cao: `DROP`, `TRUNCATE`, `DELETE` / `UPDATE` không có mệnh đề `WHERE`. |
+| **Strict Guard** | Dành cho Production. Yêu cầu xác nhận trước **bất kỳ** lệnh ghi dữ liệu hoặc thay đổi cấu trúc nào. Hộp thoại có đếm ngược vài giây chống bấm nhầm. |
+| **Read-Only** | Chặn đứng 100% mọi thao tác ghi dữ liệu. Lưới dữ liệu tự động khóa chức năng sửa. |
 
 ---
 
-## 7. Tối ưu truy vấn chậm: Explain và gợi ý chỉ mục
+## 6. Tối ưu truy vấn chậm: Explain và gợi ý chỉ mục
 
-- **Visual Explain:** chạy `EXPLAIN` và hiển thị kế hoạch thực thi dạng cây/bảng. Bật *Analyze* để đo thời gian thật
-  (lưu ý: *Analyze* **thực sự chạy** câu lệnh).
-- Khi một truy vấn chạy quá 500 ms, thanh công cụ hiện nút **Tối ưu**. Mở nó (hoặc tab **Plan Diff & Tư vấn chỉ mục**
-  trong Visual Explain) để xem **Index Advisor**.
-
-### Index Advisor hoạt động thế nào
-
-1. App tìm các bước **quét toàn bộ bảng** có điều kiện lọc và đề xuất một chỉ mục (cột bằng đứng trước cột khoảng, tối đa 3 cột).
-2. App hỏi **planner** của database "nếu có chỉ mục này thì kế hoạch ra sao?" bằng chỉ mục giả định.
-   Không có chỉ mục nào được tạo và câu truy vấn không bị chạy.
-3. Bạn thấy **chi phí trước/sau do planner tính**, và liệu planner có thật sự dùng chỉ mục đó hay không.
-4. Câu `CREATE INDEX` được sinh ra để **mở trong tab editor** cho bạn xem lại. App **không tự chạy** nó.
+- **Visual Explain:** Nhấn nút **Explain** trên thanh công cụ để xem kế hoạch thực thi dưới dạng cây trực quan. Bật tùy chọn *Analyze* để đo lường thời gian thực tế của từng node.
+- **Index Advisor (Xác thực thực tế):**
+  - Khi câu truy vấn chạy trên 500ms, hệ thống sẽ đề xuất tạo chỉ mục.
+  - Sử dụng extension `hypopg` trên PostgreSQL để tạo **index giả định trong bộ nhớ**: Query planner thực tế của database sẽ tính toán lại chi phí trước và sau khi có index mà không cần ghi đĩa hay khóa bảng.
+  - Sinh câu lệnh `CREATE INDEX` (kèm tùy chọn `CONCURRENTLY`) và mở sẵn trong Console để bạn duyệt lại trước khi quyết định chạy.
 
 ```mermaid
 flowchart LR
-  A[Truy vấn chậm] --> B[Tìm bước quét toàn bảng]
-  B --> C[Đề xuất chỉ mục]
-  C --> D{Server có hypopg?}
-  D -->|Có| E[Planner tính chi phí với chỉ mục giả định]
-  D -->|Không| F[Hiện đề xuất, báo chưa kiểm chứng]
-  E --> G[So sánh trước / sau]
-  G --> H[Mở CREATE INDEX trong editor để xem lại]
+  A["Truy vấn chạy chậm"] --> B["Dò tìm Seq Scan có bộ lọc"]
+  B --> C["Đề xuất Index"]
+  C --> D{"Có hypopg?"}
+  D -->|"Có"| E["Planner tính chi phí với Index giả lập"]
+  D -->|"Không"| F["Báo đề xuất chưa kiểm chứng"]
+  E --> G["So sánh % chi phí trước/sau"]
+  G --> H["Mở CREATE INDEX trong Editor để xem lại"]
   F --> H
 ```
 
-**Yêu cầu để có con số kiểm chứng:** PostgreSQL có extension **`hypopg`**. Cài bằng `CREATE EXTENSION hypopg;`
-(cần quyền phù hợp). Với driver khác hoặc khi chưa cài `hypopg`, app nói rõ là chưa kiểm chứng và **không hiện số**.
-Trên bảng production lớn, hãy tạo chỉ mục bằng tùy chọn online/đồng thời của database (ví dụ `CREATE INDEX CONCURRENTLY` trên PostgreSQL) để tránh chặn ghi.
-
 ---
 
-## 8. Theo dõi dòng mới: Live Tail
+## 7. Theo dõi dòng mới thời gian thực: Live Tail
 
-Nút **Live Tail** trên thanh công cụ của lưới cho phép theo dõi bảng đang được ghi dữ liệu, chu kỳ 2, 5, 10 hoặc 30 giây.
+Live Tail cho phép bạn theo dõi dữ liệu mới đang được ghi liên tục vào database (chu kỳ 2s, 5s, 10s hoặc 30s):
 
-| Trường hợp | Cách hoạt động |
+| Loại bảng | Cơ chế hoạt động |
 |---|---|
-| **Tab bảng có đúng một khóa chính kiểu số nguyên** | Nhẹ: mỗi nhịp chỉ hỏi "có khóa nào lớn hơn khóa cuối cùng không?". Chỉ khi có dòng mới thì lưới mới tải lại. |
-| **Các trường hợp còn lại** (Console, khóa kép, khóa không phải số) | Chạy lại truy vấn mỗi nhịp và so sánh kết quả. Nặng hơn với truy vấn lớn. |
+| **Bảng có khóa chính kiểu số tăng dần** (`id`, `seq`...) | **Chế độ Keyset Probe siêu nhẹ:** Mỗi nhịp chỉ thăm dò `WHERE id > :last_id LIMIT 1`. Giảm **99% tải** cho database; chỉ khi có dòng mới lưới mới tải thêm. |
+| **Bảng không có khóa số hoặc Console SQL** | Tự động fallback về chế độ so sánh kết quả định kỳ (Snapshot diff) kèm diff chính xác. |
 
-- Số dòng mới hiện thành huy hiệu `+N` cạnh nút.
-- **Chỉ phát hiện dòng thêm mới** ở chế độ nhẹ; sửa hoặc xóa dòng không được phát hiện.
-- Biểu tượng đổi màu: xanh (đang chạy), vàng (tạm dừng, ví dụ cửa sổ bị ẩn hoặc tab đang tải), đỏ (đã dừng sau nhiều lỗi liên tiếp).
-- Khi lỗi, app tăng dần khoảng chờ và tự dừng sau 5 lỗi liên tiếp.
+- **Cơ chế Backoff thông minh:** Tự động giãn chu kỳ kiểm tra khi gặp lỗi và tự ngắt kết nối an toàn sau 5 lỗi liên tiếp. Tự động tạm dừng khi thu nhỏ cửa sổ.
 
 ---
 
-## 9. So sánh dữ liệu giữa hai bảng
+## 8. So sánh dữ liệu giữa hai bảng (Data Compare & Sync)
 
-Dùng để biết hai bảng (cùng hoặc khác database, kể cả khác loại database) khác nhau ở những dòng nào, rồi tạo
-script đưa bảng **đích** về giống bảng **nguồn**.
-
-**Cách mở:** chuột phải vào một bảng ở thanh bên → **So sánh dữ liệu…**
+Cho phép so sánh từng dòng dữ liệu giữa 2 bảng (ngay cả khi thuộc hai cơ sở dữ liệu khác nhau hoặc khác hệ quản trị) và tự động sinh mã đồng bộ:
 
 ```mermaid
 flowchart TD
-  A[Chọn Nguồn: kết nối + bảng] --> B[Chọn Đích: kết nối + bảng]
-  B --> C[Kiểm tra cột khóa<br/>khóa chính được chọn sẵn]
-  C --> D[Nhấn So sánh]
-  D --> E[Xem kết quả:<br/>giống / chỉ ở nguồn / thay đổi / chỉ ở đích]
-  E --> F[Tab Script đồng bộ]
-  F --> G[Tùy chọn: bật xóa dòng chỉ có ở đích]
-  G --> H[Chép SQL hoặc mở trong editor]
-  H --> I[Bạn xem lại và tự chạy]
+  A["Chuột phải vào bảng → So sánh dữ liệu..."] --> B["Chọn kết nối & bảng nguồn (Source)"]
+  B --> C["Chọn kết nối & bảng đích (Target)"]
+  C --> D["Xác nhận cột khóa (Khóa chính pre-selected)"]
+  D --> E["Bấm So sánh"]
+  E --> F["Phân loại: Giống nhau / Khác biệt / Chỉ có ở Nguồn / Chỉ có ở Đích"]
+  F --> G["Sinh SQL Đồng bộ: INSERT, UPDATE, (DELETE tùy chọn)"]
+  G --> H["Mở trong Editor để duyệt lại trước khi chạy"]
 ```
 
-Quy tắc cần nhớ:
-
-- **Cột khóa** quyết định hai dòng "là cùng một dòng". Có thể chọn nhiều cột (khóa kép).
-- Kết quả có bốn nhóm: *Dòng giống nhau*, *Chỉ có ở nguồn* (sẽ INSERT), *Dòng thay đổi* (sẽ UPDATE, hiện từng cột cũ → mới), *Chỉ có ở đích* (có thể DELETE).
-- **DELETE mặc định tắt.** Chỉ có khi bạn tích "Xóa cả các dòng chỉ có ở đích".
-- App đọc tối đa **20.000 dòng mỗi bảng**. Nếu bảng lớn hơn, kết quả chỉ để xem và **không tạo script** vì dòng "thiếu" có thể chỉ là chưa đọc tới.
-- Cột chỉ có ở một phía bị bỏ qua và được liệt kê. Khóa trùng được báo cho bạn.
-- Script **không bao giờ tự chạy**. Hãy sao lưu bảng đích và chạy trong một giao dịch.
+- **Quy tắc an toàn:**
+  - Hỗ trợ so sánh cấu trúc JSON sâu, chuẩn hóa boolean `1/0`, `NULL = NULL`.
+  - Lệnh `DELETE` (xóa dòng thừa ở đích) mặc định được tắt, chỉ bật khi bạn tích chọn.
+  - Script SQL được mở trong Editor để bạn kiểm tra, app không bao giờ tự ý thực thi.
 
 ---
 
-## 10. So sánh cấu trúc hai cơ sở dữ liệu
+## 9. So sánh cấu trúc (Schema Diff) và Sơ đồ ER
 
-Chuột phải vào một database ở thanh bên → **So sánh cấu trúc CSDL (Schema Compare)**.
-Chọn hai kết nối (và schema nếu cần), nhấn So sánh. Bạn thấy bảng giống nhau, chỉ có ở nguồn, chỉ có ở đích và
-cột chênh lệch (thiếu, thừa, khác kiểu). Tab **Script Migration SQL** có sẵn câu lệnh để đồng bộ cấu trúc; bạn có thể
-chép hoặc mở trong editor.
+- **Schema Diff:** Chuột phải vào cơ sở dữ liệu → chọn **So sánh cấu trúc cơ sở dữ liệu...** để phát hiện sự khác biệt về bảng, cột, kiểu dữ liệu, index, trigger giữa môi trường Dev và Production. Tự động xuất migration script.
+- **Sơ đồ thực thể ER Diagram:** Nhấp vào nút **Sơ đồ ER** để xem biểu đồ quan hệ các bảng, tìm kiếm bảng nhanh và 1-click để nhảy tới dữ liệu của bảng tương ứng.
 
 ---
 
-## 11. Chia sẻ cấu hình với nhóm qua Git
+## 10. Chia sẻ cấu hình nhóm qua Git (Team Sync)
 
-Cho phép cả nhóm dùng chung danh sách kết nối và truy vấn đã lưu thông qua một repo Git. Mở từ menu chuột phải →
-**Đồng bộ Workspace nhóm (Git)**. Có ba tab: **Xuất**, **Nhập & hợp nhất** và **Git**.
+Thay vì gửi chuỗi kết nối hay file export qua chat thiếu an toàn, Tabularis hỗ trợ đồng bộ danh sách kết nối (không kèm mật khẩu trừ khi có passphrase) qua kho Git nội bộ của nhóm:
 
-### Quy trình đề xuất
-
-```mermaid
-sequenceDiagram
-  participant A as Bạn (người chia sẻ)
-  participant R as Repo Git của nhóm
-  participant B as Đồng nghiệp
-  A->>A: Tab Git: chọn thư mục repo (bản clone cục bộ)
-  A->>A: Đặt master passphrase, bấm "Commit và push"
-  A->>R: tabularis-workspace.json (đã mã hóa)
-  B->>R: Bấm "Pull và xem trước" (chỉ fast-forward)
-  R-->>B: tabularis-workspace.json
-  B->>B: Tab Nhập: xem trước, chọn giữ bản hiện có hoặc ghi đè
-  B->>B: Áp dụng đồng bộ
-```
-
-Điểm cần biết:
-
-- App **chỉ đọc/ghi một file** `tabularis-workspace.json` trong repo bạn chọn và chạy `git` bằng tài khoản/cấu hình git của chính bạn.
-  App không lưu hay hỏi mật khẩu Git.
-- **Pull chỉ là fast-forward**: không tự merge, không viết lại lịch sử. Nếu nhánh bị phân kỳ, xử lý bằng git bên ngoài.
-- **Mật khẩu kết nối chỉ được đưa vào file khi bạn đặt passphrase *và* tích "Kèm mật khẩu kết nối"**; khi đó file được mã hóa
-  (AES-256-GCM, khóa dẫn xuất PBKDF2 600.000 vòng). Không có passphrase thì file là JSON thuần và **không có mật khẩu**.
-- Tệp xuất có thứ tự ổn định (sắp xếp khóa) nên `git diff` chỉ hiện thay đổi thật. Hãy giữ passphrase ở nơi an toàn: mất passphrase thì không giải mã được.
-- Khi nhập, bạn chọn **Bỏ qua các mục đã tồn tại** hoặc **Ghi đè bằng dữ liệu trong bundle**, và luôn có bước xem trước.
+- **Git Engine an toàn:** Gọi lệnh Git với cờ `--ff-only`, không bao giờ tự ý merge hay ghi đè lịch sử của team.
+- **Mã hóa chuẩn 2.0:** Sử dụng PBKDF2-SHA256 với **600.000 vòng lặp** và xác thực toàn vẹn `AES-GCM AAD`.
+- **Thao tác đơn giản:** Chọn thư mục Git repo của dự án, xem trạng thái *Ahead / Behind*, nhấn *Pull & Preview* hoặc *Commit & Push*.
 
 ---
 
-## 12. Các công cụ khác
+## 11. Các công cụ mở rộng
 
-| Công cụ | Cách mở | Dùng để |
-|---|---|---|
-| **Sinh dữ liệu mẫu (Mock Data)** | Chuột phải vào bảng | Tạo dòng dữ liệu giả theo tên và kiểu cột để thử nghiệm. |
-| **Sơ đồ ER** | Menu chuột phải của database: **Xem sơ đồ ER** | Xem quan hệ giữa các bảng; xuất ảnh PNG hoặc SVG. |
-| **Dump cơ sở dữ liệu / Chạy file SQL** | Chuột phải vào database | Xuất database ra file SQL (có tùy chọn kèm dữ liệu), hoặc chạy một file SQL vào database. |
-| **Nhập từ Clipboard** | `Ctrl+Shift+V` | Dán bảng từ Excel/CSV để tạo bảng và nhập dữ liệu. |
-| **Nhập từ file** | Nhập dữ liệu vào bảng | CSV, TSV, JSON, Markdown. |
-| **Tab tách rời** | Nút *Cửa sổ riêng* | Đưa Console và kết quả ra một cửa sổ riêng, đặt sang màn hình thứ hai. |
-| **Chia đôi màn hình** | Chuột phải vào bảng → *Mở bên phải* | Xem hai bảng/kết quả cạnh nhau. |
-| **Quản lý tác vụ** | **Cài đặt → Thông tin → Mở Quản lý tác vụ** | Theo dõi tiến trình của app và các tiến trình plugin. |
+- **Tách cửa sổ (Detach Window):** Nhấp chuột phải vào Tab kết quả hoặc Tab Console → chọn *Tách thành cửa sổ riêng* để chuyển sang màn hình phụ thứ hai.
+- **Chia đôi màn hình (Split View):** Chuột phải vào bảng → chọn *Mở bên phải* để xem và đối chiếu 2 bảng dữ liệu song song cạnh nhau.
+- **Trình quản lý tác vụ (Task Manager):** Mở từ *Cài đặt → Thông tin → Quản lý tác vụ* để giám sát mức chiếm dụng bộ nhớ của app và các tiến trình plugin.
 
 ---
 
-## 13. Kết nối trợ lý AI (MCP)
+## 12. Kết nối trợ lý AI và Máy chủ MCP
 
-**Máy chủ MCP** cho phép trợ lý AI như Claude Desktop hay Cursor đọc cấu trúc và chạy truy vấn **trên chính các kết nối trong Tabularis**.
+Tabularis tích hợp sẵn giao thức **Model Context Protocol (MCP)**:
 
-1. Vào **Máy chủ MCP** ở thanh bên.
-2. Chọn ứng dụng AI bạn dùng và nhấn **Cài cấu hình** (hoặc dùng *cấu hình thủ công* / *lệnh thủ công* nếu cài tự động không được).
-3. Khởi động lại ứng dụng AI đó.
-4. Theo dõi mọi thao tác của AI ở **Cài đặt → Hoạt động AI**. Các thao tác ghi có thể yêu cầu bạn **phê duyệt** trước khi chạy.
-
-**Trò chuyện AI trong app:** vào **Cài đặt → AI**, chọn nhà cung cấp (dịch vụ trên mạng hoặc model chạy cục bộ như Ollama),
-nhập khóa/địa chỉ, nhấn **Thử model** để kiểm tra. Sau đó dùng khung chat AI để hỏi, nhờ viết/tối ưu SQL, và dùng
-nút **Hỏi AI sửa lỗi này** khi câu SQL báo lỗi.
-
-> Nên dùng kết nối ở chế độ **Read-Only** khi cho AI truy cập dữ liệu thật.
+1. **Biến Tabularis thành MCP Server cho Claude Desktop / Cursor / Devin:**
+   - Vào menu **Máy chủ MCP** ở thanh bên.
+   - Chọn ứng dụng AI bạn dùng và nhấn **Cài cấu hình 1-click**.
+   - Trợ lý AI của bạn giờ đây có thể đọc cấu trúc bảng và hỗ trợ viết query trực tiếp trên kết nối bạn đang mở trong Tabularis (có thể đặt chế độ Read-Only để bảo vệ an toàn).
+2. **Khung Chat AI tích hợp:**
+   - Cài đặt API key (OpenAI, Claude, Gemini hoặc Ollama local) tại *Cài đặt → AI*.
+   - Khung chat bên cạnh Editor hỗ trợ giải thích câu truy vấn, chuyển đổi ngôn ngữ tự nhiên thành SQL và nút **"Hỏi AI sửa lỗi này"** khi câu lệnh gặp lỗi cú pháp.
 
 ---
 
-## 14. Cài đặt, ngôn ngữ và phím tắt
+## 13. Bảng phím tắt toàn tập
 
-Vào **Cài đặt** ở thanh bên. Các tab: **Chung**, **Plugin**, **Giao diện**, **Bản địa hóa**, **AI**, **Hoạt động AI**,
-**Nhật ký**, **Phím tắt**, **Thông tin**.
+*(Phím tắt trên Windows / Linux. Trên macOS, thay thế phím `Ctrl` bằng `⌘ Cmd`)*
 
-- **Ngôn ngữ:** *Bản địa hóa* → chọn **English**, **日本語** hoặc **Tiếng Việt** (hoặc để tự nhận theo hệ thống).
-- **Giao diện:** chọn chủ đề màu, phông chữ, cỡ chữ, màu theo kiểu dữ liệu.
-- **Phím tắt:** xem và đổi phím ở tab *Phím tắt*.
-
-### Phím tắt mặc định (Windows/Linux; trên macOS thay `Ctrl` bằng `⌘`)
-
-| Phím | Chức năng |
+| Phím tắt | Tác vụ |
 |---|---|
-| `Ctrl+Enter` | Chạy câu lệnh tại con trỏ / vùng chọn |
-| `Ctrl+F5` | Chạy truy vấn |
-| `Ctrl+T` | Tab mới |
-| `Ctrl+W` | Đóng tab |
-| `Ctrl+Shift+T` | Mở lại tab vừa đóng |
-| `Ctrl+Tab` | Chuyển tab |
-| `Ctrl+J` | Hiện mẫu SQL / snippets |
-| `Ctrl+S` | Lưu thay đổi đang chờ trong lưới |
-| `Ctrl+→` / `Ctrl+←` | Trang sau / trang trước |
-| `Ctrl+C` | Sao chép vùng chọn |
-| `Ctrl+B` | Bật/tắt thanh bên |
-| `Ctrl+P` | Điều hướng nhanh |
-| `Ctrl+Shift+C` | Mở danh sách kết nối |
-| `Ctrl+Shift+N` | Kết nối mới |
-| `Ctrl+Shift+1` … `9` | Chuyển tới kết nối thứ 1…9 |
-| `Ctrl+Shift+V` | Nhập từ Clipboard |
-| `Ctrl+Shift+Enter` | Chạy tất cả ô trong Notebook |
+| `Ctrl + Enter` | Chạy câu lệnh SQL tại vị trí con trỏ (hoặc vùng bôi đen) |
+| `Ctrl + F5` | Chạy toàn bộ mã trong Console |
+| `Ctrl + T` | Mở Tab Console mới |
+| `Ctrl + W` | Đóng tab hiện tại |
+| `Ctrl + Shift + T` | Mở lại tab vừa đóng |
+| `Ctrl + Tab` | Chuyển đổi giữa các tab đang mở |
+| `Ctrl + J` | Mở thư viện mẫu SQL Snippets |
+| `Ctrl + S` | Lưu các thay đổi dữ liệu đang chờ trong lưới |
+| `Ctrl + →` / `Ctrl + ←` | Chuyển sang trang sau / trang trước |
+| `Ctrl + P` | Mở thanh Điều hướng nhanh (Quick Navigator) |
+| `Ctrl + B` | Ẩn / hiện thanh bên (Sidebar) |
+| `Ctrl + H` | Xem lịch sử các câu lệnh SQL đã chạy |
+| `Ctrl + Shift + N` | Mở hộp thoại Thêm kết nối mới |
+| `Ctrl + Shift + C` | Mở danh sách quản lý Kết nối |
+| `Ctrl + Shift + 1` ... `9` | Nhảy nhanh tới kết nối số 1 đến 9 |
+| `Ctrl + Shift + Enter` | Chạy tất cả các ô trong Notebook |
 
 ---
 
-## 15. Xử lý sự cố thường gặp
+## 14. Xử lý sự cố thường gặp (Troubleshooting)
 
-| Hiện tượng | Nguyên nhân thường gặp và cách xử lý |
+| Hiện tượng | Nguyên nhân và cách xử lý nhanh |
 |---|---|
-| Không kết nối được | Kiểm tra máy chủ/cổng/tường lửa; thử chế độ SSL khác; nếu database ở sau máy trung gian, bật tab **SSH**. |
-| Mật khẩu không được lưu | Chọn lưu trong kho khóa của hệ điều hành ở hộp thoại kết nối; một số môi trường không có kho khóa. |
-| Không sửa được ô trong lưới | Bảng không có khóa chính, hoặc kết quả `SELECT` thiếu cột khóa chính, hoặc kết nối đang ở **Read-Only**. |
-| Lệnh bị chặn / hỏi xác nhận | Đó là **Safe Mode** của kết nối. Đổi ở tab *Giao diện* của kết nối nếu thật sự cần. |
-| Gợi ý chỉ mục không có số liệu | Server chưa cài `hypopg` (chỉ PostgreSQL hỗ trợ). Xem [mục 7](#7-tối-ưu-truy-vấn-chậm-explain-và-gợi-ý-chỉ-mục). |
-| Live Tail chạy nặng | Đang ở chế độ chạy lại truy vấn. Dùng tab bảng có một khóa chính kiểu số nguyên để dùng chế độ nhẹ. |
-| So sánh dữ liệu không cho tạo script | Một trong hai bảng lớn hơn 20.000 dòng, nên chỉ đọc một phần. |
-| Git Sync báo lỗi pull | Nhánh đã phân kỳ hoặc chưa có upstream; xử lý bằng `git` bên ngoài rồi thử lại. |
-| Chữ tiếng Việt bị lệch dấu (ví dụ "kết nối" bị tách dấu) | Đã khắc phục từ bản 0.13.28 bằng cách ưu tiên phông có đủ tiếng Việt. Nếu còn gặp, đặt phông ở **Cài đặt → Giao diện** thành một phông có đủ tiếng Việt như Segoe UI hoặc Arial. |
-| App chạy chậm khi bảng rất lớn | Dùng phân trang/bộ lọc; với kết quả lớn hãy **Xuất** ra file thay vì xem hết trên lưới. |
-
-**Cần thêm trợ giúp?** Xem [README.md](README.md) và [CONTRIBUTING.md](CONTRIBUTING.md), hoặc mở issue trên
-GitHub của dự án.
+| **Không kết nối được vào database** | Kiểm tra IP/Cổng/Tường lửa máy chủ. Thử đổi chế độ SSL sang *Ưu tiên* hoặc *Tắt*. Nếu database nằm trong mạng nội bộ, cấu hình tab **SSH**. |
+| **Không sửa được ô dữ liệu trong bảng** | Bảng chưa có Khóa chính (Primary Key), hoặc kết quả `SELECT` không chứa cột khóa chính, hoặc kết nối đang bật chế độ **Read-Only**. |
+| **Lệnh SQL bị chặn hoặc hiện cảnh báo** | Cơ chế **Safe Mode** đang bảo vệ môi trường Production/Staging. Điều chỉnh tại tab *Giao diện* của kết nối nếu bạn thực sự muốn chạy. |
+| **Index Advisor không hiển thị số % giảm chi phí** | Database PostgreSQL của bạn chưa cài extension `hypopg`. Chạy `CREATE EXTENSION hypopg;` trên database để kích hoạt đo lường thực tế. |
+| **Chữ tiếng Việt bị lỗi dấu trên Windows tiếng Nhật** | Phiên bản 0.13.28+ đã tự động ưu tiên phông chữ `Segoe UI` để khắc phục triệt để. Bạn cũng có thể chủ động chọn phông tại *Cài đặt → Giao diện*. |
+| **So sánh dữ liệu không tạo được script** | Một trong hai bảng vượt quá giới hạn an toàn 20.000 dòng. Hãy dùng bộ lọc để thu hẹp phạm vi cần đồng bộ. |
