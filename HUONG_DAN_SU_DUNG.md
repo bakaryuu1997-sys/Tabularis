@@ -8,9 +8,28 @@ flowchart LR
   A["1. Kết nối DB<br/>Chuỗi kết nối / Dự án / DBeaver"] --> B["2. Duyệt Cấu trúc<br/>Bảng, View, Khóa ngoại"]
   B --> C["3. Truy vấn SQL<br/>Console / Snippets / Visual Builder"]
   B --> D["4. Thao tác Dữ liệu<br/>Lưới ảo / Sửa ô / Quick Stats / Live Tail"]
-  C --> E["5. Tối ưu & So sánh<br/>Explain / Index Advisor / Data Compare"]
+  C --> E["5. Tối ưu và So sánh<br/>Explain / Index Advisor / Data Compare"]
   D --> E
 ```
+
+---
+
+## 🚀 Bắt đầu nhanh trong 3 bước (30 giây)
+
+Nếu bạn vừa cài đặt Tabularis, bạn chỉ cần nắm 3 bước này là dùng được ngay:
+
+| Bước | Thao tác | Hướng dẫn chi tiết |
+|---|---|---|
+| **1. Kết nối CSDL** | **1 Cú click** | Bấm nút vàng **`📁 Mở từ thư mục dự án`** (chọn folder code có `.env`, `docker-compose`, `prisma`), hoặc bấm **`+ Thêm kết nối`** và dán URL (`postgres://...`, `mysql://...`). |
+| **2. Xem & Sửa dữ liệu** | **Không cần SQL** | Click đúp vào tên bảng bất kỳ ở cột bên trái (Explorer). Nhấp đúp chuột vào ô bất kỳ để sửa trực tiếp như Excel, rồi bấm **`Lưu`** (`Ctrl + S`). |
+| **3. Viết & Chạy SQL** | **Console thông minh** | Bấm **`Ctrl + T`** mở tab SQL, gõ câu truy vấn và bấm **`Ctrl + Enter`** để chạy. Bấm **`Xuất dữ liệu`** để tải về file Excel/CSV/JSON. |
+
+> 💡 **5 Mẹo hay nên biết:**
+> 1. 🛡️ **Che mờ dữ liệu (PII Masking):** Bấm nút khiên trên bảng dữ liệu để ẩn email, số điện thoại khi demo/chụp ảnh.
+> 2. ⚡ **Tối ưu câu SQL (Index Advisor):** Bấm `Explain & Tối ưu` để phát hiện nghẽn hiệu năng và nhận gợi ý lệnh `CREATE INDEX`.
+> 3. 🔄 **Đối soát 2 bảng (Data Compare):** Chuột phải vào bảng → `So sánh dữ liệu` để tìm chênh lệch giữa Local và Staging.
+> 4. 📊 **Thống kê cột nhanh:** Click vào thẻ kiểu dữ liệu ở tiêu đề cột để xem % NULL, Distinct count, Min/Max.
+> 5. 🔍 **Tìm nhanh toàn năng:** Bấm `Ctrl + P` để nhảy tới bất kỳ bảng hay kết nối nào trong 1 giây.
 
 ---
 
