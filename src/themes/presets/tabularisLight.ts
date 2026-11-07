@@ -61,7 +61,7 @@ export const tabularisLight: Theme = {
   },
   typography: {
     fontFamily: {
-      base: 'Inter, system-ui, Avenir, Helvetica, Arial, sans-serif',
+      base: '"Segoe UI", Inter, system-ui, Avenir, Helvetica, Arial, sans-serif',
       mono: 'JetBrains Mono, Fira Code, Monaco, Consolas, monospace',
     },
     fontSize: {

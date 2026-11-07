@@ -10,16 +10,16 @@ describe("withVietnameseSafeFont", () => {
     expect(withVietnameseSafeFont("Open Sans, system-ui, sans-serif")).toBe('Open Sans, "Segoe UI", system-ui, sans-serif');
   });
 
-  it("goes before -apple-system and the other generic families too", () => {
+  it("moves Segoe UI before system-ui, -apple-system and generic families even if already listed after them", () => {
     expect(withVietnameseSafeFont("system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif")).toBe(
-      "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
+      '"Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
     );
     expect(withVietnameseSafeFont("-apple-system, Roboto")).toBe('"Segoe UI", -apple-system, Roboto');
   });
 
-  it("does not add it twice, quoted or not", () => {
+  it("does not duplicate Segoe UI when already correctly placed before generic families", () => {
     expect(withVietnameseSafeFont('Inter, "Segoe UI", system-ui')).toBe('Inter, "Segoe UI", system-ui');
-    expect(withVietnameseSafeFont("Inter, Segoe UI, system-ui")).toBe("Inter, Segoe UI, system-ui");
+    expect(withVietnameseSafeFont("Inter, Segoe UI, system-ui")).toBe('Inter, "Segoe UI", system-ui');
   });
 
   it("appends it when there is no generic family", () => {

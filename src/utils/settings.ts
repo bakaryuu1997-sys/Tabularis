@@ -7,9 +7,9 @@ import { withVietnameseSafeFont } from "./fontStack";
 
 export const FONT_MAP: Record<string, string> = {
   System:
-    "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Ubuntu, sans-serif",
-  "Open Sans": "Open Sans, system-ui, sans-serif",
-  Roboto: "Roboto, RobotoDraft, Helvetica, Arial, sans-serif",
+    '"Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, Ubuntu, sans-serif',
+  "Open Sans": 'Open Sans, "Segoe UI", system-ui, sans-serif',
+  Roboto: 'Roboto, "Segoe UI", RobotoDraft, Helvetica, Arial, sans-serif',
   "JetBrains Mono": "JetBrains Mono, Menlo, Monaco, Consolas, monospace",
   Hack: "Hack, Menlo, Monaco, Consolas, monospace",
   Menlo: "Menlo, Monaco, Consolas, monospace",
