@@ -16,7 +16,6 @@ import {
   GitCompare,
   Network,
   GitBranch,
-  Maximize2,
   Bot,
   Keyboard,
   HelpCircle,
