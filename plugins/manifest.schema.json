@@ -204,6 +204,30 @@
       "type": "string",
       "description": "Optional interpreter for script-based plugins (e.g. python3)."
     },
+    "ui_extensions": {
+      "type": "array",
+      "description": "Optional UI components the plugin injects into host slots (see PLUGIN_GUIDE.md, UI Extensions).",
+      "items": {
+        "type": "object",
+        "required": ["slot", "module"],
+        "additionalProperties": false,
+        "properties": {
+          "slot": { "type": "string", "description": "Target slot name, e.g. \"data-grid.toolbar.actions\"." },
+          "module": { "type": "string", "description": "Path of the pre-built IIFE bundle inside the plugin folder." },
+          "order": { "type": "number", "description": "Sort order within the slot; lower renders first. Default 100." },
+          "driver": { "type": "string", "description": "Only show the component when the active driver id matches." }
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "description": "Host UI APIs this plugin's UI code needs. Omit the field only for plugins written before permissions existed: they keep the full API and a warning is logged. An empty list means none of the gated APIs.",
+      "items": {
+        "type": "string",
+        "enum": ["connection", "query", "settings", "modal", "open_url"]
+      },
+      "uniqueItems": true
+    },
     "settings": {
       "type": "array",
       "description": "Optional list of configuration fields the plugin exposes to the user.",

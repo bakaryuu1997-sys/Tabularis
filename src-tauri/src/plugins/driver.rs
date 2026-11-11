@@ -807,6 +807,7 @@ mod tests {
             icon: String::new(),
             settings: Vec::new(),
             ui_extensions: None,
+            permissions: None,
         }
     }
 

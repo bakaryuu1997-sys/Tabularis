@@ -1570,6 +1570,7 @@ impl PostgresDriver {
                 icon: "postgres".to_string(),
                 settings: vec![],
                 ui_extensions: None,
+                permissions: None,
             },
         }
     }

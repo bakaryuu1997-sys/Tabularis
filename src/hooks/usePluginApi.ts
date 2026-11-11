@@ -29,7 +29,8 @@ export function usePluginQuery() {
       setError(null);
 
       try {
-        const result = await invoke<{ columns: string[]; rows: unknown[][] }>("execute_query", {
+        // The backend refuses anything that is not a single read-only statement.
+        const result = await invoke<{ columns: string[]; rows: unknown[][] }>("execute_plugin_query", {
           connectionId: dbCtx.activeConnectionId,
           query,
           ...(dbCtx.activeSchema ? { schema: dbCtx.activeSchema } : {}),

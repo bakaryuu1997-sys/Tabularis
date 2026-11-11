@@ -428,7 +428,7 @@ Slot components can import these hooks from `@tabularis/plugin-api`:
 
 | Hook | Returns | Purpose |
 |------|---------|---------|
-| `usePluginQuery()` | `(query: string) => Promise<{ columns, rows }>` | Execute read-only queries on the active connection |
+| `usePluginQuery()` | `{ executeQuery(query), loading, error }` | Execute read-only queries on the active connection (needs `query` permission) |
 | `usePluginConnection()` | `{ connectionId, driver, schema }` | Access active connection metadata |
 | `usePluginToast()` | `{ showInfo(), showError(), showWarning() }` | Show toast notifications |
 | `usePluginModal()` | `{ openModal(options), closeModal() }` | Open host-managed modals with custom content |
@@ -436,6 +436,42 @@ Slot components can import these hooks from `@tabularis/plugin-api`:
 | `usePluginTheme()` | `{ themeId, themeName, isDark, colors }` | Access current theme info |
 | `usePluginTranslation(pluginId)` | `t(key)` | Access plugin-specific i18n translations |
 | `openUrl(url)` | `Promise<void>` | Open a URL in the system browser |
+
+#### Permissions
+
+Declare which of the gated host APIs your UI code uses in a `permissions` array in `manifest.json`:
+
+```json
+{
+  "id": "my-plugin",
+  "ui_extensions": [{ "slot": "data-grid.toolbar.actions", "module": "ui/export-button.js" }],
+  "permissions": ["query", "connection"]
+}
+```
+
+| Permission | Gates | Notes |
+|------------|-------|-------|
+| `connection` | `usePluginConnection()` | Without it the hook reports no connection. |
+| `query` | `usePluginQuery()` | Runs **read-only** SQL only (see below). |
+| `settings` | `usePluginSetting()` | Always bound to your own plugin id, whatever id you pass. |
+| `modal` | `usePluginModal()` | |
+| `open_url` | `openUrl()` | Only `http:`, `https:` and `mailto:` links open. |
+
+Toasts, `usePluginTheme()`, `usePluginTranslation()` and `defineSlot()` need no permission.
+
+- A manifest **without** a `permissions` field is treated as a legacy plugin: it keeps the full API and the host logs a warning. New plugins should always declare the field; use `[]` to say "none".
+- Using an API you did not declare throws an error that names the missing permission.
+- `permissions` is a **least-privilege contract, not a sandbox**. Plugin UI code still runs inside the main window. Do not install plugins you do not trust. The planned isolation is described in `SANDBOX_DESIGN.md`.
+
+##### What `usePluginQuery()` accepts
+
+`usePluginQuery()` sends the statement to the backend, which accepts **one read-only statement** (`SELECT`, `WITH` without writes, `SHOW`, `DESCRIBE`, `EXPLAIN` without `ANALYZE`, `VALUES`, and informational SQLite `PRAGMA`s such as `table_info`). It refuses:
+
+- `INSERT`, `UPDATE`, `DELETE`, DDL, and anything after a `;`;
+- `SELECT ... INTO`, `FOR UPDATE`, `LOCK IN SHARE MODE`, `EXPLAIN ANALYZE`;
+- a list of side-effecting functions (`nextval`, `pg_terminate_backend`, `lo_import`, `load_file`, `sleep`, ...).
+
+The error message starts with `Plugins can only run read-only queries`. The list of functions cannot be complete; do not rely on it for safety.
 
 #### Plugin Modal
 

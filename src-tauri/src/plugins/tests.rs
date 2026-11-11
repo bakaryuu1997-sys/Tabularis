@@ -147,3 +147,30 @@ mod safe_path_tests {
         assert!(resolve_plugin_file(dir.path(), "p1", "link.txt").is_err());
     }
 }
+
+mod manifest_permissions_tests {
+    use crate::plugins::manager::ConfigManifest;
+
+    fn parse(extra: &str) -> ConfigManifest {
+        let json = format!(
+            r#"{{"id":"p","name":"P","version":"1.0.0","description":"d"{extra}}}"#
+        );
+        serde_json::from_str(&json).unwrap()
+    }
+
+    #[test]
+    fn a_manifest_without_permissions_is_a_legacy_plugin() {
+        assert!(parse("").permissions.is_none());
+    }
+
+    #[test]
+    fn declared_permissions_are_kept_in_order() {
+        let manifest = parse(r#","permissions":["query","settings"]"#);
+        assert_eq!(manifest.permissions.unwrap(), ["query", "settings"]);
+    }
+
+    #[test]
+    fn an_empty_list_is_different_from_no_list() {
+        assert_eq!(parse(r#","permissions":[]"#).permissions, Some(Vec::new()));
+    }
+}

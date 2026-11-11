@@ -1562,6 +1562,7 @@ impl MysqlDriver {
                     },
                 ],
                 ui_extensions: None,
+                permissions: None,
             },
         }
     }

@@ -911,6 +911,7 @@ impl SqliteDriver {
                 icon: "sqlite".to_string(),
                 settings: vec![],
                 ui_extensions: None,
+                permissions: None,
             },
         }
     }

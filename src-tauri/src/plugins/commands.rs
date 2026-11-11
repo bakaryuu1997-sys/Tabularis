@@ -228,6 +228,7 @@ pub async fn get_plugin_manifest(plugin_id: String) -> Result<PluginManifest, St
         icon: config.icon,
         settings: config.settings,
         ui_extensions: config.ui_extensions,
+        permissions: config.permissions,
     })
 }
 
@@ -258,4 +259,18 @@ pub fn read_plugin_file(plugin_id: String, file_path: String) -> Result<String, 
             file_path, plugin_id, e
         )
     })
+}
+
+/// Runs a read-only query on behalf of plugin UI code (`usePluginQuery`). Anything that is not a single
+/// read-only statement is refused before it reaches the database; see `plugins::query_guard`.
+#[tauri::command]
+pub async fn execute_plugin_query(
+    app: AppHandle,
+    state: tauri::State<'_, crate::commands::QueryCancellationState>,
+    connection_id: String,
+    query: String,
+    schema: Option<String>,
+) -> Result<crate::models::QueryResult, String> {
+    crate::plugins::query_guard::ensure_read_only(&query)?;
+    crate::commands::execute_query(app, state, connection_id, query, None, None, schema).await
 }

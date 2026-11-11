@@ -243,6 +243,10 @@ pub struct PluginManifest {
     /// UI extension slot declarations. Absent for built-in drivers.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ui_extensions: Option<Vec<UIExtensionEntry>>,
+    /// Host APIs the plugin's UI code declares it needs (`connection`, `query`, `settings`, `modal`,
+    /// `open_url`). `None` means the plugin predates permissions and keeps the full API.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub permissions: Option<Vec<String>>,
 }
 
 /// The complete interface every database driver plugin must implement.

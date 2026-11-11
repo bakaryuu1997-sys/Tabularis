@@ -10,6 +10,8 @@ import type { SlotContribution, SlotName, SlotContext } from "../types/pluginSlo
 import { VALID_SLOTS } from "../types/pluginSlots";
 import type { PluginManifest } from "../types/plugins";
 import * as pluginApi from "../pluginApi";
+import { createPluginApi, resolvePermissions } from "../utils/pluginPermissions";
+import { evaluatePluginBundle } from "../utils/pluginRuntime";
 import { useSettings } from "../hooks/useSettings";
 
 interface PluginSlotProviderProps {
@@ -75,6 +77,20 @@ async function loadExternalPluginContributions(
 
   exposePluginGlobals();
 
+  const permissions = resolvePermissions(manifest.permissions);
+  if (permissions.legacy) {
+    console.warn(
+      `[PluginSlot] Plugin "${manifest.id}" declares no "permissions" in its manifest, so it keeps access to the full UI API. ` +
+        `Declare the permissions it needs (see PLUGIN_GUIDE.md).`,
+    );
+  }
+  if (permissions.unknown.length > 0) {
+    console.warn(
+      `[PluginSlot] Plugin "${manifest.id}" declares unknown permissions: ${permissions.unknown.join(", ")}`,
+    );
+  }
+  const pluginApiForPlugin = createPluginApi(manifest.id, permissions);
+
   // Group entries by module path to load each bundle once.
   const byModule = new Map<string, typeof manifest.ui_extensions>();
   for (const entry of manifest.ui_extensions) {
@@ -92,20 +108,8 @@ async function loadExternalPluginContributions(
         filePath: modulePath,
       });
 
-      // Execute the IIFE, passing React globals as parameters.
-      // The bundle assigns its exports to the local `__tabularis_plugin__` var.
-      const fn = new Function(
-        "React",
-        "ReactJSXRuntime",
-        "__TABULARIS_API__",
-        source + "\n return typeof __tabularis_plugin__ !== 'undefined' ? __tabularis_plugin__ : null;",
-      );
-      const raw = fn(React, ReactJSXRuntime, pluginApi) as unknown;
-      // Support both direct export (`return Component`) and ES-module style (`return { default: Component }`).
-      const component =
-        typeof raw === "function"
-          ? raw
-          : (raw as { default?: unknown } | null)?.default ?? null;
+      // Execute the IIFE with this plugin's own API object (permissions from its manifest).
+      const component = evaluatePluginBundle(source, pluginApiForPlugin);
 
       if (!component || typeof component !== "function") {
         console.warn(

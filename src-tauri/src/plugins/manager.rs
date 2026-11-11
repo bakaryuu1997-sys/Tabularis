@@ -55,6 +55,8 @@ pub struct ConfigManifest {
     pub settings: Vec<PluginSettingDefinition>,
     #[serde(default)]
     pub ui_extensions: Option<Vec<crate::drivers::driver_trait::UIExtensionEntry>>,
+    #[serde(default)]
+    pub permissions: Option<Vec<String>>,
 }
 
 /// Load installed plugins at startup.
@@ -181,6 +183,7 @@ pub async fn load_plugin_from_dir(
         icon: config.icon,
         settings: config.settings,
         ui_extensions: config.ui_extensions,
+        permissions: config.permissions,
     };
 
     // UI-only plugins (no executable) register only their manifest.

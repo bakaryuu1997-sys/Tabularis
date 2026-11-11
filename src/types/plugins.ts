@@ -89,6 +89,9 @@ export interface PluginManifest {
   settings?: PluginSettingDefinition[];
   /** UI extension declarations for slot-based rendering (Phase 2). */
   ui_extensions?: UIExtensionManifestEntry[];
+  /** Host UI APIs the plugin declares it needs: `connection`, `query`, `settings`, `modal`, `open_url`.
+   * Absent means a plugin that predates permissions; it keeps the full API. See `utils/pluginPermissions`. */
+  permissions?: string[];
 }
 
 /** Manifest-level entry for a UI extension slot. */

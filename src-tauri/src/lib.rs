@@ -504,6 +504,7 @@ pub fn run() {
             plugins::commands::get_plugin_manifest,
             plugins::commands::get_plugin_dir,
             plugins::commands::read_plugin_file,
+            plugins::commands::execute_plugin_query,
             plugins::manager::get_plugin_startup_errors,
             // JSON Viewer
             json_viewer::open_json_viewer_window,
