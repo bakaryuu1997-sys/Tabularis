@@ -11,16 +11,14 @@ import {
   AlertTriangle,
   CheckCircle2,
 } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
 import { Modal } from "../ui/Modal";
 import { useDatabase } from "../../hooks/useDatabase";
 import { useAlert } from "../../hooks/useAlert";
 import {
   compareSchemas,
   type SchemaDiffResult,
-  type MinimalTableInfo,
 } from "../../utils/schemaDiff";
-import type { TableColumn } from "../../utils/sqlGenerator";
+import { loadSchemaColumns } from "../../utils/schemaFetch";
 import { SqlPreview } from "../ui/SqlPreview";
 
 interface SchemaDiffModalProps {
@@ -60,52 +58,13 @@ export const SchemaDiffModal = ({
     setDiffResult(null);
 
     try {
-      // 1. Fetch tables from source and target
-      const [srcTables, tgtTables] = await Promise.all([
-        invoke<MinimalTableInfo[]>("get_tables", {
-          connectionId: sourceConnId,
-          ...(sourceSchema ? { schema: sourceSchema } : {}),
-        }),
-        invoke<MinimalTableInfo[]>("get_tables", {
-          connectionId: targetConnId,
-          ...(targetSchema ? { schema: targetSchema } : {}),
-        }),
+      // Tables and columns of both databases: 2 batch calls instead of 2 + 2N (see loadSchemaColumns).
+      const [source, target] = await Promise.all([
+        loadSchemaColumns(sourceConnId, sourceSchema),
+        loadSchemaColumns(targetConnId, targetSchema),
       ]);
-
-      // 2. Fetch columns for each table (in parallel batches)
-      const srcColsMap: Record<string, TableColumn[]> = {};
-      const tgtColsMap: Record<string, TableColumn[]> = {};
-
-      await Promise.all([
-        Promise.all(
-          srcTables.map(async (table) => {
-            try {
-              const cols = await invoke<TableColumn[]>("get_columns", {
-                connectionId: sourceConnId,
-                tableName: table.name,
-                ...(sourceSchema ? { schema: sourceSchema } : {}),
-              });
-              srcColsMap[table.name] = cols;
-            } catch {
-              srcColsMap[table.name] = [];
-            }
-          }),
-        ),
-        Promise.all(
-          tgtTables.map(async (table) => {
-            try {
-              const cols = await invoke<TableColumn[]>("get_columns", {
-                connectionId: targetConnId,
-                tableName: table.name,
-                ...(targetSchema ? { schema: targetSchema } : {}),
-              });
-              tgtColsMap[table.name] = cols;
-            } catch {
-              tgtColsMap[table.name] = [];
-            }
-          }),
-        ),
-      ]);
+      const { tables: srcTables, columns: srcColsMap } = source;
+      const { tables: tgtTables, columns: tgtColsMap } = target;
 
       const sourceConn = connections.find(c => c.id === sourceConnId);
       const dialect = sourceConn?.params.driver || "postgres";
