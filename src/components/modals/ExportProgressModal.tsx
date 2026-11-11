@@ -10,6 +10,8 @@ interface ExportProgressModalProps {
   rowsProcessed: number;
   fileName: string;
   errorMessage?: string;
+  /** Shown under the file name when the export finished with a caveat. */
+  warningMessage?: string;
   onCancel: () => void;
   onClose: () => void;
 }
@@ -22,6 +24,7 @@ export const ExportProgressModal = ({
   onClose,
   fileName,
   errorMessage,
+  warningMessage,
 }: ExportProgressModalProps) => {
   const { t } = useTranslation();
 
@@ -67,6 +70,11 @@ export const ExportProgressModal = ({
                 <span className="text-white font-mono font-bold">
                   {rowsProcessed.toLocaleString()}
                 </span>
+              </p>
+            )}
+            {status === "completed" && warningMessage && (
+              <p role="alert" className="text-amber-400 text-sm px-2 break-words">
+                {warningMessage}
               </p>
             )}
           </div>

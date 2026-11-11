@@ -3061,6 +3061,7 @@ export const Editor = () => {
     driver: activeDriver,
     activeSchema,
     csvDelimiter,
+    csvPreset: settings.csvEncodingPreset,
     showAlert,
     t,
   });
@@ -5089,6 +5090,7 @@ export const Editor = () => {
         rowsProcessed={exportState.rowsProcessed}
         fileName={exportState.fileName}
         errorMessage={exportState.errorMessage}
+        warningMessage={exportState.warningMessage}
         onCancel={cancelExport}
         onClose={closeExportModal}
       />

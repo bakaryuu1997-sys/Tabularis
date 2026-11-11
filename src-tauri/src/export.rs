@@ -1,3 +1,5 @@
+mod destination;
+mod encoding;
 mod format;
 mod progress;
 mod sink;
@@ -5,13 +7,18 @@ mod sink;
 #[cfg(test)]
 mod tests;
 
-pub use format::{parse_csv_delimiter, value_to_csv_string, ExportFormat, DEFAULT_CSV_DELIMITER};
+pub use destination::ExportDestinationState;
+pub use encoding::EncodingWriter;
+pub use format::{
+    parse_csv_delimiter, value_to_csv_string, CsvEncoding, CsvStyle, ExportFormat, DEFAULT_CSV_DELIMITER,
+};
 pub use progress::{ProgressEmitter, DEFAULT_INTERVAL as DEFAULT_PROGRESS_INTERVAL};
 pub use sink::{CsvSink, JsonSink, RowSink};
 
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::BufWriter;
+use std::io::{BufWriter, Write};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
@@ -64,18 +71,80 @@ pub async fn cancel_export(
     Ok(())
 }
 
+/// A destination picked in the "Save as" dialog. The path stays in the backend; `token` is passed back to
+/// `export_query_to_file`.
+#[derive(Serialize)]
+pub struct ChosenExportFile {
+    pub token: String,
+    pub file_name: String,
+}
+
+/// What an export reports when it finishes.
+#[derive(Serialize, Default, Debug, PartialEq, Eq)]
+pub struct ExportOutcome {
+    /// Characters the file's encoding could not represent, written as `?` (Shift_JIS only).
+    pub replaced_characters: u64,
+}
+
+/// Shows the native "Save as" dialog for an export. The destination is chosen in Rust, never passed in by the
+/// webview, so a script in the page cannot make an export write to an arbitrary file. Returns `None` when the
+/// dialog is cancelled.
 #[tauri::command]
+pub async fn choose_export_file<R: Runtime>(
+    app: AppHandle<R>,
+    destinations: State<'_, ExportDestinationState>,
+    default_file_name: String,
+    format: String,
+) -> Result<Option<ChosenExportFile>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let extension = match ExportFormat::parse(&format)? {
+        ExportFormat::Csv => "csv",
+        ExportFormat::Json => "json",
+    };
+    let chosen = app
+        .dialog()
+        .file()
+        .set_file_name(&default_file_name)
+        .add_filter(extension.to_uppercase(), &[extension])
+        .blocking_save_file();
+    let Some(file_path) = chosen else {
+        return Ok(None);
+    };
+    let path = file_path
+        .into_path()
+        .map_err(|e| format!("Invalid destination: {}", e))?;
+    let file_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let token = destinations.register(path);
+    Ok(Some(ChosenExportFile { token, file_name }))
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn export_query_to_file<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, ExportCancellationState>,
+    destinations: State<'_, ExportDestinationState>,
     connection_id: String,
     query: String,
-    file_path: String,
+    destination_token: String,
     format: String,
     csv_delimiter: Option<String>,
+    csv_preset: Option<String>,
     database: Option<String>,
-) -> Result<(), String> {
+) -> Result<ExportOutcome, String> {
     let sanitized_query = sanitize_query(&query);
+    // Validate the options before the one-time token is used up.
+    let export_format = ExportFormat::parse(&format)?;
+    let delimiter = parse_csv_delimiter(csv_delimiter.as_deref());
+    let csv_style = CsvStyle::from_preset(csv_preset.as_deref())?;
+    let file_path = destinations
+        .take(&destination_token)
+        .ok_or_else(|| "The export destination expired. Choose the file again.".to_string())?;
+
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let expanded_params = expand_k8s_connection_params(&app, &expanded_params).await?;
@@ -87,9 +156,6 @@ pub async fn export_query_to_file<R: Runtime>(
         params.database = crate::models::DatabaseSelection::Single(db);
     }
     let driver = saved_conn.params.driver.clone();
-
-    let export_format = ExportFormat::parse(&format)?;
-    let delimiter = parse_csv_delimiter(csv_delimiter.as_deref());
 
     let app_for_task = app.clone();
     let task_connection_id = connection_id.clone();
@@ -105,6 +171,7 @@ pub async fn export_query_to_file<R: Runtime>(
             writer,
             export_format,
             delimiter,
+            csv_style,
         )
         .await
     });
@@ -129,6 +196,7 @@ pub async fn export_query_to_file<R: Runtime>(
 /// Wires the driver stream, the row sink, and the progress emitter together.
 /// Kept as a free function so the spawned task body stays linear and the
 /// pieces remain individually unit-testable.
+#[allow(clippy::too_many_arguments)]
 async fn run_export<R: Runtime>(
     app: AppHandle<R>,
     driver: &str,
@@ -137,7 +205,8 @@ async fn run_export<R: Runtime>(
     writer: BufWriter<File>,
     format: ExportFormat,
     delimiter: u8,
-) -> Result<(), String> {
+    csv_style: CsvStyle,
+) -> Result<ExportOutcome, String> {
     let app_for_progress = app.clone();
     let mut progress = ProgressEmitter::new(DEFAULT_PROGRESS_INTERVAL, move |count| {
         let _ = app_for_progress.emit(
@@ -148,11 +217,11 @@ async fn run_export<R: Runtime>(
         );
     });
 
+    let mut outcome = ExportOutcome::default();
     match format {
         ExportFormat::Csv => {
-            let mut sink = CsvSink::new(writer, delimiter);
-            stream_to_sink(driver, params, query, &mut sink, &mut progress).await?;
-            sink.finish()?;
+            outcome.replaced_characters =
+                export_csv(driver, params, query, writer, delimiter, csv_style, &mut progress).await?;
         }
         ExportFormat::Json => {
             let mut sink = JsonSink::new(writer);
@@ -162,8 +231,46 @@ async fn run_export<R: Runtime>(
     }
 
     progress.finish();
-    Ok(())
+    Ok(outcome)
 }
+
+/// Streams the query as CSV in the requested encoding. Returns how many characters the encoding could not
+/// represent (always 0 for UTF-8).
+async fn export_csv<F>(
+    driver: &str,
+    params: &ConnectionParams,
+    query: &str,
+    mut writer: BufWriter<File>,
+    delimiter: u8,
+    style: CsvStyle,
+    progress: &mut ProgressEmitter<F>,
+) -> Result<u64, String>
+where
+    F: FnMut(u64) + Send,
+{
+    if style.bom {
+        writer.write_all(&UTF8_BOM).map_err(|e| e.to_string())?;
+    }
+    match style.encoding {
+        CsvEncoding::Utf8 => {
+            let mut sink = CsvSink::with_line_ending(writer, delimiter, style.crlf);
+            stream_to_sink(driver, params, query, &mut sink, progress).await?;
+            sink.finish()?;
+            Ok(0)
+        }
+        CsvEncoding::ShiftJis => {
+            let replaced = Arc::new(AtomicU64::new(0));
+            let encoded = EncodingWriter::new(writer, encoding_rs::SHIFT_JIS, replaced.clone());
+            let mut sink = CsvSink::with_line_ending(encoded, delimiter, style.crlf);
+            stream_to_sink(driver, params, query, &mut sink, progress).await?;
+            sink.finish()?;
+            Ok(replaced.load(Ordering::Relaxed))
+        }
+    }
+}
+
+/// UTF-8 byte order mark. Excel uses it to detect UTF-8 instead of the system code page.
+const UTF8_BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
 
 async fn stream_to_sink<S, F>(
     driver: &str,

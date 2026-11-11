@@ -1,6 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { useSettings } from "../../hooks/useSettings";
-import { DEFAULT_SETTINGS, type CopyFormat, type ERDiagramLayout } from "../../contexts/SettingsContext";
+import {
+  DEFAULT_SETTINGS,
+  type CopyFormat,
+  type CsvEncodingPreset,
+  type ERDiagramLayout,
+} from "../../contexts/SettingsContext";
 import {
   SettingSection,
   SettingRow,
@@ -92,6 +97,21 @@ export function GeneralTab() {
               { value: ";", label: t("settings.delimiterSemicolon") },
               { value: "\t", label: t("settings.delimiterTab") },
               { value: "|", label: t("settings.delimiterPipe") },
+            ]}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t("settings.csvEncoding")}
+          description={t("settings.csvEncodingDesc")}
+        >
+          <SettingButtonGroup
+            value={settings.csvEncodingPreset ?? "utf8"}
+            onChange={(v) => updateSetting("csvEncodingPreset", v as CsvEncodingPreset)}
+            options={[
+              { value: "utf8", label: t("settings.csvEncodingUtf8") },
+              { value: "utf8-bom", label: t("settings.csvEncodingUtf8Bom") },
+              { value: "shift_jis", label: t("settings.csvEncodingShiftJis") },
             ]}
           />
         </SettingRow>

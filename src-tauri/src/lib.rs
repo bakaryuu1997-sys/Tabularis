@@ -178,6 +178,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(commands::QueryCancellationState::default())
         .manage(export::ExportCancellationState::default())
+        .manage(export::ExportDestinationState::default())
         .manage(dump_commands::DumpCancellationState::default())
         .manage(log_buffer)
         .manage(std::sync::Arc::new(
@@ -369,6 +370,7 @@ pub fn run() {
             explain_import::load_explain_from_file,
             explain_import::get_pending_explain_file,
             explain_import::open_visual_explain_window,
+            export::choose_export_file,
             export::export_query_to_file,
             export::cancel_export,
             saved_queries::get_saved_queries,

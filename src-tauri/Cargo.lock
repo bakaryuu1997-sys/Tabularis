@@ -6223,6 +6223,7 @@ dependencies = [
  "csv",
  "deadpool-postgres",
  "directories",
+ "encoding_rs",
  "filetime",
  "futures",
  "gtk",

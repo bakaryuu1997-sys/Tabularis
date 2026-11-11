@@ -20,6 +20,9 @@ export interface PluginConfig {
   settings?: Record<string, unknown>;
 }
 
+/** CSV export file format presets; see `export/format.rs` for what each one writes. */
+export type CsvEncodingPreset = "utf8" | "utf8-bom" | "shift_jis";
+
 export interface Settings {
   resultPageSize: number; // Changed from queryLimit to match backend config
   language: AppLanguage;
@@ -46,6 +49,8 @@ export interface Settings {
   erDiagramDefaultLayout?: ERDiagramLayout;
   copyFormat?: CopyFormat;
   csvDelimiter?: string;
+  /** File format of CSV exports: plain UTF-8 (default), UTF-8 with BOM for Excel, or Shift_JIS for older Japanese systems. */
+  csvEncodingPreset?: CsvEncodingPreset;
   /** Whether copied CSV output includes a header row. Default: true. */
   csvIncludeHeaders?: boolean;
   /** PII Data Masking Profile: "smart" (partial mask), "full" (all bullets), "redacted" ([REDACTED]). Default: "smart". */
@@ -124,6 +129,7 @@ export const DEFAULT_SETTINGS: Settings = {
   maxLogEntries: 1000,
   copyFormat: "csv",
   csvDelimiter: ",",
+  csvEncodingPreset: "utf8",
   csvIncludeHeaders: true,
   erDiagramDefaultLayout: "LR",
   editorFontFamily: "JetBrains Mono",

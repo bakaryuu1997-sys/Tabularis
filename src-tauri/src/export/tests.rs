@@ -266,3 +266,115 @@ fn json_missing_value_defaults_to_null() {
     let parsed: Value = serde_json::from_str(&String::from_utf8(buf).unwrap()).unwrap();
     assert_eq!(parsed, json!([{"a": 1, "b": null}]));
 }
+
+// ---------------------------------------------------------------------------
+// CSV presets (encoding, BOM, line ending)
+// ---------------------------------------------------------------------------
+
+mod csv_style_tests {
+    use super::super::encoding::EncodingWriter;
+    use super::super::format::{CsvEncoding, CsvStyle};
+    use super::super::sink::{CsvSink, RowSink};
+    use serde_json::{json, Value};
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    fn rows() -> (Vec<String>, Vec<Vec<Value>>) {
+        (
+            vec!["名前".to_string(), "city".to_string()],
+            vec![vec![json!("山田"), json!("Hà Nội")], vec![json!("ｱｲｳ"), Value::Null]],
+        )
+    }
+
+    fn write_all<S: RowSink>(sink: &mut S) {
+        let (headers, data) = rows();
+        for row in &data {
+            sink.write_row(&headers, row).unwrap();
+        }
+        sink.finish().unwrap();
+    }
+
+    #[test]
+    fn presets_map_to_the_documented_styles() {
+        assert_eq!(CsvStyle::from_preset(None).unwrap(), CsvStyle::UTF8);
+        assert_eq!(CsvStyle::from_preset(Some("")).unwrap(), CsvStyle::UTF8);
+        assert_eq!(CsvStyle::from_preset(Some("utf8")).unwrap(), CsvStyle::UTF8);
+        assert_eq!(CsvStyle::from_preset(Some(" UTF8-BOM ")).unwrap(), CsvStyle::UTF8_BOM);
+        assert_eq!(CsvStyle::from_preset(Some("shift_jis")).unwrap(), CsvStyle::SHIFT_JIS);
+        assert_eq!(CsvStyle::from_preset(Some("Shift-JIS")).unwrap(), CsvStyle::SHIFT_JIS);
+    }
+
+    #[test]
+    fn the_default_style_keeps_the_old_output() {
+        assert_eq!(CsvStyle::UTF8, CsvStyle { encoding: CsvEncoding::Utf8, bom: false, crlf: false });
+    }
+
+    #[test]
+    fn excel_presets_end_records_with_crlf_and_only_utf8_gets_a_bom() {
+        assert!(CsvStyle::UTF8_BOM.bom && CsvStyle::UTF8_BOM.crlf);
+        assert!(!CsvStyle::SHIFT_JIS.bom && CsvStyle::SHIFT_JIS.crlf);
+    }
+
+    #[test]
+    fn unknown_presets_are_rejected_with_their_name() {
+        let err = CsvStyle::from_preset(Some("latin1")).unwrap_err();
+        assert_eq!(err, "Unsupported CSV encoding preset: latin1");
+    }
+
+    #[test]
+    fn lf_is_still_the_default_record_terminator() {
+        let mut buf = Vec::new();
+        {
+            let mut sink = CsvSink::new(&mut buf, b',');
+            write_all(&mut sink);
+        }
+        let text = String::from_utf8(buf).unwrap();
+        assert!(text.contains('\n') && !text.contains('\r'));
+    }
+
+    #[test]
+    fn crlf_terminates_every_record_when_asked() {
+        let mut buf = Vec::new();
+        {
+            let mut sink = CsvSink::with_line_ending(&mut buf, b',', true);
+            write_all(&mut sink);
+        }
+        let text = String::from_utf8(buf).unwrap();
+        assert_eq!(text, "名前,city\r\n山田,Hà Nội\r\nｱｲｳ,NULL\r\n");
+    }
+
+    #[test]
+    fn a_shift_jis_file_has_the_exact_bytes_excel_expects() {
+        let replaced = Arc::new(AtomicU64::new(0));
+        let mut bytes = Vec::new();
+        {
+            let writer = EncodingWriter::new(&mut bytes, encoding_rs::SHIFT_JIS, replaced.clone());
+            let mut sink = CsvSink::with_line_ending(writer, b',', true);
+            write_all(&mut sink);
+        }
+        // Header 名前 = 96 BC 91 4F; 山田 = 8E 52 93 63; ｱｲｳ = B1 B2 B3; "Hà Nội": à and ộ are not in Shift_JIS.
+        let mut expected: Vec<u8> = vec![0x96, 0xBC, 0x91, 0x4F];
+        expected.extend_from_slice(b",city\r\n");
+        expected.extend_from_slice(&[0x8E, 0x52, 0x93, 0x63]);
+        expected.extend_from_slice(b",H? N?i\r\n");
+        expected.extend_from_slice(&[0xB1, 0xB2, 0xB3]);
+        expected.extend_from_slice(b",NULL\r\n");
+        assert_eq!(bytes, expected);
+        assert_eq!(replaced.load(Ordering::Relaxed), 2);
+    }
+
+    #[test]
+    fn a_quoted_field_with_a_comma_survives_the_encoder() {
+        let replaced = Arc::new(AtomicU64::new(0));
+        let mut bytes = Vec::new();
+        {
+            let writer = EncodingWriter::new(&mut bytes, encoding_rs::SHIFT_JIS, replaced);
+            let mut sink = CsvSink::with_line_ending(writer, b',', true);
+            sink.write_row(&["a".to_string()], &[json!("東京,都")]).unwrap();
+            sink.finish().unwrap();
+        }
+        assert_eq!(&bytes[..3], b"a\r\n");
+        assert_eq!(bytes[3], b'"');
+        assert_eq!(*bytes.last().unwrap(), b'\n');
+    }
+}

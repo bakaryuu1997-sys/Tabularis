@@ -2,14 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { save } from "@tauri-apps/plugin-dialog";
 import { useResultExport } from "../../src/hooks/useResultExport";
 import { exportQueryResultToExcel } from "../../src/utils/excelExport";
 import type { Tab } from "../../src/types/editor";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn() }));
 vi.mock("../../src/utils/excelExport", () => ({ exportQueryResultToExcel: vi.fn() }));
 
 const consoleTab = (overrides: Partial<Tab> = {}): Tab =>
@@ -23,6 +21,25 @@ const consoleTab = (overrides: Partial<Tab> = {}): Tab =>
     ...overrides,
   }) as Tab;
 
+const CHOSEN = { token: "tok-1", file_name: "result.csv" };
+
+/** Fakes the two backend commands of an export: the save dialog and the export itself. */
+const mockBackend = ({
+  chosen = CHOSEN as typeof CHOSEN | null,
+  outcome = { replaced_characters: 0 } as { replaced_characters: number } | undefined,
+  exportError = undefined as Error | undefined,
+} = {}) =>
+  vi.mocked(invoke).mockImplementation(async (cmd: string) => {
+    if (cmd === "choose_export_file") return chosen;
+    if (cmd === "export_query_to_file") {
+      if (exportError) throw exportError;
+      return outcome;
+    }
+    return undefined;
+  });
+
+const exportCall = () => vi.mocked(invoke).mock.calls.find(([cmd]) => cmd === "export_query_to_file");
+
 const baseOptions = (tab: Tab | null) => ({
   activeTab: tab,
   connectionId: "c1",
@@ -30,6 +47,7 @@ const baseOptions = (tab: Tab | null) => ({
   driver: "postgres",
   activeSchema: null,
   csvDelimiter: ";",
+  csvPreset: "utf8-bom",
   showAlert: vi.fn(),
   t: (key: string) => key,
 });
@@ -45,42 +63,84 @@ describe("useResultExport", () => {
     });
   });
 
-  it("exports the tab query to the chosen file and reports completion", async () => {
-    vi.mocked(save).mockResolvedValue("/tmp/out/result.csv");
-    vi.mocked(invoke).mockResolvedValue(undefined);
+  it("exports the tab query to the file chosen in the backend dialog and reports completion", async () => {
+    mockBackend();
     const { result } = renderHook(() => useResultExport(baseOptions(consoleTab())));
 
     await act(async () => {
       await result.current.exportCsv();
     });
 
-    expect(invoke).toHaveBeenCalledWith("export_query_to_file", {
+    expect(invoke).toHaveBeenCalledWith("choose_export_file", {
+      defaultFileName: expect.stringMatching(/\.csv$/),
+      format: "csv",
+    });
+    // The page sends the one-time token, never a file path.
+    expect(exportCall()?.[1]).toEqual({
       connectionId: "c1",
       query: "SELECT * FROM orders",
-      filePath: "/tmp/out/result.csv",
+      destinationToken: "tok-1",
       format: "csv",
       csvDelimiter: ";",
+      csvPreset: "utf8-bom",
     });
+    expect(exportCall()?.[1]).not.toHaveProperty("filePath");
     expect(result.current.exportState).toMatchObject({ isOpen: true, status: "completed", fileName: "result.csv" });
+    expect(result.current.exportState.warningMessage).toBeUndefined();
   });
 
-  it("does not send a delimiter for JSON", async () => {
-    vi.mocked(save).mockResolvedValue("/tmp/result.json");
-    vi.mocked(invoke).mockResolvedValue(undefined);
+  it("sends neither delimiter nor CSV preset for JSON", async () => {
+    mockBackend({ chosen: { token: "tok-2", file_name: "result.json" } });
     const { result } = renderHook(() => useResultExport(baseOptions(consoleTab())));
     await act(async () => {
       await result.current.exportJson();
     });
-    expect(vi.mocked(invoke).mock.calls[0][1]).toMatchObject({ format: "json", csvDelimiter: undefined });
+    expect(exportCall()?.[1]).toMatchObject({
+      format: "json",
+      csvDelimiter: undefined,
+      csvPreset: undefined,
+    });
   });
 
-  it("does nothing when the save dialog is cancelled", async () => {
-    vi.mocked(save).mockResolvedValue(null);
+  it("passes the Shift_JIS preset through", async () => {
+    mockBackend();
+    const { result } = renderHook(() =>
+      useResultExport({ ...baseOptions(consoleTab()), csvPreset: "shift_jis" }),
+    );
+    await act(async () => {
+      await result.current.exportCsv();
+    });
+    expect(exportCall()?.[1]).toMatchObject({ csvPreset: "shift_jis" });
+  });
+
+  it("leaves the preset undefined when none is configured (the backend then writes plain UTF-8)", async () => {
+    mockBackend();
+    const { result } = renderHook(() =>
+      useResultExport({ ...baseOptions(consoleTab()), csvPreset: undefined }),
+    );
+    await act(async () => {
+      await result.current.exportCsv();
+    });
+    expect(exportCall()?.[1]).toMatchObject({ csvPreset: undefined });
+  });
+
+  it("warns when the encoding replaced characters it could not represent", async () => {
+    mockBackend({ outcome: { replaced_characters: 3 } });
     const { result } = renderHook(() => useResultExport(baseOptions(consoleTab())));
     await act(async () => {
       await result.current.exportCsv();
     });
-    expect(invoke).not.toHaveBeenCalled();
+    expect(result.current.exportState.status).toBe("completed");
+    expect(result.current.exportState.warningMessage).toBe("editor.exportReplacedCharacters");
+  });
+
+  it("does nothing when the save dialog is cancelled", async () => {
+    mockBackend({ chosen: null });
+    const { result } = renderHook(() => useResultExport(baseOptions(consoleTab())));
+    await act(async () => {
+      await result.current.exportCsv();
+    });
+    expect(exportCall()).toBeUndefined();
     expect(result.current.exportState.isOpen).toBe(false);
   });
 
@@ -93,12 +153,11 @@ describe("useResultExport", () => {
     await act(async () => {
       await noConn.result.current.exportCsv();
     });
-    expect(save).not.toHaveBeenCalled();
+    expect(invoke).not.toHaveBeenCalled();
   });
 
   it("surfaces backend failures in the progress dialog", async () => {
-    vi.mocked(save).mockResolvedValue("/tmp/result.csv");
-    vi.mocked(invoke).mockRejectedValue(new Error("disk full"));
+    mockBackend({ exportError: new Error("disk full") });
     const { result } = renderHook(() => useResultExport(baseOptions(consoleTab())));
     await act(async () => {
       await result.current.exportCsv();
@@ -108,8 +167,7 @@ describe("useResultExport", () => {
   });
 
   it("scopes multi-database exports to the active database", async () => {
-    vi.mocked(save).mockResolvedValue("/tmp/result.csv");
-    vi.mocked(invoke).mockResolvedValue(undefined);
+    mockBackend();
     const options = {
       ...baseOptions(consoleTab()),
       capabilities: { file_based: false, folder_based: false, schemas: false } as never,
@@ -119,12 +177,11 @@ describe("useResultExport", () => {
     await act(async () => {
       await result.current.exportCsv();
     });
-    expect(vi.mocked(invoke).mock.calls[0][1]).toMatchObject({ database: "sales" });
+    expect(exportCall()?.[1]).toMatchObject({ database: "sales" });
   });
 
   it("sends no database parameter for schema-based drivers", async () => {
-    vi.mocked(save).mockResolvedValue("/tmp/result.csv");
-    vi.mocked(invoke).mockResolvedValue(undefined);
+    mockBackend();
     const options = {
       ...baseOptions(consoleTab()),
       capabilities: { file_based: false, folder_based: false, schemas: true } as never,
@@ -134,7 +191,7 @@ describe("useResultExport", () => {
     await act(async () => {
       await result.current.exportCsv();
     });
-    expect(vi.mocked(invoke).mock.calls[0][1]).not.toHaveProperty("database");
+    expect(exportCall()?.[1]).not.toHaveProperty("database");
   });
 
   it("tracks progress events and closes the dialog on cancel", async () => {

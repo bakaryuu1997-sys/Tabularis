@@ -21,10 +21,18 @@ pub struct CsvSink<W: Write> {
 
 impl<W: Write> CsvSink<W> {
     pub fn new(inner: W, delimiter: u8) -> Self {
+        Self::with_line_ending(inner, delimiter, false)
+    }
+
+    /// Like `new`, ending each record with CRLF when `crlf` is true (what Windows tools and Excel expect).
+    pub fn with_line_ending(inner: W, delimiter: u8, crlf: bool) -> Self {
+        let mut builder = csv::WriterBuilder::new();
+        builder.delimiter(delimiter);
+        if crlf {
+            builder.terminator(csv::Terminator::CRLF);
+        }
         Self {
-            writer: csv::WriterBuilder::new()
-                .delimiter(delimiter)
-                .from_writer(inner),
+            writer: builder.from_writer(inner),
             headers_written: false,
         }
     }

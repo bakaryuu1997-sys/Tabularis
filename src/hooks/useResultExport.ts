@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { save } from "@tauri-apps/plugin-dialog";
 import type { ExportStatus } from "../components/modals/ExportProgressModal";
 import type { Tab } from "../types/editor";
 import type { DriverCapabilities } from "../types/plugins";
@@ -12,7 +11,6 @@ import {
   buildExcelFileName,
   buildExportFileName,
   buildSheetName,
-  displayFileName,
 } from "../utils/resultExport";
 
 export interface ExportState {
@@ -21,6 +19,19 @@ export interface ExportState {
   rowsProcessed: number;
   fileName: string;
   errorMessage?: string;
+  /** Set when the file was written but not exactly as the data is (e.g. characters Shift_JIS lacks). */
+  warningMessage?: string;
+}
+
+/** What `choose_export_file` returns: the path stays in the backend, the token is handed back on export. */
+interface ChosenExportFile {
+  token: string;
+  file_name: string;
+}
+
+/** What `export_query_to_file` returns. */
+interface ExportOutcome {
+  replaced_characters: number;
 }
 
 const INITIAL_STATE: ExportState = {
@@ -39,8 +50,10 @@ export interface UseResultExportOptions {
   driver: string | null | undefined;
   activeSchema: string | null | undefined;
   csvDelimiter: string;
+  /** CSV file format preset (`utf8`, `utf8-bom`, `shift_jis`). Defaults to plain UTF-8. */
+  csvPreset?: string;
   showAlert: ShowAlert;
-  t: (key: string) => string;
+  t: (key: string, options?: Record<string, unknown>) => string;
 }
 
 /**
@@ -54,6 +67,7 @@ export function useResultExport({
   driver,
   activeSchema,
   csvDelimiter,
+  csvPreset,
   showAlert,
   t,
 }: UseResultExportOptions) {
@@ -96,18 +110,20 @@ export function useResultExport({
     if (!query || !query.trim()) return;
 
     try {
-      const filePath = await save({
-        filters: [{ name: format.toUpperCase(), extensions: [format] }],
-        defaultPath: buildExportFileName(format),
+      // The backend shows the "Save as" dialog and keeps the chosen path; the page only gets a one-time token,
+      // so it cannot make the export write to a file the user did not pick.
+      const chosen = await invoke<ChosenExportFile | null>("choose_export_file", {
+        defaultFileName: buildExportFileName(format),
+        format,
       });
 
-      if (!filePath) return;
+      if (!chosen) return;
 
       setExportState({
         isOpen: true,
         status: "exporting",
         rowsProcessed: 0,
-        fileName: displayFileName(filePath),
+        fileName: chosen.file_name,
       });
       setExportMenuOpen(false);
 
@@ -119,16 +135,23 @@ export function useResultExport({
       const databaseParam =
         isMultiDatabaseCapable(capabilities) && targetDatabase ? { database: targetDatabase } : {};
 
-      await invoke("export_query_to_file", {
+      const outcome = await invoke<ExportOutcome | undefined>("export_query_to_file", {
         connectionId,
         query,
-        filePath,
+        destinationToken: chosen.token,
         format,
         csvDelimiter: format === "csv" ? csvDelimiter : undefined,
+        csvPreset: format === "csv" ? csvPreset : undefined,
         ...databaseParam,
       });
 
-      setExportState((prev) => ({ ...prev, status: "completed" }));
+      const replaced = outcome?.replaced_characters ?? 0;
+      setExportState((prev) => ({
+        ...prev,
+        status: "completed",
+        warningMessage:
+          replaced > 0 ? t("editor.exportReplacedCharacters", { count: replaced }) : undefined,
+      }));
     } catch (e) {
       setExportState((prev) => ({ ...prev, status: "error", errorMessage: String(e) }));
     }
