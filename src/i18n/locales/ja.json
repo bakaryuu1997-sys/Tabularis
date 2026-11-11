@@ -222,7 +222,8 @@
     "teamWorkspaceSync": "チームワークスペース同期 (Git)",
     "actions": "アクション",
     "dataCompare": "データを比較…",
-    "presentationMode": "プレゼンテーションモード"
+    "presentationMode": "プレゼンテーションモード",
+    "tableSpec": "テーブル定義書…"
   },
   "mcp": {
     "title": "MCP サーバー連携",
@@ -2673,5 +2674,25 @@
     "banner": "プレゼンテーションモード: データをマスク、接続情報を非表示、読み取り専用",
     "exit": "終了",
     "editBlocked": "接続を編集するにはプレゼンテーションモードをオフにしてください。編集画面にはホスト、ユーザー、認証情報が表示されます。"
+  },
+  "tableSpec": {
+    "title": "テーブル定義書",
+    "subtitle": "テーブル・列・キー・インデックスをExcelに出力します",
+    "scope": "出力範囲",
+    "scopeTable": "{{table}} のみ",
+    "scopeAll": "このデータベースのすべてのテーブル",
+    "language": "見出しの言語",
+    "language_ja": "日本語",
+    "language_en": "English",
+    "language_vi": "Tiếng Việt",
+    "includeIndexes": "インデックスを含める",
+    "includeForeignKeys": "外部キーを含める",
+    "hint": "論理名と備考は、テーブルと列のデータベースコメントから取得します。コメントは「論理名」または「論理名 / 備考」の形式で記述してください（例：「顧客名 / Tên khách hàng」）。最初の改行、「 / 」または「｜」より前が論理名、残りが備考欄になります。",
+    "export": "Excelに出力",
+    "loading": "構造を読み込んでいます…",
+    "progress": "テーブルを読み込み中: {{done}} / {{total}}",
+    "saved": "{{path}} に保存しました",
+    "noComments": "このデータベースからテーブル／列のコメントが取得できなかったため、論理名の列は空欄です。コメント（PostgreSQLは COMMENT ON、MySQLは COMMENT）を設定すると反映されます。SQLiteはコメントを保存しません。",
+    "indexWarning": "次のテーブルのインデックスを取得できませんでした: {{tables}}。これらのテーブルにはインデックス一覧が出力されません。"
   }
 }

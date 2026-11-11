@@ -40,6 +40,7 @@ import {
   BookOpen,
   Sparkles,
   GitCompare,
+  FileSpreadsheet,
   Share2,
   Columns2,
 } from "lucide-react";
@@ -1874,6 +1875,15 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                         );
                       },
                     },
+                    {
+                      label: t("sidebar.tableSpec"),
+                      icon: FileSpreadsheet,
+                      action: () => {
+                        window.dispatchEvent(
+                          new CustomEvent("tabularis:open-table-spec", { detail: { tableName: contextMenu.id } }),
+                        );
+                      },
+                    },
                     supportsManageTables(activeCapabilities) ? {
                       label: t("sidebar.mockData"),
                       icon: Sparkles,
@@ -2291,6 +2301,13 @@ export const ExplorerSidebar = ({ sidebarWidth, startResize, onCollapse, sidebar
                                   icon: GitCompare,
                                   action: () => {
                                     window.dispatchEvent(new CustomEvent("tabularis:open-schema-diff"));
+                                  },
+                                },
+                                {
+                                  label: t("sidebar.tableSpec"),
+                                  icon: FileSpreadsheet,
+                                  action: () => {
+                                    window.dispatchEvent(new CustomEvent("tabularis:open-table-spec"));
                                   },
                                 },
                                 {

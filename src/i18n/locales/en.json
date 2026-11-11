@@ -222,7 +222,8 @@
     "teamWorkspaceSync": "Team workspace sync (Git)",
     "actions": "Actions",
     "dataCompare": "Compare data…",
-    "presentationMode": "Presentation mode"
+    "presentationMode": "Presentation mode",
+    "tableSpec": "Table definitions…"
   },
   "mcp": {
     "title": "MCP Server Integration",
@@ -2673,5 +2674,25 @@
     "banner": "Presentation mode: data masked, connection details hidden, read-only",
     "exit": "Exit",
     "editBlocked": "Turn off presentation mode to edit a connection: the form shows host, user and credentials."
+  },
+  "tableSpec": {
+    "title": "Table definition document",
+    "subtitle": "Export tables, columns, keys and indexes to Excel (テーブル定義書)",
+    "scope": "What to export",
+    "scopeTable": "Only {{table}}",
+    "scopeAll": "All tables of this database",
+    "language": "Language of the headings",
+    "language_ja": "日本語",
+    "language_en": "English",
+    "language_vi": "Tiếng Việt",
+    "includeIndexes": "Include indexes",
+    "includeForeignKeys": "Include foreign keys",
+    "hint": "Logical names and notes come from the database comments of tables and columns. Write a comment as \"logical name\" or \"logical name / note\" (for example \"顧客名 / Tên khách hàng\"): the part before the first line break, \" / \" or \"｜\" becomes the logical name, the rest goes to the notes column.",
+    "export": "Export to Excel",
+    "loading": "Reading the structure…",
+    "progress": "Reading tables: {{done}} / {{total}}",
+    "saved": "Saved to {{path}}",
+    "noComments": "This database returned no table or column comments, so the logical name columns are empty. Add comments (COMMENT ON in PostgreSQL, COMMENT in MySQL) to fill them. SQLite does not store comments.",
+    "indexWarning": "Indexes could not be read for: {{tables}}. Those tables have no index list in the document."
   }
 }

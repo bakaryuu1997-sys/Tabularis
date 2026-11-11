@@ -5,6 +5,7 @@ pub mod extract;
 
 mod binding;
 mod client;
+mod comments;
 mod explain;
 mod helpers;
 
@@ -2247,6 +2248,14 @@ impl DatabaseDriver for PostgresDriver {
         schema: Option<&str>,
     ) -> Result<HashMap<String, Vec<crate::models::ForeignKey>>, String> {
         get_all_foreign_keys_batch(params, self.resolve_schema(schema)).await
+    }
+
+    async fn get_schema_comments(
+        &self,
+        params: &crate::models::ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<crate::models::SchemaComments, String> {
+        comments::get_schema_comments(params, self.resolve_schema(schema)).await
     }
 
     async fn get_schema_snapshot(

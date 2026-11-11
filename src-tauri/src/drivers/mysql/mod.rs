@@ -2,6 +2,7 @@ pub mod export;
 pub mod extract;
 pub mod types;
 
+mod comments;
 mod explain;
 mod helpers;
 
@@ -2137,6 +2138,14 @@ impl DatabaseDriver for MysqlDriver {
         schema: Option<&str>,
     ) -> Result<HashMap<String, Vec<crate::models::ForeignKey>>, String> {
         get_all_foreign_keys_batch(params, schema).await
+    }
+
+    async fn get_schema_comments(
+        &self,
+        params: &crate::models::ConnectionParams,
+        schema: Option<&str>,
+    ) -> Result<crate::models::SchemaComments, String> {
+        comments::get_schema_comments(params, schema).await
     }
 
     async fn get_schema_snapshot(

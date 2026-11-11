@@ -637,6 +637,26 @@ pub async fn get_schema_snapshot<R: Runtime>(
     drv.get_schema_snapshot(&params, schema.as_deref()).await
 }
 
+/// Table and column comments of a schema, used by the table-definition document. An empty result is normal:
+/// SQLite and most plugins have no comments to read.
+#[tauri::command]
+pub async fn get_schema_comments<R: Runtime>(
+    app: AppHandle<R>,
+    connection_id: String,
+    schema: Option<String>,
+    database: Option<String>,
+) -> Result<crate::models::SchemaComments, String> {
+    let saved_conn = find_connection_by_id(&app, &connection_id)?;
+    let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
+    let expanded_params = expand_k8s_connection_params(&app, &expanded_params).await?;
+    let mut params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
+    if let Some(db) = database.filter(|d| !d.is_empty()) {
+        params.database = crate::models::DatabaseSelection::Single(db);
+    }
+    let drv = driver_for(&saved_conn.params.driver).await?;
+    drv.get_schema_comments(&params, schema.as_deref()).await
+}
+
 #[tauri::command]
 pub async fn get_ai_schema_context<R: Runtime>(
     app: AppHandle<R>,

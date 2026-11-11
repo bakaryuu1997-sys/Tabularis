@@ -222,7 +222,8 @@
     "teamWorkspaceSync": "Đồng bộ Workspace nhóm (Git)",
     "actions": "Thao tác",
     "dataCompare": "So sánh dữ liệu…",
-    "presentationMode": "Chế độ trình chiếu"
+    "presentationMode": "Chế độ trình chiếu",
+    "tableSpec": "Tài liệu định nghĩa bảng…"
   },
   "mcp": {
     "title": "Tích hợp máy chủ MCP",
@@ -2673,5 +2674,25 @@
     "banner": "Chế độ trình chiếu: dữ liệu bị che, ẩn thông tin kết nối, chỉ đọc",
     "exit": "Thoát",
     "editBlocked": "Hãy tắt chế độ trình chiếu để sửa kết nối: form sửa hiển thị máy chủ, người dùng và thông tin đăng nhập."
+  },
+  "tableSpec": {
+    "title": "Tài liệu định nghĩa bảng",
+    "subtitle": "Xuất bảng, cột, khóa và chỉ mục ra Excel (テーブル定義書)",
+    "scope": "Phạm vi xuất",
+    "scopeTable": "Chỉ bảng {{table}}",
+    "scopeAll": "Tất cả bảng của cơ sở dữ liệu này",
+    "language": "Ngôn ngữ tiêu đề",
+    "language_ja": "日本語",
+    "language_en": "English",
+    "language_vi": "Tiếng Việt",
+    "includeIndexes": "Kèm chỉ mục",
+    "includeForeignKeys": "Kèm khóa ngoại",
+    "hint": "Tên logic và ghi chú lấy từ comment của bảng và cột trong cơ sở dữ liệu. Hãy viết comment dạng \"tên logic\" hoặc \"tên logic / ghi chú\" (ví dụ \"顧客名 / Tên khách hàng\"): phần trước dấu xuống dòng đầu tiên, \" / \" hoặc \"｜\" là tên logic, phần còn lại vào cột ghi chú.",
+    "export": "Xuất ra Excel",
+    "loading": "Đang đọc cấu trúc…",
+    "progress": "Đang đọc bảng: {{done}} / {{total}}",
+    "saved": "Đã lưu vào {{path}}",
+    "noComments": "Cơ sở dữ liệu này không trả về comment nào của bảng hoặc cột nên các cột tên logic để trống. Hãy thêm comment (COMMENT ON trong PostgreSQL, COMMENT trong MySQL) để điền vào. SQLite không lưu comment.",
+    "indexWarning": "Không đọc được chỉ mục của: {{tables}}. Các bảng này không có danh sách chỉ mục trong tài liệu."
   }
 }

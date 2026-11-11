@@ -711,6 +711,18 @@ pub trait DatabaseDriver: Send + Sync {
         params: &ConnectionParams,
         schema: Option<&str>,
     ) -> Result<HashMap<String, Vec<ForeignKey>>, String>;
+
+    // --- Documentation ------------------------------------------------------
+
+    /// Table and column comments of a schema, in one round trip. Drivers that cannot read comments
+    /// (SQLite, most plugins) keep this default: nothing is documented, which is not an error.
+    async fn get_schema_comments(
+        &self,
+        _params: &ConnectionParams,
+        _schema: Option<&str>,
+    ) -> Result<crate::models::SchemaComments, String> {
+        Ok(crate::models::SchemaComments::default())
+    }
 }
 
 #[cfg(test)]

@@ -590,3 +590,95 @@ mod connection_appearance_safe_mode_tests {
         assert_eq!(json, "{}");
     }
 }
+
+/// Comments stored in the database for the tables and columns of one schema.
+///
+/// Teams keep the "logical name" of a table or column here (for example `顧客名 / Tên khách hàng`), which the
+/// table-definition document exports. Drivers without comments return the default (empty) value.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SchemaComments {
+    /// Table name -> table comment.
+    pub tables: HashMap<String, String>,
+    /// Table name -> column name -> column comment.
+    pub columns: HashMap<String, HashMap<String, String>>,
+}
+
+impl SchemaComments {
+    /// Records a table comment. Blank comments are ignored, so "no comment" and "empty comment" look the same.
+    pub fn add_table(&mut self, table: &str, comment: &str) {
+        let comment = comment.trim();
+        if !comment.is_empty() {
+            self.tables.insert(table.to_string(), comment.to_string());
+        }
+    }
+
+    /// Records a column comment. Blank comments are ignored.
+    pub fn add_column(&mut self, table: &str, column: &str, comment: &str) {
+        let comment = comment.trim();
+        if !comment.is_empty() {
+            self.columns
+                .entry(table.to_string())
+                .or_default()
+                .insert(column.to_string(), comment.to_string());
+        }
+    }
+
+    /// Adds one row of a combined result where `column` is `None` for the table's own comment.
+    pub fn add_row(&mut self, table: &str, column: Option<&str>, comment: &str) {
+        match column {
+            Some(column) => self.add_column(table, column, comment),
+            None => self.add_table(table, comment),
+        }
+    }
+}
+
+#[cfg(test)]
+mod schema_comments_tests {
+    use super::SchemaComments;
+
+    #[test]
+    fn table_and_column_comments_are_kept_apart() {
+        let mut c = SchemaComments::default();
+        c.add_row("users", None, "顧客");
+        c.add_row("users", Some("name"), "氏名 / Họ tên");
+        c.add_row("orders", Some("id"), "注文ID");
+        assert_eq!(c.tables["users"], "顧客");
+        assert_eq!(c.columns["users"]["name"], "氏名 / Họ tên");
+        assert_eq!(c.columns["orders"]["id"], "注文ID");
+        assert!(!c.tables.contains_key("orders"));
+    }
+
+    #[test]
+    fn blank_comments_are_dropped() {
+        let mut c = SchemaComments::default();
+        c.add_row("t", None, "   ");
+        c.add_row("t", Some("a"), "");
+        c.add_row("t", Some("b"), "\n\t ");
+        assert_eq!(c, SchemaComments::default());
+    }
+
+    #[test]
+    fn comments_are_trimmed_but_otherwise_untouched() {
+        let mut c = SchemaComments::default();
+        c.add_row("t", Some("a"), "  line one\nline two  ");
+        assert_eq!(c.columns["t"]["a"], "line one\nline two");
+    }
+
+    #[test]
+    fn a_later_comment_for_the_same_column_wins() {
+        let mut c = SchemaComments::default();
+        c.add_row("t", Some("a"), "old");
+        c.add_row("t", Some("a"), "new");
+        assert_eq!(c.columns["t"]["a"], "new");
+    }
+
+    #[test]
+    fn serializes_with_the_names_the_frontend_reads() {
+        let mut c = SchemaComments::default();
+        c.add_row("t", None, "T");
+        c.add_row("t", Some("a"), "A");
+        let json = serde_json::to_value(&c).unwrap();
+        assert_eq!(json["tables"]["t"], "T");
+        assert_eq!(json["columns"]["t"]["a"], "A");
+    }
+}
