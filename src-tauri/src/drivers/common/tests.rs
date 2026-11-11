@@ -712,3 +712,88 @@ fn test_parse_unsafe_bigint_string_ignores_non_integer_strings() {
     // driver-level cast still handles them via implicit conversion.
     assert_eq!(parse_unsafe_bigint_string("18446744073709551615"), None);
 }
+
+mod fk_action_tests {
+    use crate::drivers::common::normalize_fk_action;
+
+    #[test]
+    fn accepts_the_five_standard_actions_in_any_case() {
+        assert_eq!(normalize_fk_action("cascade").unwrap(), "CASCADE");
+        assert_eq!(normalize_fk_action("RESTRICT").unwrap(), "RESTRICT");
+        assert_eq!(normalize_fk_action("no action").unwrap(), "NO ACTION");
+        assert_eq!(normalize_fk_action("  Set   Null ").unwrap(), "SET NULL");
+        assert_eq!(normalize_fk_action("set default").unwrap(), "SET DEFAULT");
+    }
+
+    #[test]
+    fn rejects_anything_that_could_extend_the_statement() {
+        for bad in [
+            "",
+            "CASCADE; DROP TABLE users",
+            "CASCADE -- ",
+            "SET NULL, ADD COLUMN x int",
+            "CASCADE DEFERRABLE",
+            "NO",
+            "SET",
+            "SET NULLS",
+            "cascade\nDROP TABLE t",
+            "'; DELETE FROM t; --",
+        ] {
+            assert!(normalize_fk_action(bad).is_err(), "{bad:?} must be rejected");
+        }
+    }
+}
+
+mod blob_file_ref_tests {
+    use crate::approved_files::approve;
+    use crate::drivers::common::{decode_blob_wire_format, resolve_blob_file_ref, DEFAULT_MAX_BLOB_SIZE};
+
+    fn temp_file_with(content: &[u8]) -> tempfile::NamedTempFile {
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(content).unwrap();
+        file
+    }
+
+    fn file_ref(size: u64, path: &std::path::Path) -> String {
+        format!("BLOB_FILE_REF:{}:application/octet-stream:{}", size, path.display())
+    }
+
+    #[test]
+    fn refuses_a_file_the_user_never_picked() {
+        let file = temp_file_with(b"-----BEGIN PRIVATE KEY-----");
+        let value = file_ref(27, file.path());
+        let err = resolve_blob_file_ref(&value, DEFAULT_MAX_BLOB_SIZE).unwrap_err();
+        assert_eq!(err, "This file was not selected through the file dialog");
+        // The write path must not turn the refusal into a stored value either.
+        assert!(decode_blob_wire_format(&value, DEFAULT_MAX_BLOB_SIZE).is_none());
+    }
+
+    #[test]
+    fn reads_a_file_the_user_picked() {
+        let file = temp_file_with(b"hello");
+        approve(file.path()).unwrap();
+        let value = file_ref(5, file.path());
+        assert_eq!(resolve_blob_file_ref(&value, DEFAULT_MAX_BLOB_SIZE).unwrap(), b"hello");
+        assert_eq!(decode_blob_wire_format(&value, DEFAULT_MAX_BLOB_SIZE).unwrap(), b"hello");
+    }
+
+    #[test]
+    fn checks_the_real_file_size_not_the_size_claimed_in_the_string() {
+        let file = temp_file_with(&[7u8; 2048]);
+        approve(file.path()).unwrap();
+        let lying = file_ref(1, file.path());
+        let err = resolve_blob_file_ref(&lying, 1024).unwrap_err();
+        assert!(err.contains("exceeds maximum allowed size"), "{err}");
+    }
+
+    #[test]
+    fn colons_in_the_path_are_kept() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a:b.bin");
+        std::fs::write(&path, b"x").unwrap();
+        approve(&path).unwrap();
+        let value = file_ref(1, &path);
+        assert_eq!(resolve_blob_file_ref(&value, DEFAULT_MAX_BLOB_SIZE).unwrap(), b"x");
+    }
+}

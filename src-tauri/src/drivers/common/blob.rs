@@ -77,8 +77,24 @@ pub fn resolve_blob_file_ref(value: &str, max_size: u64) -> Result<Vec<u8>, Stri
         ));
     }
 
-    // Read file from disk
-    std::fs::read(file_path).map_err(|e| format!("Failed to read BLOB file: {}", e))
+    // The path comes from the value being saved, which the webview controls: only files the user picked in the
+    // native dialog may be read, otherwise any readable file could be copied into a table cell.
+    let approved = crate::approved_files::require_approved(file_path)?;
+
+    // The size in the string is just a claim; check the file itself before reading it into memory.
+    let actual_size = std::fs::metadata(&approved)
+        .map_err(|e| format!("Failed to read BLOB file: {}", e))?
+        .len();
+    if actual_size > max_size {
+        return Err(format!(
+            "File size ({} bytes) exceeds maximum allowed size ({} bytes / {}MB). Please choose a smaller file.",
+            actual_size,
+            max_size,
+            max_size / (1024 * 1024)
+        ));
+    }
+
+    std::fs::read(&approved).map_err(|e| format!("Failed to read BLOB file: {}", e))
 }
 
 /// Decodes the canonical blob wire format back to raw bytes.

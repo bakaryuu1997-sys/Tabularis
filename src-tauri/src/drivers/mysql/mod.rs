@@ -2076,10 +2076,10 @@ impl DatabaseDriver for MysqlDriver {
             escape_identifier(ref_column)
         );
         if let Some(action) = on_delete {
-            sql.push_str(&format!(" ON DELETE {}", action));
+            sql.push_str(&format!(" ON DELETE {}", crate::drivers::common::normalize_fk_action(action)?));
         }
         if let Some(action) = on_update {
-            sql.push_str(&format!(" ON UPDATE {}", action));
+            sql.push_str(&format!(" ON UPDATE {}", crate::drivers::common::normalize_fk_action(action)?));
         }
         Ok(vec![sql])
     }

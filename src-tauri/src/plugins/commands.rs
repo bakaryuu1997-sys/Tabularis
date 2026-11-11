@@ -246,16 +246,12 @@ pub fn get_plugin_dir(plugin_id: String) -> Result<String, String> {
 }
 
 /// Reads a file from an installed plugin's directory.
-/// The `file_path` must be a relative path with no `..` components.
+/// Both values come from the webview: the id must be a plain folder name and the path must stay inside
+/// that plugin's folder, also after resolving symlinks (see `plugins::safe_path`).
 #[tauri::command]
 pub fn read_plugin_file(plugin_id: String, file_path: String) -> Result<String, String> {
-    if file_path.contains("..") || file_path.starts_with('/') || file_path.starts_with('\\') {
-        return Err(
-            "Invalid file path: must be relative and contain no '..' components".to_string(),
-        );
-    }
     let plugins_dir = installer::get_plugins_dir()?;
-    let full_path = plugins_dir.join(&plugin_id).join(&file_path);
+    let full_path = crate::plugins::safe_path::resolve_plugin_file(&plugins_dir, &plugin_id, &file_path)?;
     fs::read_to_string(&full_path).map_err(|e| {
         format!(
             "Failed to read '{}' from plugin '{}': {}",

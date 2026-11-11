@@ -3029,11 +3029,12 @@ pub async fn delete_record<R: Runtime>(
     schema: Option<String>,
     database: Option<String>,
 ) -> Result<u64, String> {
+    // Primary-key values identify real rows (often personal data), so only their column names are logged.
     log::info!(
-        "Executing query on connection: {} | Query: DELETE FROM {} WHERE pk_map={:?}",
+        "Deleting row on connection: {} | table: {} | key columns: {:?}",
         connection_id,
         table,
-        pk_map
+        pk_map.keys().collect::<Vec<_>>()
     );
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
@@ -3058,13 +3059,13 @@ pub async fn update_record<R: Runtime>(
     schema: Option<String>,
     database: Option<String>,
 ) -> Result<u64, String> {
+    // Neither the new value nor the key values are logged: they are user data and can include secrets.
     log::info!(
-        "Executing query on connection: {} | Query: UPDATE {} SET {} = {:?} WHERE pk_map={:?}",
+        "Updating cell on connection: {} | table: {} | column: {} | key columns: {:?}",
         connection_id,
         table,
         col_name,
-        new_val,
-        pk_map
+        pk_map.keys().collect::<Vec<_>>()
     );
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
@@ -3087,17 +3088,42 @@ pub async fn update_record<R: Runtime>(
     .await
 }
 
+/// Saves a BLOB column to a file the user picks in the native "Save as" dialog.
+///
+/// The destination is chosen in Rust, never passed in by the webview, so a script in the page cannot use this
+/// command to overwrite an arbitrary file with database content. Returns the chosen path, or `None` when the
+/// dialog is cancelled.
 #[tauri::command]
-pub async fn save_blob_to_file<R: Runtime>(
+pub async fn save_blob_with_dialog<R: Runtime>(
     app: AppHandle<R>,
     connection_id: String,
     table: String,
     col_name: String,
     pk_map: std::collections::HashMap<String, serde_json::Value>,
-    file_path: String,
+    default_file_name: String,
+    filter_name: String,
+    extensions: Vec<String>,
     schema: Option<String>,
-) -> Result<(), String> {
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
     let saved_conn = find_connection_by_id(&app, &connection_id)?;
+
+    let extension_refs: Vec<&str> = extensions.iter().map(String::as_str).collect();
+    let chosen = app
+        .dialog()
+        .file()
+        .set_file_name(&default_file_name)
+        .add_filter(&filter_name, &extension_refs)
+        .blocking_save_file();
+    let Some(file_path) = chosen else {
+        return Ok(None);
+    };
+    let path = file_path
+        .into_path()
+        .map_err(|e| format!("Invalid destination: {}", e))?;
+    let path_str = path.display().to_string();
+
     let expanded_params = expand_ssh_connection_params(&app, &saved_conn.params).await?;
     let expanded_params = expand_k8s_connection_params(&app, &expanded_params).await?;
     let params = resolve_connection_params_with_id(&expanded_params, &connection_id)?;
@@ -3108,9 +3134,10 @@ pub async fn save_blob_to_file<R: Runtime>(
         &col_name,
         &pk_map,
         schema.as_deref(),
-        &file_path,
+        &path_str,
     )
-    .await
+    .await?;
+    Ok(Some(path_str))
 }
 
 /// Fetches a BLOB column from the database and returns it as a data: URL for image preview.
@@ -3167,30 +3194,35 @@ pub fn detect_blob_mime(base64_data: String) -> Result<String, String> {
     Ok(crate::drivers::common::encode_blob_full(&bytes))
 }
 
-/// Prepares a file for BLOB upload by returning only metadata and a file reference.
-/// The actual file content is NOT transferred over IPC, avoiding massive string allocations.
-/// The file content will be read directly from disk when needed (e.g., during INSERT/UPDATE).
-/// Returns a special "BLOB_FILE_REF" format that includes file path, size, and MIME type.
+/// Shows the native "Open" dialog and prepares the chosen file for BLOB upload.
+///
+/// Returns only metadata and a file reference, not the content, so large files are not pushed through IPC:
+/// the drivers read the file from disk when the row is saved. The picked file is remembered in
+/// `approved_files`; any other path in a `BLOB_FILE_REF:` value is refused when the row is saved.
+/// Returns `None` when the dialog is cancelled. Format: "BLOB_FILE_REF:<size>:<mime>:<filepath>".
 #[tauri::command]
-pub async fn load_blob_from_file<R: Runtime>(
-    app: AppHandle<R>,
-    file_path: String,
-) -> Result<String, String> {
+pub async fn pick_blob_file<R: Runtime>(app: AppHandle<R>) -> Result<Option<String>, String> {
     use std::io::Read;
+    use tauri_plugin_dialog::DialogExt;
 
-    // Read max_blob_size from configuration
     let max_blob_size = crate::config::get_max_blob_size(&app);
 
-    tokio::task::spawn_blocking(move || -> Result<String, String> {
-        let mut file = std::fs::File::open(&file_path)
-            .map_err(|e| format!("Failed to open file: {}", e))?;
+    let Some(picked) = app.dialog().file().blocking_pick_file() else {
+        return Ok(None);
+    };
+    let picked = picked
+        .into_path()
+        .map_err(|e| format!("Invalid file: {}", e))?;
 
-        // Get file size
-        let metadata = file.metadata()
-            .map_err(|e| format!("Failed to get file metadata: {}", e))?;
-        let file_size = metadata.len();
+    tokio::task::spawn_blocking(move || -> Result<Option<String>, String> {
+        let path = crate::approved_files::approve(&picked)?;
+        let mut file =
+            std::fs::File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
+        let file_size = file
+            .metadata()
+            .map_err(|e| format!("Failed to get file metadata: {}", e))?
+            .len();
 
-        // Validate file size against maximum allowed
         if file_size > max_blob_size {
             return Err(format!(
                 "File size ({} bytes / {:.2}MB) exceeds maximum allowed size ({} bytes / {}MB). Please choose a smaller file.",
@@ -3201,20 +3233,21 @@ pub async fn load_blob_from_file<R: Runtime>(
             ));
         }
 
-        // Read first chunk for MIME detection (only 8KB)
+        // Read the first chunk only (8KB) to detect the MIME type
         let header_size = std::cmp::min(8192, file_size as usize);
         let mut header = vec![0u8; header_size];
         file.read_exact(&mut header)
             .map_err(|e| format!("Failed to read file header: {}", e))?;
-
-        // Detect MIME type
         let mime = infer::get(&header)
             .map(|k| k.mime_type())
             .unwrap_or("application/octet-stream");
 
-        // Return a file reference instead of actual content
-        // Format: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
-        Ok(format!("BLOB_FILE_REF:{}:{}:{}", file_size, mime, file_path))
+        Ok(Some(format!(
+            "BLOB_FILE_REF:{}:{}:{}",
+            file_size,
+            mime,
+            path.display()
+        )))
     })
     .await
     .map_err(|e| format!("Task join error: {}", e))?
@@ -3235,62 +3268,101 @@ pub fn detect_mime_type(header_base64: String) -> Result<String, String> {
     Ok(mime.to_string())
 }
 
-/// Writes binary data (encoded as Base64) to any file path chosen by the user
-/// (e.g. Downloads, Desktop, Documents). Bypasses Tauri's strict plugin:fs ACL.
-#[tauri::command]
-pub fn write_binary_file(path: String, base64_data: String) -> Result<(), String> {
+/// Longest query text written to the log at info level.
+const LOG_PREVIEW_CHARS: usize = 120;
+
+/// One-line, length-limited form of a query for the log. Statements can contain passwords (`CREATE USER ...
+/// IDENTIFIED BY`) or personal data in literals, and the full text is only kept at debug level.
+pub(crate) fn log_preview(query: &str) -> String {
+    let one_line: String = query.split_whitespace().collect::<Vec<_>>().join(" ");
+    let total = one_line.chars().count();
+    if total <= LOG_PREVIEW_CHARS {
+        return one_line;
+    }
+    let head: String = one_line.chars().take(LOG_PREVIEW_CHARS).collect();
+    format!("{head}… ({total} chars)")
+}
+
+/// Largest payload accepted by `save_binary_file_with_dialog` (decoded size).
+const MAX_SAVED_FILE_BYTES: usize = 512 * 1024 * 1024;
+
+/// Decodes a Base64 payload and enforces the size limit before anything touches the disk.
+pub(crate) fn decode_save_payload(base64_data: &str) -> Result<Vec<u8>, String> {
     use base64::Engine;
+    // Base64 expands data by 4/3, so an oversized payload can be refused before decoding it.
+    if base64_data.len() / 4 * 3 > MAX_SAVED_FILE_BYTES + 3 {
+        return Err("File is too large to save".into());
+    }
     let bytes = base64::engine::general_purpose::STANDARD
-        .decode(&base64_data)
+        .decode(base64_data)
         .map_err(|e| format!("Invalid base64 payload: {}", e))?;
-    std::fs::write(&path, bytes).map_err(|e| format!("Failed to write file to '{}': {}", path, e))
+    if bytes.len() > MAX_SAVED_FILE_BYTES {
+        return Err("File is too large to save".into());
+    }
+    Ok(bytes)
 }
 
-/// Gets file statistics (size and MIME type) without reading the entire file.
-/// Used after streaming upload to construct the final wire format.
+/// Shows the native "Save as" dialog and writes the Base64 payload to the file the user picks.
+///
+/// The destination is chosen in Rust, never supplied by the webview: a command that wrote to a path given by
+/// the frontend would let any script running in the page overwrite arbitrary files. Returns the chosen path,
+/// or `None` when the dialog is cancelled.
 #[tauri::command]
-pub fn get_file_stats(file_path: String) -> Result<serde_json::Value, String> {
-    use std::io::Read;
+pub async fn save_binary_file_with_dialog<R: Runtime>(
+    app: AppHandle<R>,
+    default_file_name: String,
+    filter_name: String,
+    extensions: Vec<String>,
+    base64_data: String,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
 
-    let mut file =
-        std::fs::File::open(&file_path).map_err(|e| format!("Failed to open file: {}", e))?;
+    let bytes = decode_save_payload(&base64_data)?;
+    let extension_refs: Vec<&str> = extensions.iter().map(String::as_str).collect();
 
-    let metadata = file
-        .metadata()
-        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
-    let file_size = metadata.len();
+    let chosen = app
+        .dialog()
+        .file()
+        .set_file_name(&default_file_name)
+        .add_filter(&filter_name, &extension_refs)
+        .blocking_save_file();
 
-    // Read first chunk for MIME detection
-    let header_size = std::cmp::min(8192, file_size as usize);
-    let mut header = vec![0u8; header_size];
-    file.read_exact(&mut header)
-        .map_err(|e| format!("Failed to read file header: {}", e))?;
-
-    let mime = infer::get(&header)
-        .map(|k| k.mime_type())
-        .unwrap_or("application/octet-stream");
-
-    Ok(serde_json::json!({
-        "size": file_size,
-        "mime": mime,
-    }))
+    let Some(file_path) = chosen else {
+        return Ok(None);
+    };
+    let path = file_path
+        .into_path()
+        .map_err(|e| format!("Invalid destination: {}", e))?;
+    std::fs::write(&path, bytes)
+        .map_err(|e| format!("Failed to write file to '{}': {}", path.display(), e))?;
+    Ok(Some(path.display().to_string()))
 }
 
-/// Reads a file from disk and returns it as a base64-encoded data URL.
+/// Reads a user-approved file from disk and returns it as a base64-encoded data URL.
 /// Used for image preview of BLOB_FILE_REF values without requiring frontend FS permissions.
 /// Only available for image files; returns an error for non-image MIME types.
 #[tauri::command]
-pub async fn read_file_as_data_url(file_path: String) -> Result<String, String> {
+pub async fn read_file_as_data_url<R: Runtime>(
+    app: AppHandle<R>,
+    file_path: String,
+) -> Result<String, String> {
     use base64::Engine;
     use std::io::Read;
 
+    let max_blob_size = crate::config::get_max_blob_size(&app);
+
     tokio::task::spawn_blocking(move || -> Result<String, String> {
+        // Only files the user picked in the native dialog can be read (see `approved_files`).
+        let approved = crate::approved_files::require_approved(&file_path)?;
         let mut file =
-            std::fs::File::open(&file_path).map_err(|e| format!("Failed to open file: {}", e))?;
+            std::fs::File::open(&approved).map_err(|e| format!("Failed to open file: {}", e))?;
 
         let metadata = file
             .metadata()
             .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+        if metadata.len() > max_blob_size {
+            return Err("File is too large to preview".into());
+        }
         let file_size = metadata.len() as usize;
 
         // Read full file
@@ -3381,8 +3453,9 @@ pub async fn execute_query<R: Runtime>(
     log::info!(
         "Executing query on connection: {} | Query: {}",
         connection_id,
-        query
+        log_preview(&query)
     );
+    log::debug!("Full query text: {}", query);
 
     let sanitized_query = sanitize_user_query(&query);
 
@@ -3555,7 +3628,7 @@ pub async fn explain_query_plan<R: Runtime>(
         "Explaining query on connection: {} | analyze: {} | Query: {}",
         connection_id,
         analyze,
-        query
+        log_preview(&query)
     );
 
     let sanitized_query = sanitize_user_query(&query);
@@ -4504,4 +4577,61 @@ pub async fn import_connections_payload<R: Runtime>(
     persistence::write_private_file(&k8s_path, k8s_json)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod save_payload_tests {
+    use super::{decode_save_payload, MAX_SAVED_FILE_BYTES};
+    use base64::Engine;
+
+    #[test]
+    fn decodes_valid_base64() {
+        let encoded = base64::engine::general_purpose::STANDARD.encode(b"hello xlsx");
+        assert_eq!(decode_save_payload(&encoded).unwrap(), b"hello xlsx");
+    }
+
+    #[test]
+    fn rejects_invalid_base64() {
+        assert!(decode_save_payload("not base64 !!!").is_err());
+    }
+
+    #[test]
+    fn refuses_payloads_over_the_limit_without_decoding_them() {
+        let too_long = "A".repeat(MAX_SAVED_FILE_BYTES / 3 * 4 + 64);
+        assert_eq!(decode_save_payload(&too_long).unwrap_err(), "File is too large to save");
+    }
+
+    #[test]
+    fn accepts_an_empty_payload() {
+        assert!(decode_save_payload("").unwrap().is_empty());
+    }
+}
+
+#[cfg(test)]
+mod log_preview_tests {
+    use super::log_preview;
+
+    #[test]
+    fn keeps_short_queries_on_one_line() {
+        assert_eq!(log_preview("SELECT 1"), "SELECT 1");
+        assert_eq!(log_preview("SELECT\n  *\n  FROM   t"), "SELECT * FROM t");
+    }
+
+    #[test]
+    fn truncates_long_queries_and_reports_the_length() {
+        let secret_tail = "x".repeat(500);
+        let query = format!("CREATE USER bob IDENTIFIED BY '{secret_tail}'");
+        let preview = log_preview(&query);
+        assert!(preview.starts_with("CREATE USER bob IDENTIFIED BY"));
+        assert!(preview.chars().count() < 160);
+        assert!(preview.ends_with("chars)"));
+        assert!(!preview.contains(&"x".repeat(200)));
+    }
+
+    #[test]
+    fn counts_characters_not_bytes() {
+        let query = "é".repeat(130);
+        let preview = log_preview(&query);
+        assert!(preview.contains("130 chars"));
+    }
 }

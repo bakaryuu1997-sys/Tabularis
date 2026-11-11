@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod approved_files;
 pub mod ai_activity;
 #[cfg(test)]
 pub mod ai_activity_tests;
@@ -334,13 +335,12 @@ pub fn run() {
             commands::delete_record,
             commands::update_record,
             commands::insert_record,
-            commands::save_blob_to_file,
-            commands::write_binary_file,
+            commands::save_blob_with_dialog,
+            commands::save_binary_file_with_dialog,
             commands::fetch_blob_as_data_url,
-            commands::load_blob_from_file,
+            commands::pick_blob_file,
             commands::detect_blob_mime,
             commands::detect_mime_type,
-            commands::get_file_stats,
             commands::read_file_as_data_url,
             commands::execute_query,
             commands::execute_query_batch,

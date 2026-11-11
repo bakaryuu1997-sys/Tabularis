@@ -1,12 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { exportQueryResultToExcel } from "../../src/utils/excelExport";
-import { save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import * as XLSX from "xlsx";
-
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  save: vi.fn(),
-}));
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -17,8 +12,8 @@ describe("exportQueryResultToExcel", () => {
     vi.clearAllMocks();
   });
 
-  it("returns null if user cancels the save dialog", async () => {
-    vi.mocked(save).mockResolvedValueOnce(null);
+  it("returns null if the user cancels the save dialog", async () => {
+    vi.mocked(invoke).mockResolvedValueOnce(null);
 
     const result = await exportQueryResultToExcel({
       columns: ["id", "name"],
@@ -26,12 +21,10 @@ describe("exportQueryResultToExcel", () => {
     });
 
     expect(result).toBeNull();
-    expect(invoke).not.toHaveBeenCalled();
   });
 
   it("creates Excel file with correct data and UTF-8 characters", async () => {
-    vi.mocked(save).mockResolvedValueOnce("C:\\exports\\customers.xlsx");
-    vi.mocked(invoke).mockResolvedValueOnce(undefined);
+    vi.mocked(invoke).mockResolvedValueOnce("C:\\exports\\customers.xlsx");
 
     const columns = ["Mã KH", "Họ Tên", "Doanh Thu", "Trạng Thái"];
     const rows = [
@@ -49,11 +42,15 @@ describe("exportQueryResultToExcel", () => {
     expect(invoke).toHaveBeenCalledTimes(1);
 
     const [cmd, args] = vi.mocked(invoke).mock.calls[0];
-    expect(cmd).toBe("write_binary_file");
+    // The destination is picked by the backend's own dialog, never passed in by the page.
+    expect(cmd).toBe("save_binary_file_with_dialog");
     expect(args).toEqual({
-      path: "C:\\exports\\customers.xlsx",
+      defaultFileName: expect.stringMatching(/\.xlsx$/),
+      filterName: "Excel Spreadsheet (*.xlsx)",
+      extensions: ["xlsx"],
       base64Data: expect.any(String),
     });
+    expect(args).not.toHaveProperty("path");
 
     // Verify written base64 data can be parsed back with SheetJS
     const parsedWb = XLSX.read((args as { base64Data: string }).base64Data, { type: "base64" });

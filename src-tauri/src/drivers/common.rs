@@ -1,10 +1,12 @@
 mod blob;
+mod fk_action;
 mod query;
 mod safe_int;
 
 #[cfg(test)]
 mod tests;
 
+pub use fk_action::normalize_fk_action;
 pub use blob::{
     decode_blob_wire_format, encode_blob, encode_blob_full, resolve_blob_file_ref,
     DEFAULT_MAX_BLOB_SIZE, MAX_BLOB_PREVIEW_SIZE,

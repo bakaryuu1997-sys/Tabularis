@@ -1,6 +1,5 @@
 import { buildXlsx } from "./xlsxWriter";
 import { bytesToBase64 } from "./base64";
-import { save } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 
 export interface ExcelExportOptions {
@@ -61,18 +60,6 @@ export async function exportQueryResultToExcel({
   defaultFileName = `query_result_${Date.now()}.xlsx`,
   sheetName = "Query Results",
 }: ExcelExportOptions): Promise<string | null> {
-  const filePath = await save({
-    defaultPath: defaultFileName,
-    filters: [
-      {
-        name: "Excel Spreadsheet (*.xlsx)",
-        extensions: ["xlsx"],
-      },
-    ],
-  });
-
-  if (!filePath) return null;
-
   // Format data rows (the header row is written separately by the XLSX writer)
   const formattedRows = rows.map((row) =>
     columns.map((_, colIdx) => formatCellForExcel(row[colIdx])),
@@ -87,10 +74,11 @@ export async function exportQueryResultToExcel({
     }),
   );
 
-  await invoke("write_binary_file", {
-    path: filePath,
+  // The save dialog runs in the backend, so the page never chooses (or can overwrite) an arbitrary path.
+  return invoke<string | null>("save_binary_file_with_dialog", {
+    defaultFileName,
+    filterName: "Excel Spreadsheet (*.xlsx)",
+    extensions: ["xlsx"],
     base64Data,
   });
-
-  return filePath;
 }

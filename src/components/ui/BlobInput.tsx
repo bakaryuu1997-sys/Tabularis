@@ -10,8 +10,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { open, save } from "@tauri-apps/plugin-dialog";
-import { writeFile } from "@tauri-apps/plugin-fs";
+import { bytesToBase64 } from "../../utils/base64";
 import {
   extractBlobMetadata,
   extractImageDataUrl,
@@ -141,19 +140,17 @@ export const BlobInput = ({
     isDownloading || isUploading || (metadata?.isTruncated && !canFetchFull);
 
   const handleFileUpload = async () => {
-    const filePath = await open({ multiple: false, directory: false });
-    if (!filePath) return;
-
     // Clear any previous errors
     setError(null);
     setIsUploading(true);
 
     try {
-      // Get file reference (not the content!) - this is instant and non-blocking
-      // Format returned: "BLOB_FILE_REF:<size>:<mime>:<filepath>"
-      // The actual file will be read only when saving to the database
-      const fileRef = await invoke<string>("load_blob_from_file", { filePath });
-      onChange(fileRef);
+      // The backend shows the native file dialog and remembers the chosen file; only such files can later be
+      // read for an upload or preview, so the page cannot ask for an arbitrary path.
+      // It returns a file reference (not the content!): "BLOB_FILE_REF:<size>:<mime>:<filepath>".
+      // The actual file will be read only when saving to the database. `null` means the dialog was cancelled.
+      const fileRef = await invoke<string | null>("pick_blob_file");
+      if (fileRef) onChange(fileRef);
     } catch (err) {
       console.error("Failed to load file:", err);
       // Extract error message from Tauri error object
@@ -172,24 +169,24 @@ export const BlobInput = ({
   const handleDownload = async () => {
     if (!hasValue || !metadata) return;
 
+    const extension = mimeToExtension(metadata.mimeType);
+    const defaultFileName = `download.${extension}`;
+    const filterName = dataType || "BLOB";
+
+    // Both branches let the backend show the "Save as" dialog, so the page never picks the destination.
     if (metadata.isTruncated) {
       if (!canFetchFull) return;
 
-      const extension = mimeToExtension(metadata.mimeType);
-      const filePath = await save({
-        defaultPath: `download.${extension}`,
-        filters: [{ name: dataType || "BLOB", extensions: [extension] }],
-      });
-      if (!filePath) return;
-
       setIsDownloading(true);
       try {
-        await invoke("save_blob_to_file", {
+        await invoke("save_blob_with_dialog", {
           connectionId,
           table: tableName,
           colName,
           pkMap,
-          filePath,
+          defaultFileName,
+          filterName,
+          extensions: [extension],
           ...(schema ? { schema } : {}),
         });
       } catch (error) {
@@ -201,16 +198,14 @@ export const BlobInput = ({
     }
 
     try {
-      const extension = mimeToExtension(metadata.mimeType);
-      const filePath = await save({
-        defaultPath: `download.${extension}`,
-        filters: [{ name: dataType || "BLOB", extensions: [extension] }],
-      });
-      if (!filePath) return;
-
       const base64Payload = extractBase64Payload(value);
       const bytes = blobPayloadToBytes(base64Payload, metadata.isBase64);
-      await writeFile(filePath, bytes);
+      await invoke("save_binary_file_with_dialog", {
+        defaultFileName,
+        filterName,
+        extensions: [extension],
+        base64Data: bytesToBase64(bytes),
+      });
     } catch (error) {
       console.error("Failed to download file:", error);
     }
