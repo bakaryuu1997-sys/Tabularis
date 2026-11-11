@@ -821,7 +821,8 @@ async fn generate_with_simple_prompt(
     let result = dispatch_provider(&app, &app_config, &gen_req, &system_prompt, ollama_port).await;
 
     match &result {
-        Ok(v) => log::info!("{} generated: {}", label, v),
+        // The generated text can echo table names, literals or data from the prompt, so only a preview is logged.
+        Ok(v) => log::info!("{} generated: {}", label, crate::commands::log_preview(v)),
         Err(e) => log::error!("{} generation failed: {}", label, e),
     }
 

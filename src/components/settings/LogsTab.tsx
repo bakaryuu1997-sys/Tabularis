@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { ask, save } from "@tauri-apps/plugin-dialog";
+import { ask } from "@tauri-apps/plugin-dialog";
 import {
   Trash2,
   FileDown,
@@ -88,12 +88,12 @@ export function LogsTab() {
 
   const handleExportLogs = useCallback(async () => {
     try {
-      const filePath = await save({
-        filters: [{ name: "Log Files", extensions: ["log"] }],
-        defaultPath: `tabularis_logs_${new Date().toISOString().split("T")[0]}.log`,
+      // The backend shows the "Save as" dialog, so the page never chooses where the file is written.
+      // `null` means the dialog was cancelled.
+      const savedPath = await invoke<string | null>("export_logs_with_dialog", {
+        defaultFileName: `tabularis_logs_${new Date().toISOString().split("T")[0]}.log`,
       });
-      if (!filePath) return;
-      await invoke("export_logs", { filePath });
+      if (!savedPath) return;
       showAlert(t("settings.exportLogsSuccess"), {
         title: t("common.success"),
         kind: "info",

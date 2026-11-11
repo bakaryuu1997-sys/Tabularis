@@ -1,6 +1,5 @@
 use crate::logger::{LogEntry, SharedLogBuffer};
 use serde::Deserialize;
-use std::path::PathBuf;
 use tauri::State;
 
 #[derive(Debug, Deserialize)]
@@ -63,19 +62,9 @@ pub struct LogSettings {
     pub current_count: usize,
 }
 
-#[tauri::command]
-pub fn export_logs(log_buffer: State<SharedLogBuffer>, file_path: String) -> Result<(), String> {
-    let buffer = log_buffer.lock().unwrap();
-    let entries = buffer.get_entries(None, None);
-
-    if entries.is_empty() {
-        return Err("No logs to export".to_string());
-    }
-
-    let mut content = String::new();
-    content.push_str("Tabularis Application Logs\n");
-    content.push_str("==========================\n\n");
-
+/// Plain-text form of the log entries written by the export.
+pub(crate) fn format_log_export(entries: &[LogEntry]) -> String {
+    let mut content = String::from("Tabularis Application Logs\n==========================\n\n");
     for entry in entries {
         content.push_str(&format!(
             "[{}] [{}] {}",
@@ -88,16 +77,45 @@ pub fn export_logs(log_buffer: State<SharedLogBuffer>, file_path: String) -> Res
         }
         content.push('\n');
     }
+    content
+}
 
-    // Release the lock before writing
-    drop(buffer);
+/// Shows the native "Save as" dialog and writes the log there. The destination is chosen in Rust, never passed
+/// in by the webview, so a script in the page cannot use this command to overwrite an arbitrary file.
+/// Returns the chosen path, or `None` when the dialog is cancelled.
+#[tauri::command]
+pub async fn export_logs_with_dialog(
+    app: tauri::AppHandle,
+    log_buffer: State<'_, SharedLogBuffer>,
+    default_file_name: String,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
 
-    // Write to file synchronously
-    let path = PathBuf::from(file_path);
+    let content = {
+        let buffer = log_buffer.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let entries = buffer.get_entries(None, None);
+        if entries.is_empty() {
+            return Err("No logs to export".to_string());
+        }
+        format_log_export(&entries)
+    };
+
+    let chosen = app
+        .dialog()
+        .file()
+        .set_file_name(&default_file_name)
+        .add_filter("Log Files", &["log"])
+        .blocking_save_file();
+    let Some(file_path) = chosen else {
+        return Ok(None);
+    };
+    let path = file_path
+        .into_path()
+        .map_err(|e| format!("Invalid destination: {}", e))?;
     std::fs::write(&path, content).map_err(|e| format!("Failed to write log file: {}", e))?;
 
     log::info!("Logs exported to: {:?}", path);
-    Ok(())
+    Ok(Some(path.display().to_string()))
 }
 
 #[tauri::command]
@@ -106,4 +124,30 @@ pub fn test_log() -> Result<(), String> {
     log::debug!("Debug test message: {}", 42);
     log::warn!("Warning test message");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_log_export;
+    use crate::logger::LogEntry;
+
+    fn entry(level: &str, message: &str, target: Option<&str>) -> LogEntry {
+        LogEntry {
+            timestamp: "2026-01-02T03:04:05Z".into(),
+            level: level.into(),
+            message: message.into(),
+            target: target.map(String::from),
+        }
+    }
+
+    #[test]
+    fn export_lists_entries_with_upper_case_levels_and_targets() {
+        let text = format_log_export(&[
+            entry("info", "started", Some("tabularis::lib")),
+            entry("warn", "slow", None),
+        ]);
+        assert!(text.starts_with("Tabularis Application Logs\n"));
+        assert!(text.contains("[2026-01-02T03:04:05Z] [INFO] started (target: tabularis::lib)\n"));
+        assert!(text.contains("[2026-01-02T03:04:05Z] [WARN] slow\n"));
+    }
 }

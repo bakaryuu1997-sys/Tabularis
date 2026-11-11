@@ -402,10 +402,7 @@ impl SshTunnel {
                     })?
                     .map_err(|e| format!("SSH key auth failed: {}", e))?
                 } else if let Some(pwd) = ssh_password.as_deref() {
-                    log::info!(
-                        "[SSH Tunnel] Authenticating with password (length: {})",
-                        pwd.len()
-                    );
+                    log::info!("[SSH Tunnel] Authenticating with password");
 
                     let auth_result = tokio::time::timeout(
                         Duration::from_secs(SSH_AUTH_TIMEOUT_SECS),

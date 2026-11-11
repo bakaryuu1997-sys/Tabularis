@@ -479,7 +479,7 @@ pub fn run() {
             log_commands::get_log_settings,
             log_commands::set_log_enabled,
             log_commands::set_log_max_size,
-            log_commands::export_logs,
+            log_commands::export_logs_with_dialog,
             log_commands::test_log,
             // Preferences
             preferences::save_editor_preferences,

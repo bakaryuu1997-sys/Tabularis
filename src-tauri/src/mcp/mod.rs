@@ -22,6 +22,7 @@ use std::sync::Arc;
 pub mod install;
 pub mod preflight;
 pub mod protocol;
+pub mod wire_log;
 use protocol::*;
 
 const APPROVAL_POLL_INTERVAL_MS: u64 = 500;
@@ -320,6 +321,8 @@ pub async fn run_mcp_server() {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut iterator = stdin.lock().lines();
+    // Requests carry SQL and responses carry rows, so the log only gets metadata unless asked otherwise.
+    let log_payloads = wire_log::payload_logging_enabled();
 
     while let Some(line_result) = iterator.next() {
         match line_result {
@@ -328,8 +331,7 @@ pub async fn run_mcp_server() {
                     continue;
                 }
 
-                // Log input to stderr for debugging
-                eprintln!("[MCP] Received: {}", line);
+                eprintln!("[MCP] Received: {}", wire_log::describe(&line, log_payloads));
 
                 match serde_json::from_str::<JsonRpcRequest>(&line) {
                     Ok(request) => {
@@ -337,8 +339,7 @@ pub async fn run_mcp_server() {
                         if let Some(resp) = response {
                             let json = serde_json::to_string(&resp)
                                 .expect("serializing a JsonRpcResponse cannot fail");
-                            // Log output to stderr
-                            eprintln!("[MCP] Sending: {}", json);
+                            eprintln!("[MCP] Sending: {}", wire_log::describe(&json, log_payloads));
                             // Stop cleanly if the client has gone away (BrokenPipe)
                             // rather than panicking the whole server.
                             if let Err(e) = stdout
