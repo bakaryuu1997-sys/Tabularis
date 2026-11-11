@@ -852,7 +852,10 @@ pub async fn get_postgres_pool_with_id(
     }
     let pool = builder.build().map_err(|e| {
         let detail = format_error_chain(&e);
-        log::error!("Failed to create PostgreSQL connection pool: {}", detail);
+        log::error!(
+            "Failed to create PostgreSQL connection pool: {}",
+            crate::log_redact::redact_db_error(&detail)
+        );
         detail
     })?;
 

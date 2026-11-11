@@ -42,6 +42,7 @@ pub mod keychain_utils;
 pub mod results_window;
 pub mod k8s_tunnel;
 pub mod log_commands;
+pub mod log_redact;
 pub mod logger;
 pub mod mcp;
 pub mod models;

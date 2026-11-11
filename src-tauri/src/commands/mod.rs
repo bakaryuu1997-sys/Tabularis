@@ -2966,7 +2966,7 @@ pub async fn get_tables<R: Runtime>(
 
     match &result {
         Ok(tables) => log::info!("Retrieved {} tables from {}", tables.len(), params.database),
-        Err(e) => log::error!("Failed to get tables from {}: {}", params.database, e),
+        Err(e) => log::error!("Failed to get tables from {}: {}", params.database, crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -3492,7 +3492,7 @@ pub async fn execute_query<R: Runtime>(
             Ok(query_result)
         }
         Ok(Err(e)) => {
-            log::error!("Query execution failed: {}", e);
+            log::error!("Query execution failed: {}", crate::log_redact::redact_db_error(&e));
             Err(e)
         }
         Err(_) => {
@@ -3603,7 +3603,7 @@ pub async fn execute_query_batch<R: Runtime>(
             Ok(batch_results)
         }
         Ok(Err(e)) => {
-            log::error!("Batch execution failed at setup: {}", e);
+            log::error!("Batch execution failed at setup: {}", crate::log_redact::redact_db_error(&e));
             Err(e)
         }
         Err(_) => {
@@ -3664,7 +3664,7 @@ pub async fn explain_query_plan<R: Runtime>(
             Ok(plan)
         }
         Ok(Err(e)) => {
-            log::error!("Explain query failed: {}", e);
+            log::error!("Explain query failed: {}", crate::log_redact::redact_db_error(&e));
             Err(e)
         }
         Err(_) => {

@@ -167,7 +167,10 @@ pub async fn explain_with_hypothetical_indexes(
         .batch_execute("SELECT hypopg_reset(); RESET search_path")
         .await
     {
-        log::warn!("Failed to reset hypopg session state: {}", format_pg_error(&e));
+        log::warn!(
+            "Failed to reset hypopg session state: {}",
+            crate::log_redact::redact_db_error(&format_pg_error(&e))
+        );
     }
 
     outcome.map(|plan| WhatIfExplainOutcome::Plan { plan })

@@ -37,7 +37,7 @@ pub async fn get_views<R: Runtime>(
 
     match &result {
         Ok(views) => log::info!("Retrieved {} views from {}", views.len(), params.database),
-        Err(e) => log::error!("Failed to get views from {}: {}", params.database, e),
+        Err(e) => log::error!("Failed to get views from {}: {}", params.database, crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -68,7 +68,7 @@ pub async fn get_view_definition<R: Runtime>(
 
     match &result {
         Ok(_) => log::info!("Successfully retrieved view definition for {}", view_name),
-        Err(e) => log::error!("Failed to get view definition for {}: {}", view_name, e),
+        Err(e) => log::error!("Failed to get view definition for {}: {}", view_name, crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -100,7 +100,7 @@ pub async fn create_view<R: Runtime>(
 
     match &result {
         Ok(_) => log::info!("Successfully created view: {}", view_name),
-        Err(e) => log::error!("Failed to create view {}: {}", view_name, e),
+        Err(e) => log::error!("Failed to create view {}: {}", view_name, crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -132,7 +132,7 @@ pub async fn alter_view<R: Runtime>(
 
     match &result {
         Ok(_) => log::info!("Successfully altered view: {}", view_name),
-        Err(e) => log::error!("Failed to alter view {}: {}", view_name, e),
+        Err(e) => log::error!("Failed to alter view {}: {}", view_name, crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -161,7 +161,7 @@ pub async fn drop_view<R: Runtime>(
 
     match &result {
         Ok(_) => log::info!("Successfully dropped view: {}", view_name),
-        Err(e) => log::error!("Failed to drop view {}: {}", view_name, e),
+        Err(e) => log::error!("Failed to drop view {}: {}", view_name, crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -192,7 +192,7 @@ pub async fn get_view_columns<R: Runtime>(
 
     match &result {
         Ok(columns) => log::info!("Retrieved {} columns for view {}", columns.len(), view_name),
-        Err(e) => log::error!("Failed to get view columns for {}: {}", view_name, e),
+        Err(e) => log::error!("Failed to get view columns for {}: {}", view_name, crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -223,7 +223,7 @@ pub async fn get_materialized_views<R: Runtime>(
         Err(e) => log::error!(
             "Failed to get materialized views from {}: {}",
             params.database,
-            e
+            crate::log_redact::redact_db_error(e)
         ),
     }
 
@@ -262,7 +262,7 @@ pub async fn get_materialized_view_columns<R: Runtime>(
         Err(e) => log::error!(
             "Failed to get materialized view columns for {}: {}",
             view_name,
-            e
+            crate::log_redact::redact_db_error(e)
         ),
     }
 
@@ -300,7 +300,7 @@ pub async fn get_materialized_view_definition<R: Runtime>(
         Err(e) => log::error!(
             "Failed to get materialized view definition for {}: {}",
             view_name,
-            e
+            crate::log_redact::redact_db_error(e)
         ),
     }
 
@@ -332,7 +332,7 @@ pub async fn refresh_materialized_view<R: Runtime>(
 
     match &result {
         Ok(_) => log::info!("Successfully refreshed materialized view: {}", view_name),
-        Err(e) => log::error!("Failed to refresh materialized view {}: {}", view_name, e),
+        Err(e) => log::error!("Failed to refresh materialized view {}: {}", view_name, crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -356,7 +356,7 @@ pub async fn get_triggers<R: Runtime>(
 
     match &result {
         Ok(triggers) => log::info!("Retrieved {} triggers", triggers.len()),
-        Err(e) => log::error!("Failed to get triggers: {}", e),
+        Err(e) => log::error!("Failed to get triggers: {}", crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -407,7 +407,7 @@ pub async fn create_trigger<R: Runtime>(
 
     match &result {
         Ok(_) => log::info!("Successfully created trigger"),
-        Err(e) => log::error!("Failed to create trigger: {}", e),
+        Err(e) => log::error!("Failed to create trigger: {}", crate::log_redact::redact_db_error(e)),
     }
 
     result
@@ -439,7 +439,7 @@ pub async fn drop_trigger<R: Runtime>(
 
     match &result {
         Ok(_) => log::info!("Successfully dropped trigger: {}", trigger_name),
-        Err(e) => log::error!("Failed to drop trigger {}: {}", trigger_name, e),
+        Err(e) => log::error!("Failed to drop trigger {}: {}", trigger_name, crate::log_redact::redact_db_error(e)),
     }
 
     result
