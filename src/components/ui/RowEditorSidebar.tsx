@@ -5,6 +5,7 @@ import { FieldEditor } from "./FieldEditor";
 import { SlotAnchor } from "./SlotAnchor";
 import { useRowEditor } from "../../hooks/useRowEditor";
 import { useRowEditorResize } from "../../hooks/useRowEditorResize";
+import { usePresentationMasking } from "../../hooks/usePresentationMasking";
 
 interface RowEditorSidebarProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export const RowEditorSidebar = ({
   schema,
 }: RowEditorSidebarProps) => {
   const { t } = useTranslation();
+  const masking = usePresentationMasking();
   const { width, startResize } = useRowEditorResize();
   const { editedData, updateField } = useRowEditor({
     initialData: rowData,
@@ -125,7 +127,7 @@ export const RowEditorSidebar = ({
                 connectionId,
                 tableName,
                 schema,
-                rowData,
+                rowData: masking.maskRecord(rowData),
                 rowIndex,
                 isInsertion,
               }}
@@ -162,6 +164,15 @@ export const RowEditorSidebar = ({
                   )}
                 </label>
                 
+                {masking.isMasked(column.name) ? (
+                  // Presenting: show the masked value as plain text, never an editable field.
+                  <div
+                    aria-label={column.name}
+                    className="w-full bg-base border border-default rounded px-3 py-2 text-sm font-mono text-muted select-none"
+                  >
+                    {masking.maskValue(column.name, value)}
+                  </div>
+                ) : (
                 <FieldEditor
                   name={column.name}
                   type={column.type}
@@ -180,6 +191,7 @@ export const RowEditorSidebar = ({
                   pkMap={pkMap}
                   schema={schema}
                 />
+                )}
                 <SlotAnchor
                   name="row-editor-sidebar.field.after"
                   context={{
@@ -187,7 +199,7 @@ export const RowEditorSidebar = ({
                     tableName,
                     schema,
                     columnName: column.name,
-                    rowData: editedData,
+                    rowData: masking.maskRecord(editedData),
                     rowIndex,
                     isInsertion,
                     onFieldChange: (value: unknown) => updateField(column.name, value),

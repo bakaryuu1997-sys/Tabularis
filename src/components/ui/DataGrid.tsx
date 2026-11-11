@@ -43,7 +43,13 @@ import {
 } from "lucide-react";
 import { getColumnTypeVisual } from "../../utils/columnTypeBadge";
 import { ColumnQuickStatsPopover } from "./ColumnQuickStatsPopover";
-import type { MaskingProfile } from "../../utils/dataMasking";
+import {
+  isSensitiveColumn,
+  maskRows,
+  maskSensitiveValue,
+  parseExtraMaskedColumns,
+  type MaskingProfile,
+} from "../../utils/dataMasking";
 import { usePresentationMode } from "../../hooks/usePresentationMode";
 import { isMaskingActive } from "../../utils/presentation";
 import { buildColumnTooltip } from "../../utils/columnDetails";
@@ -257,6 +263,18 @@ export const DataGrid = React.memo(
     const isMaskingEnabledProp = isMaskingActive(isMaskingEnabledFromProps, isPresentationMode);
     const colorByType = settings.resultColorByType ?? true;
     const maskingProfile = maskingProfileProp ?? settings.maskingProfile ?? "smart";
+    const maskingExtraColumns = useMemo(
+      () => parseExtraMaskedColumns(settings.maskingExtraColumns),
+      [settings.maskingExtraColumns],
+    );
+    // Anything copied while masking is on carries the masked values, never the real ones.
+    const maskRowsForCopy = useCallback(
+      (rows: readonly (readonly unknown[])[]): unknown[][] =>
+        isMaskingEnabledProp
+          ? maskRows(rows, columns, maskingProfile, maskingExtraColumns)
+          : (rows as unknown[][]),
+      [isMaskingEnabledProp, columns, maskingProfile, maskingExtraColumns],
+    );
     const showCellDataBars = showCellDataBarsProp ?? settings.showCellDataBars ?? true;
 
     // Client-side hidden columns (presentational only — never changes the SQL).
@@ -652,6 +670,17 @@ export const DataGrid = React.memo(
       return rows.sort((a, b) => a.displayIndex - b.displayIndex);
     }, [data, pendingInsertions, columns]);
 
+    // The value shown in the cell inspector. Sensitive columns show the masked value and cannot be edited there.
+    const inspectorIsMasked =
+      !!inspectorCell && isMaskingEnabledProp && isSensitiveColumn(inspectorCell.colName, maskingExtraColumns);
+    const inspectorRawValue = inspectorCell
+      ? mergedRows[inspectorCell.rowIndex]?.rowData[inspectorCell.colIndex] ?? inspectorCell.value
+      : undefined;
+    const inspectorValue =
+      inspectorIsMasked && inspectorCell
+        ? maskSensitiveValue(inspectorRawValue, inspectorCell.colName, maskingProfile)
+        : inspectorRawValue;
+
     const handleRowClick = useCallback(
       (index: number, event: React.MouseEvent) => {
         let newSelected = new Set(selectedRowIndices);
@@ -690,7 +719,7 @@ export const DataGrid = React.memo(
       } else {
         const allIndices = new Set(mergedRows.map((_, i) => i));
         updateSelection(allIndices);
-        const allRows = mergedRows.map((r) => r.rowData);
+        const allRows = maskRowsForCopy(mergedRows.map((r) => r.rowData));
         const text = copyFormat === "json"
           ? rowsToJSON(allRows, columns)
           : copyFormat === "sql-insert"
@@ -716,6 +745,7 @@ export const DataGrid = React.memo(
       csvDelimiter,
       csvIncludeHeaders,
       tableName,
+      maskRowsForCopy,
       showAlert,
       t,
     ]);
@@ -1564,7 +1594,8 @@ export const DataGrid = React.memo(
     );
 
     const formatRows = useCallback(
-      (rows: unknown[][], withHeaders = false) => {
+      (rawRows: unknown[][], withHeaders = false) => {
+        const rows = maskRowsForCopy(rawRows);
         if (copyFormat === "json") return rowsToJSON(rows, columns);
         if (copyFormat === "sql-insert")
           return rowsToSqlInsert(rows, columns, tableName ?? "table");
@@ -1576,7 +1607,7 @@ export const DataGrid = React.memo(
           return rowsToCSVWithHeaders(rows, columns, "null", csvDelimiter);
         return rowsToCSV(rows, "null", csvDelimiter);
       },
-      [columns, copyFormat, csvDelimiter, csvIncludeHeaders, tableName],
+      [columns, copyFormat, csvDelimiter, csvIncludeHeaders, tableName, maskRowsForCopy],
     );
 
     const copySelectedOrContextRow = useCallback(async () => {
@@ -1624,10 +1655,22 @@ export const DataGrid = React.memo(
         const colName = columns[colIndex];
         const colType = columnTypeMap?.get(colName);
         const colLength = columnLengthMap?.get(colName);
-        const text = formatCellValue(rawValue, "null", colType, colLength);
+        const text =
+          isMaskingEnabledProp && isSensitiveColumn(colName, maskingExtraColumns)
+            ? maskSensitiveValue(rawValue, colName, maskingProfile)
+            : formatCellValue(rawValue, "null", colType, colLength);
         await copyToClipboard(text);
       },
-      [mergedRows, columns, columnTypeMap, columnLengthMap, copyToClipboard],
+      [
+        mergedRows,
+        columns,
+        columnTypeMap,
+        columnLengthMap,
+        copyToClipboard,
+        isMaskingEnabledProp,
+        maskingExtraColumns,
+        maskingProfile,
+      ],
     );
 
     const copyCellFromContext = useCallback(async () => {
@@ -1698,6 +1741,7 @@ export const DataGrid = React.memo(
         parentViewportWidth,
         isMaskingEnabled: isMaskingEnabledProp,
         maskingProfile,
+        maskingExtraColumns,
         showCellDataBars,
         colNumericBoundsMap,
         connectionId,
@@ -1745,6 +1789,7 @@ export const DataGrid = React.memo(
         parentViewportWidth,
         isMaskingEnabledProp,
         maskingProfile,
+        maskingExtraColumns,
         showCellDataBars,
         colNumericBoundsMap,
         connectionId,
@@ -2109,10 +2154,11 @@ export const DataGrid = React.memo(
                   {
                     label: "JSON",
                     action: async () => {
-                      const rows =
+                      const rows = maskRowsForCopy(
                         selectedRowIndices.size > 0
                           ? getSelectedRows(data, selectedRowIndices)
-                          : [contextMenu.row];
+                          : [contextMenu.row],
+                        );
                       await copyToClipboard(rowsToJSON(rows, columns));
                       setContextMenu(null);
                     },
@@ -2120,10 +2166,11 @@ export const DataGrid = React.memo(
                   {
                     label: "SQL INSERT",
                     action: async () => {
-                      const rows =
+                      const rows = maskRowsForCopy(
                         selectedRowIndices.size > 0
                           ? getSelectedRows(data, selectedRowIndices)
-                          : [contextMenu.row];
+                          : [contextMenu.row],
+                        );
                       await copyToClipboard(
                         rowsToSqlInsert(rows, columns, tableName ?? "table"),
                       );
@@ -2133,10 +2180,11 @@ export const DataGrid = React.memo(
                   {
                     label: t("dataGrid.copyCsvWithHeader"),
                     action: async () => {
-                      const rows =
+                      const rows = maskRowsForCopy(
                         selectedRowIndices.size > 0
                           ? getSelectedRows(data, selectedRowIndices)
-                          : [contextMenu.row];
+                          : [contextMenu.row],
+                        );
                       await copyToClipboard(
                         rowsToCSVWithHeaders(rows, columns, "null", csvDelimiter),
                       );
@@ -2146,10 +2194,11 @@ export const DataGrid = React.memo(
                   {
                     label: "Markdown Table",
                     action: async () => {
-                      const rows =
+                      const rows = maskRowsForCopy(
                         selectedRowIndices.size > 0
                           ? getSelectedRows(data, selectedRowIndices)
-                          : [contextMenu.row];
+                          : [contextMenu.row],
+                        );
                       await copyToClipboard(rowsToMarkdownTable(rows, columns));
                       setContextMenu(null);
                     },
@@ -2157,10 +2206,11 @@ export const DataGrid = React.memo(
                   {
                     label: "TypeScript Interface",
                     action: async () => {
-                      const rows =
+                      const rows = maskRowsForCopy(
                         selectedRowIndices.size > 0
                           ? getSelectedRows(data, selectedRowIndices)
-                          : [contextMenu.row];
+                          : [contextMenu.row],
+                        );
                       await copyToClipboard(
                         rowsToTypeScriptInterface(tableName ?? "Record", columns, rows),
                       );
@@ -2408,12 +2458,9 @@ export const DataGrid = React.memo(
               onClose={() => setInspectorOpen(false)}
               columnName={inspectorCell.colName}
               columnType={columnTypeMap?.get(inspectorCell.colName)}
-              cellValue={
-                mergedRows[inspectorCell.rowIndex]?.rowData[inspectorCell.colIndex] ??
-                inspectorCell.value
-              }
+              cellValue={inspectorValue}
               rowIndex={inspectorCell.rowIndex}
-              readOnly={readonlyProp}
+              readOnly={readonlyProp || inspectorIsMasked}
               onApplyValue={(val) => {
                 const mergedRow = mergedRows[inspectorCell.rowIndex];
                 if (!mergedRow) return;

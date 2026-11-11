@@ -713,7 +713,9 @@
     "aiActivity": "AI Activity",
     "presentationSection": "Presentation mode",
     "presentationZoom": "Presentation zoom",
-    "presentationZoomDesc": "How much the window is enlarged while presentation mode is on. Presentation mode masks sensitive columns, hides hosts and users, and makes the app read-only. Toggle it from the sidebar or with Ctrl+Shift+F5."
+    "presentationZoomDesc": "How much the window is enlarged while presentation mode is on. Presentation mode masks sensitive columns, hides hosts and users, and makes the app read-only. Toggle it from the sidebar or with Ctrl+Shift+F5.",
+    "maskingExtraColumns": "Extra columns to mask",
+    "maskingExtraColumnsDesc": "Column names (or parts of names) to mask as sensitive, separated by commas. Matching ignores case and looks for the text anywhere in the name. Common English, Japanese and Vietnamese names such as email, phone, 氏名 or dien_thoai are already covered."
   },
   "update": {
     "newVersionAvailable": "New Version Available",

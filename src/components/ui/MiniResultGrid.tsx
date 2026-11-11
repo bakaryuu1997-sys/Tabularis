@@ -2,6 +2,7 @@ import { useRef, useState, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowUpDown, Copy, Loader2 } from 'lucide-react';
 import { copyTextToClipboard } from '../../utils/clipboard';
+import { usePresentationMasking } from '../../hooks/usePresentationMasking';
 
 interface MiniResultGridProps {
   columns: string[];
@@ -10,7 +11,10 @@ interface MiniResultGridProps {
   message?: string;
 }
 
-export function MiniResultGrid({ columns, rows, loading, message }: MiniResultGridProps) {
+export function MiniResultGrid({ columns, rows: rawRows, loading, message }: MiniResultGridProps) {
+  const masking = usePresentationMasking();
+  // Sensitive columns are masked while presenting, in the cells and in the copied text alike.
+  const rows = useMemo(() => masking.maskRows(rawRows, columns), [masking, rawRows, columns]);
   const parentRef = useRef<HTMLDivElement>(null);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');

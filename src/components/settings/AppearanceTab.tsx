@@ -242,6 +242,20 @@ export function AppearanceTab() {
                 mono
               />
             </SettingRow>
+            <SettingRow
+              label={t("settings.maskingExtraColumns")}
+              description={t("settings.maskingExtraColumnsDesc")}
+            >
+              <input
+                type="text"
+                value={settings.maskingExtraColumns ?? ""}
+                onChange={(e) => updateSetting("maskingExtraColumns", e.target.value)}
+                placeholder="kh_dt, dia_chi_giao, 氏名カナ"
+                spellCheck={false}
+                aria-label={t("settings.maskingExtraColumns")}
+                className="w-72 max-w-full bg-base border border-default rounded-lg px-3 py-2 text-sm font-mono text-primary placeholder:text-muted focus:outline-none focus:border-blue-500"
+              />
+            </SettingRow>
           </SettingSection>
 
           <SettingSection title={t("settings.autocomplete_title")}>

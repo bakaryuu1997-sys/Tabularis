@@ -713,7 +713,9 @@
     "aiActivity": "Hoạt động AI",
     "presentationSection": "Chế độ trình chiếu",
     "presentationZoom": "Độ phóng to khi trình chiếu",
-    "presentationZoomDesc": "Mức phóng to cửa sổ khi bật chế độ trình chiếu. Chế độ này che các cột nhạy cảm, ẩn máy chủ và người dùng, và chuyển app sang chỉ đọc. Bật/tắt từ thanh bên hoặc bằng Ctrl+Shift+F5."
+    "presentationZoomDesc": "Mức phóng to cửa sổ khi bật chế độ trình chiếu. Chế độ này che các cột nhạy cảm, ẩn máy chủ và người dùng, và chuyển app sang chỉ đọc. Bật/tắt từ thanh bên hoặc bằng Ctrl+Shift+F5.",
+    "maskingExtraColumns": "Cột bổ sung cần che",
+    "maskingExtraColumnsDesc": "Tên cột (hoặc một phần tên) cần che như dữ liệu nhạy cảm, ngăn cách bằng dấu phẩy. Không phân biệt hoa thường và khớp ở bất kỳ vị trí nào trong tên. Các tên phổ biến tiếng Anh, Nhật, Việt như email, phone, 氏名, dien_thoai đã được che sẵn."
   },
   "update": {
     "newVersionAvailable": "Có phiên bản mới",

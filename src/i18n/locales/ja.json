@@ -713,7 +713,9 @@
     },
     "presentationSection": "プレゼンテーションモード",
     "presentationZoom": "プレゼンテーションの拡大率",
-    "presentationZoomDesc": "プレゼンテーションモード中にウィンドウを拡大する割合です。このモードでは機密列をマスクし、ホストとユーザーを隠し、読み取り専用になります。サイドバーまたは Ctrl+Shift+F5 で切り替えます。"
+    "presentationZoomDesc": "プレゼンテーションモード中にウィンドウを拡大する割合です。このモードでは機密列をマスクし、ホストとユーザーを隠し、読み取り専用になります。サイドバーまたは Ctrl+Shift+F5 で切り替えます。",
+    "maskingExtraColumns": "追加でマスクする列",
+    "maskingExtraColumnsDesc": "機密として追加でマスクする列名（または列名の一部）をカンマ区切りで入力します。大文字小文字は区別せず、列名のどこに含まれていても一致します。email、phone、氏名、dien_thoai など一般的な英語・日本語・ベトナム語の列名は既に対象です。"
   },
   "update": {
     "newVersionAvailable": "新しいバージョンが利用可能",

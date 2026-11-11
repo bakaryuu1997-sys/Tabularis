@@ -5,6 +5,7 @@ import { groupByDate, formatHistoryTime } from "../../../utils/dateGroups";
 import { SqlHighlight } from "../../ui/SqlHighlight";
 import { formatSqlPreview } from "../../../utils/sqlHighlight";
 import { useSettings } from "../../../hooks/useSettings";
+import { usePresentationMasking } from "../../../hooks/usePresentationMasking";
 import type {
   QueryHistoryEntry,
   QueryHistoryRecoveryNotice,
@@ -34,6 +35,7 @@ export function QueryHistorySection({
 }: QueryHistorySectionProps) {
   const { t } = useTranslation();
   const { settings } = useSettings();
+  const masking = usePresentationMasking();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -165,7 +167,7 @@ export function QueryHistorySection({
                       ? "hover:bg-red-500/10"
                       : "hover:bg-surface-secondary"
                 }`}
-                title={entry.database ? `[${entry.database}] ${entry.sql}` : entry.sql}
+                title={entry.database ? `[${entry.database}] ${masking.maskSql(entry.sql)}` : masking.maskSql(entry.sql)}
               >
                 <div className="flex items-center justify-between gap-2 mb-0.5">
                   <div className="flex items-center gap-1 text-[10px] text-muted min-w-0">
@@ -190,10 +192,10 @@ export function QueryHistorySection({
                       WebkitBoxOrient: "vertical",
                     }}
                   >
-                    {formatSqlPreview(entry.sql)}
+                    {formatSqlPreview(masking.maskSql(entry.sql))}
                   </pre>
                 ) : (
-                  <SqlHighlight sql={entry.sql} />
+                  <SqlHighlight sql={masking.maskSql(entry.sql)} />
                 )}
               </div>
             ))}

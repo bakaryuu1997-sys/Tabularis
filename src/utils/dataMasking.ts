@@ -42,15 +42,35 @@ const SENSITIVE_COLUMN_PATTERNS = [
   /account[_-]?num/i,
   /iban/i,
   /swift/i,
+  // Japanese columns, in kanji/kana and in the romaji often used for physical names.
+  /氏名|姓名|電話|携帯|住所|メール|生年月日|誕生日|給与|給料|年収|口座|暗証|パスワード|郵便|マイナンバー|個人番号|カード番号|クレジット/,
+  /shimei|denwa|keitai|jusho|seinengappi|tanjobi|kyuyo|kouza|koza|anshou|yubin|mynumber|my_number|kojin[_-]?bango/i,
+  // Vietnamese columns, with and without accents or underscores.
+  /ho[_-]?ten|h\u1ecd[_ ]?t\u00ean|sdt|so[_-]?dt|dien[_-]?thoai|\u0111i\u1ec7n[_ ]?tho\u1ea1i|dia[_-]?chi|\u0111\u1ecba[_ ]?ch\u1ec9|ngay[_-]?sinh|ng\u00e0y[_ ]?sinh|luong|l\u01b0\u01a1ng|tai[_-]?khoan|t\u00e0i[_ ]?kho\u1ea3n|mat[_-]?khau|m\u1eadt[_ ]?kh\u1ea9u|so[_-]?the/i,
 ];
 
 /**
  * Checks if a column name indicates sensitive personal, financial, or auth data.
  */
-export function isSensitiveColumn(columnName: string): boolean {
+export function isSensitiveColumn(columnName: string, extraColumns: readonly string[] = []): boolean {
   if (!columnName) return false;
   const name = columnName.trim().toLowerCase();
+  if (extraColumns.some((extra) => extra !== "" && name.includes(extra))) return true;
   return SENSITIVE_COLUMN_PATTERNS.some((pattern) => pattern.test(name));
+}
+
+/**
+ * Parses the "extra columns to mask" setting: names or fragments separated by commas, semicolons or new lines.
+ * Matching is a case-insensitive "contains", so `kh_dt` also covers `kh_dt_2`. Blank entries are dropped.
+ */
+export function parseExtraMaskedColumns(text: string | null | undefined): string[] {
+  if (!text) return [];
+  const seen = new Set<string>();
+  for (const part of text.split(/[,;\n]/)) {
+    const name = part.trim().toLowerCase();
+    if (name) seen.add(name);
+  }
+  return [...seen];
 }
 
 /**
@@ -229,4 +249,98 @@ export function maskSensitiveValue(
 
   // Default secret / token / password / SSN masking
   return "••••••••";
+}
+
+/**
+ * Copy of `rows` (arrays in the order of `columns`) with the values of sensitive columns masked. Other values
+ * and untouched rows keep their identity, so the result is cheap to build and safe to hand to a copy/export formatter.
+ */
+export function maskRows(
+  rows: readonly (readonly unknown[])[],
+  columns: readonly string[],
+  profile: MaskingProfile = "smart",
+  extraColumns: readonly string[] = [],
+): unknown[][] {
+  const sensitive = columns.map((name) => isSensitiveColumn(name, extraColumns));
+  if (!sensitive.some(Boolean)) return rows.map((row) => [...row]);
+  return rows.map((row) =>
+    row.map((value, index) =>
+      sensitive[index] ? maskSensitiveValue(value, columns[index], profile) : value,
+    ),
+  );
+}
+
+/** Like `maskRows` for one record keyed by column name (the row editor). */
+export function maskRecord(
+  record: Readonly<Record<string, unknown>>,
+  profile: MaskingProfile = "smart",
+  extraColumns: readonly string[] = [],
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [name, value] of Object.entries(record)) {
+    result[name] = isSensitiveColumn(name, extraColumns) ? maskSensitiveValue(value, name, profile) : value;
+  }
+  return result;
+}
+
+/** What replaces a masked SQL literal. */
+const SQL_LITERAL_MASK = "•••";
+
+/**
+ * Hides the values in a SQL statement: string literals (`'a@b.com'`, `$$...$$`) and long numbers (phone
+ * and account numbers) become `•••`, while keywords, names, identifiers in "double quotes" or `backticks`, and
+ * comments stay. Used where queries are shown to an audience (history). It leans towards hiding too much:
+ * an unterminated or oddly escaped string is masked up to the end of the statement.
+ */
+export function maskSqlLiterals(sql: string): string {
+  let out = "";
+  let i = 0;
+  const n = sql.length;
+  while (i < n) {
+    const ch = sql[i];
+    const next = sql[i + 1];
+
+    if (ch === "-" && next === "-") {
+      const end = sql.indexOf("\n", i);
+      const stop = end === -1 ? n : end;
+      out += sql.slice(i, stop);
+      i = stop;
+    } else if (ch === "/" && next === "*") {
+      const end = sql.indexOf("*/", i + 2);
+      const stop = end === -1 ? n : end + 2;
+      out += sql.slice(i, stop);
+      i = stop;
+    } else if (ch === "'") {
+      i += 1;
+      while (i < n) {
+        if (sql[i] === "\\") i += 2;
+        else if (sql[i] === "'" && sql[i + 1] === "'") i += 2;
+        else if (sql[i] === "'") break;
+        else i += 1;
+      }
+      i = Math.min(i + 1, n);
+      out += `'${SQL_LITERAL_MASK}'`;
+    } else if (ch === "$" && /^\$[A-Za-z_]*\$/.test(sql.slice(i))) {
+      const tag = /^\$[A-Za-z_]*\$/.exec(sql.slice(i))![0];
+      const end = sql.indexOf(tag, i + tag.length);
+      i = end === -1 ? n : end + tag.length;
+      out += `${tag}${SQL_LITERAL_MASK}${tag}`;
+    } else if (ch === '"' || ch === "`") {
+      const end = sql.indexOf(ch, i + 1);
+      const stop = end === -1 ? n : end + 1;
+      out += sql.slice(i, stop);
+      i = stop;
+    } else if (/[0-9]/.test(ch) && !/[A-Za-z0-9_]/.test(sql[i - 1] ?? "")) {
+      let j = i;
+      while (j < n && /[0-9]/.test(sql[j])) j += 1;
+      const digits = j - i;
+      // Keep short numbers (LIMIT 10, ids); hide long ones that look like phone, account or card numbers.
+      out += digits >= 6 ? SQL_LITERAL_MASK : sql.slice(i, j);
+      i = j;
+    } else {
+      out += ch;
+      i += 1;
+    }
+  }
+  return out;
 }

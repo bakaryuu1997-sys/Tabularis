@@ -61,6 +61,7 @@ export interface RowCtx {
   parentViewportWidth: number;
   isMaskingEnabled?: boolean;
   maskingProfile?: MaskingProfile;
+  maskingExtraColumns?: readonly string[];
   showCellDataBars?: boolean;
   colNumericBoundsMap?: Map<string, { min: number; max: number }>;
   connectionId?: string | null;
@@ -187,6 +188,7 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
     parentViewportWidth,
     isMaskingEnabled,
     maskingProfile,
+    maskingExtraColumns,
     showCellDataBars,
     colNumericBoundsMap,
     connectionId: rowConnectionId,
@@ -373,7 +375,7 @@ export const MemoRow = React.memo(function MemoRow(rowCtx: MemoRowProps) {
           // Format once and reuse for both the title tooltip and
           // the rendered content (previously formatted twice).
           const formattedDisplay =
-            isMaskingEnabled && isSensitiveColumn(colName)
+            isMaskingEnabled && isSensitiveColumn(colName, maskingExtraColumns)
               ? maskSensitiveValue(displayValue, colName, maskingProfile)
               : formatCellValue(
                   displayValue,

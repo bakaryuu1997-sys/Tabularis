@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { RotateCcw, X } from "lucide-react";
 import type { CellExecutionEntry } from "../../types/notebook";
+import { usePresentationMasking } from "../../hooks/usePresentationMasking";
 
 interface CellHistoryPanelProps {
   history: CellExecutionEntry[];
@@ -26,6 +27,7 @@ function HistoryEntry({
   index: number;
   onRestore: () => void;
 }) {
+  const masking = usePresentationMasking();
   const isError = !!entry.error;
 
   return (
@@ -52,7 +54,7 @@ function HistoryEntry({
           )}
         </div>
         <pre className="text-[10px] text-secondary font-mono truncate mt-0.5">
-          {entry.query}
+          {masking.maskSql(entry.query)}
         </pre>
       </div>
       <button

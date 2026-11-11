@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useQueryHistory } from "../../hooks/useQueryHistory";
 import { copyTextToClipboard } from "../../utils/clipboard";
+import { usePresentationMasking } from "../../hooks/usePresentationMasking";
 
 export interface QueryHistoryModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export function QueryHistoryModal({
   onRunQuery,
 }: QueryHistoryModalProps) {
   const { t } = useTranslation();
+  const masking = usePresentationMasking();
   const { entries, deleteEntry, clearHistory } = useQueryHistory();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "success" | "error">("all");
@@ -296,7 +298,7 @@ export function QueryHistoryModal({
 
                 {/* SQL Code Box */}
                 <div className="relative bg-surface p-3 rounded-lg border border-default overflow-x-auto font-mono text-xs text-primary leading-relaxed">
-                  <pre className="whitespace-pre-wrap break-all">{item.sql}</pre>
+                  <pre className="whitespace-pre-wrap break-all">{masking.maskSql(item.sql)}</pre>
                 </div>
 
                 {/* Error Banner if any */}
@@ -309,7 +311,7 @@ export function QueryHistoryModal({
                 {/* Quick Action Buttons */}
                 <div className="flex items-center justify-end gap-2 pt-1 border-t border-strong/40">
                   <button
-                    onClick={() => handleCopy(item.id, item.sql)}
+                    onClick={() => handleCopy(item.id, masking.maskSql(item.sql))}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface hover:bg-surface-tertiary border border-strong text-xs text-secondary hover:text-primary transition-colors"
                   >
                     {copiedId === item.id ? (

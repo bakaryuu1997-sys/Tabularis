@@ -57,6 +57,8 @@ export interface Settings {
   csvIncludeHeaders?: boolean;
   /** PII Data Masking Profile: "smart" (partial mask), "full" (all bullets), "redacted" ([REDACTED]). Default: "smart". */
   maskingProfile?: MaskingProfile;
+  /** Extra column names (or fragments) to treat as sensitive, separated by commas or new lines. Default: none. */
+  maskingExtraColumns?: string;
   /** Whether to show subtle numeric distribution data bars in DataGrid cells. Default: true. */
   showCellDataBars?: boolean;
   activeExternalDrivers?: string[];
@@ -117,6 +119,7 @@ export const DEFAULT_SETTINGS: Settings = {
   resultColorByType: true,
   resultTypeColors: {},
   maskingProfile: "smart",
+  maskingExtraColumns: "",
   showCellDataBars: true,
   aiEnabled: false,
   aiProvider: null,
