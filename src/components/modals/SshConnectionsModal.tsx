@@ -25,6 +25,8 @@ import { toErrorMessage } from "../../utils/errors";
 import { Modal } from "../ui/Modal";
 import { Select } from "../ui/Select";
 import clsx from "clsx";
+import { usePresentationMode } from "../../hooks/usePresentationMode";
+import { hideDetail } from "../../utils/presentation";
 
 interface SshConnectionsModalProps {
   isOpen: boolean;
@@ -87,6 +89,7 @@ export function SshConnectionsModal({
   onClose,
 }: SshConnectionsModalProps) {
   const { t } = useTranslation();
+  const { isPresentationMode } = usePresentationMode();
   const [connections, setConnections] = useState<SshConnection[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -367,11 +370,11 @@ export function SshConnectionsModal({
                           {conn.name}
                         </div>
                         <div className="text-sm text-muted">
-                          {conn.user}@{conn.host}:{conn.port}
+                          {hideDetail(`${conn.user}@${conn.host}:${conn.port}`, isPresentationMode)}
                         </div>
                         {conn.key_file && (
                           <div className="text-xs text-muted mt-1">
-                            {t("sshConnections.keyFile")}: {conn.key_file}
+                            {t("sshConnections.keyFile")}: {hideDetail(conn.key_file, isPresentationMode)}
                           </div>
                         )}
                       </div>

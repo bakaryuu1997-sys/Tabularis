@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { useSettings } from "../../hooks/useSettings";
 import { useTheme } from "../../hooks/useTheme";
 import { getFontCSS } from "../../utils/settings";
+import { PRESENTATION_ZOOM_OPTIONS, normalizePresentationZoom } from "../../utils/presentation";
 import {
   SettingSection,
   SettingRow,
@@ -222,6 +223,23 @@ export function AppearanceTab() {
                 onChange={(v) =>
                   updateSetting("editorAcceptSuggestionOnEnter", v)
                 }
+              />
+            </SettingRow>
+          </SettingSection>
+
+          <SettingSection title={t("settings.presentationSection")}>
+            <SettingRow
+              label={t("settings.presentationZoom")}
+              description={t("settings.presentationZoomDesc")}
+            >
+              <SettingButtonGroup
+                value={String(normalizePresentationZoom(settings.presentationZoom))}
+                onChange={(v) => updateSetting("presentationZoom", Number(v))}
+                options={PRESENTATION_ZOOM_OPTIONS.map((zoom) => ({
+                  value: String(zoom),
+                  label: `${Math.round(zoom * 100)}%`,
+                }))}
+                mono
               />
             </SettingRow>
           </SettingSection>

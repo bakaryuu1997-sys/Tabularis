@@ -10,6 +10,7 @@ import './index.css';
 import './i18n/config';
 import { DatabaseProvider } from './contexts/DatabaseProvider';
 import { SettingsProvider } from './contexts/SettingsProvider';
+import { PresentationProvider } from './contexts/PresentationProvider';
 import { SavedQueriesProvider } from './contexts/SavedQueriesProvider';
 import { QueryHistoryProvider } from './contexts/QueryHistoryProvider';
 import { EditorProvider } from './contexts/EditorProvider';
@@ -21,15 +22,17 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <UpdateProvider>
       <ThemeProvider>
         <SettingsProvider>
-          <DatabaseProvider>
-            <SavedQueriesProvider>
-              <QueryHistoryProvider>
-                <EditorProvider>
-                  <App />
-                </EditorProvider>
-              </QueryHistoryProvider>
-            </SavedQueriesProvider>
-          </DatabaseProvider>
+          <PresentationProvider>
+            <DatabaseProvider>
+              <SavedQueriesProvider>
+                <QueryHistoryProvider>
+                  <EditorProvider>
+                    <App />
+                  </EditorProvider>
+                </QueryHistoryProvider>
+              </SavedQueriesProvider>
+            </DatabaseProvider>
+          </PresentationProvider>
         </SettingsProvider>
       </ThemeProvider>
     </UpdateProvider>

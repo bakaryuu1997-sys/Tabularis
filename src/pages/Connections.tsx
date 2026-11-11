@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { UserGuideModal } from "../components/modals/UserGuideModal";
 import { useAlert } from "../hooks/useAlert";
+import { usePresentationMode } from "../hooks/usePresentationMode";
 import { ProjectImportModal } from "../components/modals/ProjectImportModal";
 import { scanProjectDirectory, type DetectedConnection } from "../utils/projectScanner";
 import { parseDBeaverDataSources } from "../utils/importers/dbeaver";
@@ -48,6 +49,7 @@ export const Connections = () => {
   const { t } = useTranslation();
   const { settings } = useSettings();
   const { showAlert } = useAlert();
+  const { isPresentationMode } = usePresentationMode();
   const [detectedConnections, setDetectedConnections] = useState<DetectedConnection[]>([]);
   const [isProjectImportOpen, setIsProjectImportOpen] = useState(false);
   const [importSourceTitle, setImportSourceTitle] = useState("");
@@ -430,6 +432,11 @@ export const Connections = () => {
   };
 
   const openEdit = async (conn: SavedConnection) => {
+    // The edit form shows host, user and credentials, so it stays closed while presenting.
+    if (isPresentationMode) {
+      showAlert(t("presentation.editBlocked"), { kind: "info" });
+      return;
+    }
     if (isConnectionOpen(conn.id)) {
       await disconnect(conn.id);
     }

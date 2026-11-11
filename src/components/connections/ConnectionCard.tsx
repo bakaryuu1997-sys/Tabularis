@@ -10,6 +10,7 @@ import { getCapabilitiesForDriver } from '../../utils/driverCapabilities';
 import { connectionSubtitle, getCardClass } from '../../utils/connections';
 import { StatusBadge } from './StatusBadge';
 import { ActionButtons } from './ActionButtons';
+import { usePresentationMode } from '../../hooks/usePresentationMode';
 
 export interface ConnectionCardProps {
   conn: SavedConnection;
@@ -46,7 +47,8 @@ export const ConnectionCard = ({
   const isDriverEnabled = enabledDrivers.some(d => d.id === conn.params.driver);
   const driverManifest = allDrivers.find(d => d.id === conn.params.driver);
   const capabilities = getCapabilitiesForDriver(conn.params.driver, allDrivers);
-  const subtitle = connectionSubtitle(conn, capabilities);
+  const { isPresentationMode } = usePresentationMode();
+  const subtitle = connectionSubtitle(conn, capabilities, isPresentationMode);
   const driverColor = getConnectionAccent(conn, driverManifest);
 
   return (

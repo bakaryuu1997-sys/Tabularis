@@ -8,6 +8,7 @@ import { SlotAnchor } from "../ui/SlotAnchor";
 
 // Sub-components
 import { NavItem } from "./sidebar/NavItem";
+import { PresentationToggle } from "./sidebar/PresentationToggle";
 import { OpenConnectionItem } from "./sidebar/OpenConnectionItem";
 import { ConnectionGroupItem } from "./sidebar/ConnectionGroupItem";
 import { ExplorerSidebar, type SidebarTab } from "./ExplorerSidebar";
@@ -276,6 +277,8 @@ export const Sidebar = () => {
         </nav>
 
         <div className="mt-auto">
+          <PresentationToggle />
+
           <NavItem
             to="/mcp"
             icon={Cpu}

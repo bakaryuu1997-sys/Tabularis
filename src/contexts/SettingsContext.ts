@@ -51,6 +51,8 @@ export interface Settings {
   csvDelimiter?: string;
   /** File format of CSV exports: plain UTF-8 (default), UTF-8 with BOM for Excel, or Shift_JIS for older Japanese systems. */
   csvEncodingPreset?: CsvEncodingPreset;
+  /** Zoom factor applied while presentation mode is on: 1.25, 1.5 or 1.75. Default: 1.25. */
+  presentationZoom?: number;
   /** Whether copied CSV output includes a header row. Default: true. */
   csvIncludeHeaders?: boolean;
   /** PII Data Masking Profile: "smart" (partial mask), "full" (all bullets), "redacted" ([REDACTED]). Default: "smart". */
@@ -130,6 +132,7 @@ export const DEFAULT_SETTINGS: Settings = {
   copyFormat: "csv",
   csvDelimiter: ",",
   csvEncodingPreset: "utf8",
+  presentationZoom: 1.25,
   csvIncludeHeaders: true,
   erDiagramDefaultLayout: "LR",
   editorFontFamily: "JetBrains Mono",

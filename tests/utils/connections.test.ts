@@ -442,6 +442,17 @@ describe('connections', () => {
       const conn = makeConn({ host: 'db.host', port: 5432, database: 'mydb' });
       expect(connectionSubtitle(conn, null)).toBe('db.host:5432  ·  mydb');
     });
+
+    it('hides host, port and database while presenting', () => {
+      const conn = makeConn({ host: 'db.host', port: 5432, database: 'mydb' });
+      expect(connectionSubtitle(conn, makeRemoteCaps(), true)).toBe('••••••••');
+      expect(connectionSubtitle(conn, null, true)).not.toContain('db.host');
+    });
+
+    it('hides the path of a file database while presenting', () => {
+      const conn = makeConn({ database: '/home/user/secret.sqlite' });
+      expect(connectionSubtitle(conn, makeFileCaps(), true)).toBe('••••••••');
+    });
   });
 
   describe('hasConnectionMenuItems', () => {

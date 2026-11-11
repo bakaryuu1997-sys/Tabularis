@@ -72,6 +72,8 @@ import {
   Radio,
 } from "lucide-react";
 import { useResultExport } from "../hooks/useResultExport";
+import { usePresentationMode } from "../hooks/usePresentationMode";
+import { effectiveSafeMode, isMaskingActive } from "../utils/presentation";
 import { useTransactionControl } from "../hooks/useTransactionControl";
 import { useTabRename } from "../hooks/useTabRename";
 import {
@@ -264,9 +266,11 @@ export const Editor = () => {
     return connections.find((c) => c.id === activeConnectionId);
   }, [connections, activeConnectionId]);
 
+  const { isPresentationMode } = usePresentationMode();
+  // While presenting, nothing can write, whatever Safe Mode the connection normally uses.
   const effectiveSafeModeLevel = useMemo(() => {
-    return resolveConnectionSafeMode(activeConnectionObj);
-  }, [activeConnectionObj]);
+    return effectiveSafeMode(resolveConnectionSafeMode(activeConnectionObj), isPresentationMode);
+  }, [activeConnectionObj, isPresentationMode]);
 
   const isSafeModeReadonly = effectiveSafeModeLevel === "readonly";
 
@@ -4149,20 +4153,20 @@ export const Editor = () => {
                           type="button"
                           onClick={() => setIsMaskingEnabled((prev) => !prev)}
                           className={`flex items-center gap-1.5 px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                            isMaskingEnabled
+                            isMaskingActive(isMaskingEnabled, isPresentationMode)
                               ? "bg-purple-900/40 text-purple-300 hover:bg-purple-900/60"
                               : "bg-surface text-secondary hover:text-primary hover:bg-surface-secondary"
                           }`}
                           title={t("editor.maskSensitiveData.tooltip")}
                         >
-                          {isMaskingEnabled ? (
+                          {isMaskingActive(isMaskingEnabled, isPresentationMode) ? (
                             <EyeOff size={12} className="text-purple-400 shrink-0" />
                           ) : (
                             <Eye size={12} className="shrink-0 text-muted" />
                           )}
                           <span>{t("editor.maskSensitiveData.button")}</span>
                         </button>
-                        {isMaskingEnabled && (
+                        {isMaskingActive(isMaskingEnabled, isPresentationMode) && (
                           <select
                             value={settings.maskingProfile || "smart"}
                             onChange={(e) => updateSetting("maskingProfile", e.target.value as MaskingProfile)}

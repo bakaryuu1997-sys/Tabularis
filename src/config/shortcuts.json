@@ -110,6 +110,16 @@
     "overridable": false
   },
   {
+    "id": "toggle_presentation_mode",
+    "category": "navigation",
+    "defaultMac": "⌘+⇧+F5",
+    "defaultWin": "Ctrl+Shift+F5",
+    "macMatch": { "metaKey": true, "shiftKey": true, "key": "F5" },
+    "winMatch": { "ctrlKey": true, "shiftKey": true, "key": "F5" },
+    "i18nKey": "settings.shortcuts.togglePresentationMode",
+    "overridable": true
+  },
+  {
     "id": "toggle_sidebar",
     "category": "navigation",
     "defaultMac": "⌘+B",

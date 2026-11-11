@@ -28,6 +28,8 @@ import { toErrorMessage } from "../../utils/errors";
 import { Modal } from "../ui/Modal";
 import { Select } from "../ui/Select";
 import clsx from "clsx";
+import { usePresentationMode } from "../../hooks/usePresentationMode";
+import { hideDetail } from "../../utils/presentation";
 
 interface K8sConnectionsModalProps {
   isOpen: boolean;
@@ -45,6 +47,7 @@ export function K8sConnectionsModal({
   defaultPort,
 }: K8sConnectionsModalProps) {
   const { t } = useTranslation();
+  const { isPresentationMode } = usePresentationMode();
   const [connections, setConnections] = useState<K8sConnection[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -329,7 +332,7 @@ export function K8sConnectionsModal({
                     {conn.name}
                   </div>
                   <div className="text-xs text-muted truncate">
-                    {conn.context}/{conn.namespace}/{conn.resource_type}/{conn.resource_name}:{conn.port}
+                    {hideDetail(`${conn.context}/${conn.namespace}/${conn.resource_type}/${conn.resource_name}:${conn.port}`, isPresentationMode)}
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">

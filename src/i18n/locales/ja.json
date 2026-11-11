@@ -221,7 +221,8 @@
     "schemaDiff": "スキーマ比較・同期",
     "teamWorkspaceSync": "チームワークスペース同期 (Git)",
     "actions": "アクション",
-    "dataCompare": "データを比較…"
+    "dataCompare": "データを比較…",
+    "presentationMode": "プレゼンテーションモード"
   },
   "mcp": {
     "title": "MCP サーバー連携",
@@ -317,7 +318,6 @@
     "title": "Tabularis 利用ガイド",
     "subtitle": "主要機能、ショートカット、操作手順のクイックリファレンス"
   },
- 
   "connectionAppearance": {
     "section": "外観",
     "environment": "環境 (Production Guard)",
@@ -693,7 +693,8 @@
       "categories_notebook": "ノートブック",
       "pasteImportClipboard": "クリップボードからインポート",
       "quickNavigator": "クイックナビゲーター",
-      "saveGridChanges": "保留中の変更を保存"
+      "saveGridChanges": "保留中の変更を保存",
+      "togglePresentationMode": "プレゼンテーションモードの切り替え"
     },
     "aiActivity": "AI アクティビティ",
     "detectJsonInTextColumns": "テキスト列のJSONを検出",
@@ -709,7 +710,10 @@
       "reset": "テーマの色に戻す",
       "confirm": "確認",
       "cancel": "キャンセル"
-    }
+    },
+    "presentationSection": "プレゼンテーションモード",
+    "presentationZoom": "プレゼンテーションの拡大率",
+    "presentationZoomDesc": "プレゼンテーションモード中にウィンドウを拡大する割合です。このモードでは機密列をマスクし、ホストとユーザーを隠し、読み取り専用になります。サイドバーまたは Ctrl+Shift+F5 で切り替えます。"
   },
   "update": {
     "newVersionAvailable": "新しいバージョンが利用可能",
@@ -2662,5 +2666,10 @@
     "openInEditor": "エディターで開く",
     "keyMissing": "片方にキー列がありません: {{columns}}",
     "error": "比較に失敗しました:"
+  },
+  "presentation": {
+    "banner": "プレゼンテーションモード: データをマスク、接続情報を非表示、読み取り専用",
+    "exit": "終了",
+    "editBlocked": "接続を編集するにはプレゼンテーションモードをオフにしてください。編集画面にはホスト、ユーザー、認証情報が表示されます。"
   }
 }

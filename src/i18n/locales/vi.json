@@ -221,7 +221,8 @@
     "schemaDiff": "So sánh cấu trúc CSDL (Schema Compare)",
     "teamWorkspaceSync": "Đồng bộ Workspace nhóm (Git)",
     "actions": "Thao tác",
-    "dataCompare": "So sánh dữ liệu…"
+    "dataCompare": "So sánh dữ liệu…",
+    "presentationMode": "Chế độ trình chiếu"
   },
   "mcp": {
     "title": "Tích hợp máy chủ MCP",
@@ -317,7 +318,6 @@
     "title": "Sổ tay Hướng dẫn Sử dụng Tabularis",
     "subtitle": "Hướng dẫn nhanh các tính năng, phím tắt và thao tác chuẩn"
   },
- 
   "connectionAppearance": {
     "section": "Giao diện",
     "environment": "Môi trường (Production Guard)",
@@ -707,9 +707,13 @@
       "notebookRunAll": "Chạy tất cả ô",
       "categories_notebook": "Notebook",
       "pasteImportClipboard": "Nhập từ Clipboard",
-      "quickNavigator": "Điều hướng nhanh"
+      "quickNavigator": "Điều hướng nhanh",
+      "togglePresentationMode": "Bật/tắt chế độ trình chiếu"
     },
-    "aiActivity": "Hoạt động AI"
+    "aiActivity": "Hoạt động AI",
+    "presentationSection": "Chế độ trình chiếu",
+    "presentationZoom": "Độ phóng to khi trình chiếu",
+    "presentationZoomDesc": "Mức phóng to cửa sổ khi bật chế độ trình chiếu. Chế độ này che các cột nhạy cảm, ẩn máy chủ và người dùng, và chuyển app sang chỉ đọc. Bật/tắt từ thanh bên hoặc bằng Ctrl+Shift+F5."
   },
   "update": {
     "newVersionAvailable": "Có phiên bản mới",
@@ -2662,5 +2666,10 @@
     "openInEditor": "Mở trong trình soạn thảo",
     "keyMissing": "Thiếu cột khóa ở một phía: {{columns}}",
     "error": "So sánh thất bại:"
+  },
+  "presentation": {
+    "banner": "Chế độ trình chiếu: dữ liệu bị che, ẩn thông tin kết nối, chỉ đọc",
+    "exit": "Thoát",
+    "editBlocked": "Hãy tắt chế độ trình chiếu để sửa kết nối: form sửa hiển thị máy chủ, người dùng và thông tin đăng nhập."
   }
 }

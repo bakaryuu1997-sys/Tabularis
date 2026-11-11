@@ -4,6 +4,7 @@ import { SplitPaneLayout } from './SplitPaneLayout';
 import { useConnectionLayoutContext } from '../../hooks/useConnectionLayoutContext';
 import { useGlobalShortcuts } from '../../hooks/useGlobalShortcuts';
 import { AiChatWidget } from '../ai/AiChatWidget';
+import { PresentationBanner } from './PresentationBanner';
 
 export const MainLayout = () => {
   const { splitView, isSplitVisible } = useConnectionLayoutContext();
@@ -23,6 +24,7 @@ export const MainLayout = () => {
         {showSplit ? <SplitPaneLayout {...splitView} /> : <Outlet />}
       </main>
       <AiChatWidget />
+      <PresentationBanner />
     </div>
   );
 };

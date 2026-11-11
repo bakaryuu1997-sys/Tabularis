@@ -44,6 +44,8 @@ import {
 import { getColumnTypeVisual } from "../../utils/columnTypeBadge";
 import { ColumnQuickStatsPopover } from "./ColumnQuickStatsPopover";
 import type { MaskingProfile } from "../../utils/dataMasking";
+import { usePresentationMode } from "../../hooks/usePresentationMode";
+import { isMaskingActive } from "../../utils/presentation";
 import { buildColumnTooltip } from "../../utils/columnDetails";
 import {
   getCellValueFilterOperators,
@@ -238,7 +240,7 @@ export const DataGrid = React.memo(
     sortClause,
     onSort,
     readonly: readonlyProp,
-    isMaskingEnabled: isMaskingEnabledProp,
+    isMaskingEnabled: isMaskingEnabledFromProps,
     maskingProfile: maskingProfileProp,
     showCellDataBars: showCellDataBarsProp,
     columnVisibilityKey,
@@ -250,6 +252,9 @@ export const DataGrid = React.memo(
     const { activeSchema, activeDriver, connections } = useDatabase();
     const { showAlert } = useAlert();
     const { settings } = useSettings();
+    const { isPresentationMode } = usePresentationMode();
+    // Sensitive columns stay masked in every grid while presenting, whatever the grid's own toggle says.
+    const isMaskingEnabledProp = isMaskingActive(isMaskingEnabledFromProps, isPresentationMode);
     const colorByType = settings.resultColorByType ?? true;
     const maskingProfile = maskingProfileProp ?? settings.maskingProfile ?? "smart";
     const showCellDataBars = showCellDataBarsProp ?? settings.showCellDataBars ?? true;

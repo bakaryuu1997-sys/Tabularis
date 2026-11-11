@@ -17,6 +17,7 @@
     "core:window:allow-is-visible",
     "core:window:allow-is-minimized",
     "core:window:allow-set-always-on-top",
+    "core:webview:allow-set-webview-zoom",
     "dialog:default",
     "fs:default",
     "fs:allow-write-text-file",

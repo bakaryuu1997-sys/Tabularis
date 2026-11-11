@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useKeybindings } from "./useKeybindings";
 import { useConnectionManager } from "./useConnectionManager";
+import { usePresentationMode } from "./usePresentationMode";
 
 /**
  * Registers global keyboard shortcuts for navigation.
@@ -11,9 +12,17 @@ export function useGlobalShortcuts() {
   const navigate = useNavigate();
   const { matchesShortcut, isMac } = useKeybindings();
   const { openConnections, handleSwitch } = useConnectionManager();
+  const { togglePresentationMode } = usePresentationMode();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Works everywhere, including while typing: you need it most when something is on screen that should not be.
+      if (matchesShortcut(e, "toggle_presentation_mode")) {
+        e.preventDefault();
+        togglePresentationMode();
+        return;
+      }
+
       // Don't fire when typing in inputs / textareas / contenteditable (except for the quick navigator)
       const target = e.target as HTMLElement;
       const isQuickNavigator =
@@ -77,5 +86,5 @@ export function useGlobalShortcuts() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [matchesShortcut, isMac, navigate, openConnections, handleSwitch]);
+  }, [matchesShortcut, isMac, navigate, openConnections, handleSwitch, togglePresentationMode]);
 }

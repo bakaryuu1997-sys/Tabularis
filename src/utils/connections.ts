@@ -6,6 +6,7 @@
 import type { DriverCapabilities } from "../types/plugins";
 import type { SavedConnection, ConnectionGroup } from "../contexts/DatabaseContext";
 import { isLocalDriver } from "./driverCapabilities";
+import { hideDetail } from './presentation';
 
 export type DatabaseDriver = string;
 
@@ -193,14 +194,15 @@ export function getDriverLabel(driver: DatabaseDriver): string {
 export function connectionSubtitle(
   conn: SavedConnection,
   capabilities: DriverCapabilities | null | undefined,
+  hideDetails = false,
 ): string {
   if (isLocalDriver(capabilities)) {
     const db = conn.params.database;
-    return Array.isArray(db) ? db[0] ?? '' : db;
+    return hideDetail(Array.isArray(db) ? db[0] ?? '' : db, hideDetails);
   }
   const db = conn.params.database;
   const dbStr = Array.isArray(db) ? `${db.length} databases` : db;
-  return `${conn.params.host ?? 'localhost'}:${conn.params.port ?? ''}  ·  ${dbStr}`;
+  return hideDetail(`${conn.params.host ?? 'localhost'}:${conn.params.port ?? ''}  ·  ${dbStr}`, hideDetails);
 }
 
 /**

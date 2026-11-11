@@ -221,7 +221,8 @@
     "schemaDiff": "Schema Compare & Sync",
     "teamWorkspaceSync": "Team workspace sync (Git)",
     "actions": "Actions",
-    "dataCompare": "Compare data…"
+    "dataCompare": "Compare data…",
+    "presentationMode": "Presentation mode"
   },
   "mcp": {
     "title": "MCP Server Integration",
@@ -317,7 +318,6 @@
     "title": "Tabularis User Guide",
     "subtitle": "Quick guide for core features, shortcuts and best practices"
   },
- 
   "connectionAppearance": {
     "section": "Appearance",
     "environment": "Environment (Production Guard)",
@@ -707,9 +707,13 @@
       "notebookRunAll": "Run All Cells",
       "categories_notebook": "Notebook",
       "pasteImportClipboard": "Import from Clipboard",
-      "quickNavigator": "Quick Navigator"
+      "quickNavigator": "Quick Navigator",
+      "togglePresentationMode": "Toggle presentation mode"
     },
-    "aiActivity": "AI Activity"
+    "aiActivity": "AI Activity",
+    "presentationSection": "Presentation mode",
+    "presentationZoom": "Presentation zoom",
+    "presentationZoomDesc": "How much the window is enlarged while presentation mode is on. Presentation mode masks sensitive columns, hides hosts and users, and makes the app read-only. Toggle it from the sidebar or with Ctrl+Shift+F5."
   },
   "update": {
     "newVersionAvailable": "New Version Available",
@@ -2662,5 +2666,10 @@
     "openInEditor": "Open in editor",
     "keyMissing": "Key column(s) missing on one side: {{columns}}",
     "error": "Comparison failed:"
+  },
+  "presentation": {
+    "banner": "Presentation mode: data masked, connection details hidden, read-only",
+    "exit": "Exit",
+    "editBlocked": "Turn off presentation mode to edit a connection: the form shows host, user and credentials."
   }
 }
