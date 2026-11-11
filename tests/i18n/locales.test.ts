@@ -33,12 +33,18 @@ function sourceFiles(dir: string): string[] {
 const VIETNAMESE =
   /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
 
-/** Intentional exceptions: a language's own name, and the legacy title written by older versions. */
+/**
+ * Intentional exceptions: a language's own name, the legacy chat title written by older versions, and the
+ * in-app user guide, which is written in Vietnamese only.
+ */
 const VIETNAMESE_ALLOWLIST = new Set([
   "src/i18n/config.ts",
   "src/components/ai/AiChatWidget.tsx",
   "src/components/modals/UserGuideModal.tsx",
 ]);
+
+/** Comments are never shown to users, so examples of Vietnamese text inside them are fine. */
+const isCommentLine = (line: string) => /^\s*(\/\/|\/\*|\*)/.test(line);
 
 describe("locale files", () => {
   it("ship exactly English, Japanese and Vietnamese with the same keys", () => {
@@ -80,7 +86,7 @@ describe("source code", () => {
       readFileSync(file, "utf8")
         .split("\n")
         .forEach((line, i) => {
-          if (VIETNAMESE.test(line)) offenders.push(`${rel}:${i + 1}: ${line.trim().slice(0, 80)}`);
+          if (!isCommentLine(line) && VIETNAMESE.test(line)) offenders.push(`${rel}:${i + 1}: ${line.trim().slice(0, 80)}`);
         });
     }
     expect(offenders).toEqual([]);

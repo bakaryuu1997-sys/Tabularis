@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import type { ReactNode } from "react";
 import type { Tab, SchemaCache, TableSchema, QueryResultEntry } from "../types/editor";
 import { EditorContext } from "./EditorContext";
+import { reorderTabs as reorderTabList, type DropPosition } from "../utils/tabDnd";
 import { useDatabase } from "../hooks/useDatabase";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -467,6 +468,13 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
     return getConnectionTabs(tabs, activeConnectionId);
   }, [tabs, activeConnectionId]);
 
+  const reorderTabs = useCallback(
+    (draggedId: string, targetId: string, position: DropPosition) => {
+      setTabs((prev) => reorderTabList(prev, draggedId, targetId, position));
+    },
+    [],
+  );
+
   const canReopenClosedTab =
     !!activeConnectionId && (closedTabs[activeConnectionId]?.length ?? 0) > 0;
 
@@ -485,6 +493,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       closeOtherTabs,
       closeTabsToLeft: closeTabsToLeftInternal,
       closeTabsToRight: closeTabsToRightInternal,
+      reorderTabs,
       reopenClosedTab,
       canReopenClosedTab,
       getSchema,
@@ -503,6 +512,7 @@ export const EditorProvider = ({ children }: { children: ReactNode }) => {
       closeOtherTabs,
       closeTabsToLeftInternal,
       closeTabsToRightInternal,
+      reorderTabs,
       reopenClosedTab,
       canReopenClosedTab,
       getSchema,

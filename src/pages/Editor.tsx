@@ -74,6 +74,16 @@ import {
 import { useResultExport } from "../hooks/useResultExport";
 import { useTransactionControl } from "../hooks/useTransactionControl";
 import { useTabRename } from "../hooks/useTabRename";
+import {
+  TAB_DRAG_MIME,
+  dropPositionFromPointer,
+  pinTabAt,
+  reorderPinnedIds,
+  resolveTabDrop,
+  tabDrag,
+  type DropPosition,
+  type TabDropAction,
+} from "../utils/tabDnd";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
 import { TableToolbar } from "../components/ui/TableToolbar";
@@ -238,6 +248,7 @@ export const Editor = () => {
     closeOtherTabs,
     closeTabsToLeft,
     closeTabsToRight,
+    reorderTabs,
     reopenClosedTab,
     canReopenClosedTab,
   } = useEditor();
@@ -417,6 +428,36 @@ export const Editor = () => {
       }
     },
     [splitTabIds, activeSplitTabId, setActiveTabId, addTab],
+  );
+
+  // Where a dragged tab would land in the left tab strip (drawn as a thin bar).
+  const [tabDropMark, setTabDropMark] = useState<{ id: string; position: DropPosition } | null>(null);
+
+  // Applies a resolved tab drop: reorder a strip, or move a tab between the left strip and the split pane.
+  const handleTabDrop = useCallback(
+    (action: TabDropAction) => {
+      switch (action.kind) {
+        case "reorder-left":
+          reorderTabs(action.draggedId, action.targetId, action.position);
+          break;
+        case "unpin-to-left":
+          if (splitTabIds.includes(action.draggedId)) togglePin(action.draggedId);
+          if (action.targetId) reorderTabs(action.draggedId, action.targetId, action.position);
+          setActiveTabId(action.draggedId);
+          break;
+        case "reorder-right":
+          setSplitTabIds((prev) => reorderPinnedIds(prev, action.draggedId, action.targetId, action.position));
+          break;
+        case "pin-from-left":
+          if (!splitTabIds.includes(action.draggedId)) togglePin(action.draggedId);
+          setSplitTabIds((prev) => pinTabAt(prev, action.draggedId, action.targetId, action.position));
+          setActiveSplitTabId(action.draggedId);
+          break;
+        default:
+          break;
+      }
+    },
+    [reorderTabs, splitTabIds, togglePin, setActiveTabId],
   );
   // Ids of tabs whose results are detached into their own separate windows (one
   // window per tab). Each window keeps showing its tab even when the user
@@ -3224,11 +3265,53 @@ export const Editor = () => {
         <div
           ref={tabScrollRef}
           onScroll={updateScrollArrows}
+          onDragOver={(e) => {
+            // Only a tab coming from the split pane needs the empty space; the strip's own tabs handle themselves.
+            if (tabDrag.payload?.origin !== "right") return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+          }}
+          onDrop={(e) => {
+            if (tabDrag.payload?.origin !== "right") return;
+            e.preventDefault();
+            const last = leftTabs[leftTabs.length - 1];
+            handleTabDrop(resolveTabDrop(tabDrag.payload, "left", last?.id ?? null, "after"));
+            tabDrag.clear();
+          }}
           className="flex flex-1 overflow-x-auto no-scrollbar h-full"
         >
           {leftTabs.map((tab) => (
             <div
               key={tab.id}
+              draggable={editingTabId !== tab.id}
+              onDragStart={(e) => {
+                tabDrag.start({ tabId: tab.id, origin: "left" });
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData(TAB_DRAG_MIME, tab.id);
+              }}
+              onDragEnd={() => {
+                tabDrag.clear();
+                setTabDropMark(null);
+              }}
+              onDragOver={(e) => {
+                if (!tabDrag.payload) return;
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = "move";
+                setTabDropMark({
+                  id: tab.id,
+                  position: dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect()),
+                });
+              }}
+              onDragLeave={() => setTabDropMark((m) => (m?.id === tab.id ? null : m))}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const position = dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect());
+                setTabDropMark(null);
+                handleTabDrop(resolveTabDrop(tabDrag.payload, "left", tab.id, position));
+                tabDrag.clear();
+              }}
               onClick={() => setActiveTabId(tab.id)}
               onContextMenu={(e) => handleTabContextMenu(e, tab.id)}
               onAuxClick={(e) => {
@@ -3256,6 +3339,14 @@ export const Editor = () => {
                     ({ "--tab-hover": `${tabAccentColor}33` } as React.CSSProperties)
               }
             >
+              {tabDropMark?.id === tab.id && (
+                <div
+                  className={clsx(
+                    "absolute top-1 bottom-1 w-0.5 rounded bg-blue-400 z-10",
+                    tabDropMark.position === "before" ? "left-0" : "right-0",
+                  )}
+                />
+              )}
               {activeTabId === tab.id && (
                 <div
                   className="absolute top-0 left-0 right-0 h-[2px] rounded-b-sm"
@@ -4645,6 +4736,7 @@ export const Editor = () => {
                 )}
                 onSelectPinned={(id) => setActiveSplitTabId(id)}
                 onUnpin={(id) => togglePin(id)}
+                onDropTab={handleTabDrop}
                 connectionId={activeConnectionId}
                 copyFormat={copyFormat}
                 csvDelimiter={csvDelimiter}

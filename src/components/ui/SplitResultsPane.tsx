@@ -23,6 +23,14 @@ import {
   type CopyFormat,
 } from "../../utils/resultsWindowSync";
 import type { SplitOrientation } from "../../utils/splitView";
+import {
+  TAB_DRAG_MIME,
+  dropPositionFromPointer,
+  resolveTabDrop,
+  tabDrag,
+  type DropPosition,
+  type TabDropAction,
+} from "../../utils/tabDnd";
 
 /** DataGrid props (minus the data itself) prepared by the parent with the split
  * tab's metadata and edit handlers already bound to the split tab's id. */
@@ -41,6 +49,11 @@ interface SplitResultsPaneProps {
   onSelectPinned?: (id: string) => void;
   /** Unpin a specific tab from the strip. */
   onUnpin?: (id: string) => void;
+  /**
+   * A tab was dropped on this pane: on a pinned-tab chip (reorder, or pin next to it) or anywhere on the
+   * pane (pin at the end). Called with an already resolved action.
+   */
+  onDropTab?: (action: TabDropAction) => void;
   connectionId: string | null;
   copyFormat: CopyFormat;
   csvDelimiter: string;
@@ -86,6 +99,7 @@ export function SplitResultsPane({
   activeSplitTabId,
   onSelectPinned,
   onUnpin,
+  onDropTab,
   connectionId,
   copyFormat,
   csvDelimiter,
@@ -102,6 +116,10 @@ export function SplitResultsPane({
 }: SplitResultsPaneProps) {
   const { t } = useTranslation();
   const [consoleViewMode, setConsoleViewMode] = useState<"sql" | "results">("sql");
+  // Where a dragged tab would land on the chip strip, and whether the pane itself is a drop target.
+  const [chipDropMark, setChipDropMark] = useState<{ id: string; position: DropPosition } | null>(null);
+  const [paneDragOver, setPaneDragOver] = useState(false);
+  const acceptsTabDrop = !!onDropTab;
 
   const payload = buildSyncPayload(tab, {
     connectionId,
@@ -132,7 +150,37 @@ export function SplitResultsPane({
     <div
       className={`flex flex-col h-full w-full flex-1 min-w-0 bg-base ${
         orientation === "vertical" ? "border-t border-default" : "border-l border-default"
-      }`}
+      } ${paneDragOver ? "ring-2 ring-inset ring-blue-500/60" : ""}`}
+      onDragOver={
+        acceptsTabDrop
+          ? (e) => {
+              if (!tabDrag.payload) return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+              setPaneDragOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={
+        acceptsTabDrop
+          ? (e) => {
+              // Ignore leave events fired when moving between children of the pane.
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPaneDragOver(false);
+            }
+          : undefined
+      }
+      onDrop={
+        acceptsTabDrop
+          ? (e) => {
+              e.preventDefault();
+              setPaneDragOver(false);
+              setChipDropMark(null);
+              const action = resolveTabDrop(tabDrag.payload, "right", null, "after");
+              if (action.kind !== "none") onDropTab?.(action);
+              tabDrag.clear();
+            }
+          : undefined
+      }
     >
       {/* Header */}
       <div className="h-9 shrink-0 flex items-center gap-2 px-2 bg-elevated border-b border-default">
@@ -220,13 +268,53 @@ export function SplitResultsPane({
             return (
               <div
                 key={p.id}
-                className={`group/chip flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xs cursor-pointer whitespace-nowrap transition-colors ${
+                draggable={acceptsTabDrop}
+                onDragStart={(e) => {
+                  tabDrag.start({ tabId: p.id, origin: "right" });
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData(TAB_DRAG_MIME, p.id);
+                }}
+                onDragEnd={() => {
+                  tabDrag.clear();
+                  setChipDropMark(null);
+                  setPaneDragOver(false);
+                }}
+                onDragOver={(e) => {
+                  if (!acceptsTabDrop || !tabDrag.payload) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = "move";
+                  setChipDropMark({
+                    id: p.id,
+                    position: dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect()),
+                  });
+                }}
+                onDragLeave={() => setChipDropMark((m) => (m?.id === p.id ? null : m))}
+                onDrop={(e) => {
+                  if (!acceptsTabDrop) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const position = dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect());
+                  setChipDropMark(null);
+                  setPaneDragOver(false);
+                  const action = resolveTabDrop(tabDrag.payload, "right", p.id, position);
+                  if (action.kind !== "none") onDropTab?.(action);
+                  tabDrag.clear();
+                }}
+                className={`group/chip relative flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xs cursor-pointer whitespace-nowrap transition-colors ${
                   isActive
                     ? "bg-blue-600/20 text-blue-200 border border-blue-500/40"
                     : "text-muted hover:text-secondary hover:bg-surface-secondary border border-transparent"
                 }`}
                 onClick={() => onSelectPinned?.(p.id)}
               >
+                {chipDropMark?.id === p.id && (
+                  <span
+                    className={`absolute top-0 bottom-0 w-0.5 bg-blue-400 rounded ${
+                      chipDropMark.position === "before" ? "-left-0.5" : "-right-0.5"
+                    }`}
+                  />
+                )}
                 <span className="truncate max-w-[120px]">{p.title}</span>
                 <button
                   onClick={(e) => {

@@ -61,6 +61,8 @@ pub async fn open_results_window(
         WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url.into()))
             .title(&window_title)
             .min_inner_size(600.0, 400.0)
+            // Lets HTML5 drag and drop work inside the window on Windows (WebView2).
+            .disable_drag_drop_handler()
             .background_color(tauri::webview::Color(2, 6, 23, 255));
 
     builder = match remembered {

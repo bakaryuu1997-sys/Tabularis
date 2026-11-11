@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 import type { Tab, TableSchema, QueryResultEntry } from '../types/editor';
+import type { DropPosition } from '../utils/tabDnd';
 
 export interface EditorContextType {
   tabs: Tab[];
@@ -17,6 +18,11 @@ export interface EditorContextType {
   closeOtherTabs: (id: string) => void;
   closeTabsToLeft: (id: string) => void;
   closeTabsToRight: (id: string) => void;
+  /**
+   * Move a tab next to another one (drag and drop in the tab strip). Ids that do not exist, or a drop
+   * that would not change the order, are ignored.
+   */
+  reorderTabs: (draggedId: string, targetId: string, position: DropPosition) => void;
   /**
    * Reopen the most recently closed tab of the active connection: re-insert
    * it at its previous position among that connection's tabs and activate it.

@@ -17,6 +17,7 @@
         "height": 800,
         "resizable": true,
         "fullscreen": false,
+        "dragDropEnabled": false,
         "backgroundColor": "#020617"
       }
     ],

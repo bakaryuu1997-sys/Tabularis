@@ -182,6 +182,31 @@ describe("EditorProvider", () => {
     expect(result.current.tabs[0].type).toBe("query_builder");
   });
 
+  it("should reorder tabs when one is moved next to another", () => {
+    const { result } = renderHook(() => useEditor(), { wrapper: createWrapper() });
+    let a = "";
+    let b = "";
+    let c = "";
+    act(() => {
+      a = result.current.addTab({ type: "console", title: "A" });
+      b = result.current.addTab({ type: "console", title: "B" });
+      c = result.current.addTab({ type: "console", title: "C" });
+    });
+    expect(result.current.tabs.map((t) => t.id)).toEqual([a, b, c]);
+
+    act(() => result.current.reorderTabs(a, c, "after"));
+    expect(result.current.tabs.map((t) => t.id)).toEqual([b, c, a]);
+
+    act(() => result.current.reorderTabs(c, b, "before"));
+    expect(result.current.tabs.map((t) => t.id)).toEqual([c, b, a]);
+
+    // A drop that changes nothing, or names an unknown tab, leaves the order alone.
+    const before = result.current.tabs;
+    act(() => result.current.reorderTabs(c, c, "after"));
+    act(() => result.current.reorderTabs("missing", a, "before"));
+    expect(result.current.tabs.map((t) => t.id)).toEqual(before.map((t) => t.id));
+  });
+
   it("should close a tab", () => {
     const wrapper = createWrapper("conn-1");
     const { result } = renderHook(() => useEditor(), { wrapper });
