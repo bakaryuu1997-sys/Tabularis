@@ -3,7 +3,8 @@
  * Pure functions for managing toolbar state and changes
  */
 
-import { formatSqlIdentifier } from "./identifiers";
+import type { DriverCapabilities, PluginManifest } from "../types/plugins";
+import { formatSqlIdentifier, shouldQuoteIdentifiers } from "./identifiers";
 
 export interface TableToolbarState {
   filterInput: string;
@@ -96,13 +97,16 @@ export function generateOrderByPlaceholder(column: string): string {
 }
 
 /**
- * Quotes column names in ORDER BY input for PostgreSQL (e.g. `Status DESC` → `"Status" DESC`).
+ * Quotes column names in ORDER BY input for dialects that need it (PostgreSQL and compatible drivers),
+ * e.g. `Status DESC` → `"Status" DESC`. Which dialect applies comes from the driver's capabilities
+ * (`sql_dialect`), the same rule `formatSqlIdentifier` uses for WHERE fragments; a bare driver id string
+ * is still accepted. Other dialects get the clause back unchanged.
  */
 export function formatSortClause(
   clause: string,
-  driver?: string | null,
+  driver?: string | PluginManifest | DriverCapabilities | null,
 ): string {
-  if (!clause.trim() || driver !== "postgres") {
+  if (!clause.trim() || !shouldQuoteIdentifiers(driver)) {
     return clause;
   }
 

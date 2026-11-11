@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { DriverCapabilities, PluginManifest } from '../../src/types/plugins';
 import {
   haveToolbarValuesChanged,
   parseLimitInput,
@@ -231,6 +232,42 @@ describe('tableToolbar utils', () => {
     it('should return empty clause unchanged', () => {
       expect(formatSortClause('', 'postgres')).toBe('');
       expect(formatSortClause('   ', 'postgres')).toBe('   ');
+    });
+
+    describe('with driver capabilities', () => {
+      const caps = (sql_dialect?: 'postgres' | 'mysql' | 'sqlite') =>
+        ({
+          schemas: false,
+          views: true,
+          routines: false,
+          file_based: false,
+          folder_based: false,
+          identifier_quote: '"',
+          alter_primary_key: true,
+          sql_dialect,
+        }) as DriverCapabilities;
+
+      it('quotes for a postgres-dialect driver whatever its id', () => {
+        expect(formatSortClause('Status DESC', caps('postgres'))).toBe('"Status" DESC');
+      });
+
+      it('quotes for a plugin that omits sql_dialect (it defaults to postgres)', () => {
+        expect(formatSortClause('Status ASC, UserName DESC', caps())).toBe(
+          '"Status" ASC, "UserName" DESC',
+        );
+      });
+
+      it('leaves mysql and sqlite dialects alone', () => {
+        expect(formatSortClause('Status DESC', caps('mysql'))).toBe('Status DESC');
+        expect(formatSortClause('Status DESC', caps('sqlite'))).toBe('Status DESC');
+      });
+
+      it('does not depend on the driver id of a manifest, only on its capabilities', () => {
+        const manifest = { id: 'postgres', capabilities: caps('mysql') } as unknown as PluginManifest;
+        expect(formatSortClause('Status DESC', manifest)).toBe('Status DESC');
+        const pgLike = { id: 'my-pg-fork', capabilities: caps('postgres') } as unknown as PluginManifest;
+        expect(formatSortClause('Status DESC', pgLike)).toBe('"Status" DESC');
+      });
     });
   });
 

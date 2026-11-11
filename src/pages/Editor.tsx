@@ -2142,14 +2142,14 @@ export const Editor = () => {
 
         if (!currentDir || currentDir === "ASC") {
           // ASC -> DESC
-          newSort = `${formatSqlIdentifier(colName, activeDriver)} DESC`;
+          newSort = `${formatSqlIdentifier(colName, activeCapabilities ?? activeDriver)} DESC`;
         } else {
           // DESC -> None (Clear)
           newSort = "";
         }
       } else {
         // New column -> ASC
-        newSort = `${formatSqlIdentifier(colName, activeDriver)} ASC`;
+        newSort = `${formatSqlIdentifier(colName, activeCapabilities ?? activeDriver)} ASC`;
       }
 
       handleToolbarUpdate(
@@ -2163,7 +2163,7 @@ export const Editor = () => {
         targetTab.id,
       );
     },
-    [activeTab, activeDriver, handleToolbarUpdate],
+    [activeTab, activeDriver, activeCapabilities, handleToolbarUpdate],
   );
 
   const handlePendingChange = useCallback(

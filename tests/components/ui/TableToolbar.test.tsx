@@ -124,6 +124,40 @@ describe('TableToolbar', () => {
     );
   });
 
+  it('quotes the sort column from the driver capabilities, not from its id', () => {
+    vi.mocked(useDatabase).mockReturnValue({
+      activeDriver: 'some-pg-fork',
+      activeCapabilities: { sql_dialect: 'postgres' },
+    } as unknown as ReturnType<typeof useDatabase>);
+
+    render(<TableToolbar {...defaultProps} />);
+
+    const sortInput = screen.getByPlaceholderText('created_at DESC');
+    fireEvent.change(sortInput, { target: { value: 'Status DESC' } });
+    fireEvent.keyDown(sortInput, { key: 'Enter' });
+
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: '"Status" DESC' }),
+    );
+  });
+
+  it('leaves the sort column unquoted when the capabilities say MySQL dialect', () => {
+    vi.mocked(useDatabase).mockReturnValue({
+      activeDriver: 'postgres',
+      activeCapabilities: { sql_dialect: 'mysql' },
+    } as unknown as ReturnType<typeof useDatabase>);
+
+    render(<TableToolbar {...defaultProps} />);
+
+    const sortInput = screen.getByPlaceholderText('created_at DESC');
+    fireEvent.change(sortInput, { target: { value: 'Status DESC' } });
+    fireEvent.keyDown(sortInput, { key: 'Enter' });
+
+    expect(mockOnUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: 'Status DESC' }),
+    );
+  });
+
   it('calls onUpdate when pressing Enter in limit input', () => {
     render(<TableToolbar {...defaultProps} />);
 
