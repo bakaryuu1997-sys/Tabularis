@@ -168,6 +168,35 @@
           "type": "boolean",
           "default": false,
           "description": "true to show the SSL/TLS configuration tab (mode + CA/client cert/key) in the connection modal for this network driver. Defaults to false."
+        },
+        "ssl_modes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "SSL modes offered in the connection modal, in display order (e.g. [\"disable\", \"require\"]). The selected value is sent as ssl_mode. Omit to get the generic list: disabled, preferred, required, verify_ca, verify_identity."
+        },
+        "default_ssl_mode": {
+          "type": "string",
+          "description": "SSL mode preselected for a new connection. Must be one of ssl_modes. Omit to preselect \"required\" when offered, otherwise the first mode."
+        },
+        "begin_transaction_sql": {
+          "type": "string",
+          "default": "START TRANSACTION;",
+          "description": "SQL statement that opens a transaction when the user switches the editor to manual transaction mode (e.g. \"BEGIN;\"). Defaults to START TRANSACTION;."
+        },
+        "supports_local_scan": {
+          "type": "boolean",
+          "default": false,
+          "description": "true to offer \"scan localhost\" in the connection modal. Only meaningful for the built-in MySQL and PostgreSQL drivers: the scan probes their ports. Defaults to false."
+        },
+        "supports_pipes_as_concat": {
+          "type": "boolean",
+          "default": false,
+          "description": "true to offer the PIPES_AS_CONCAT compatibility switch (sent as pipes_as_concat) for MySQL-protocol servers such as Vitess/PlanetScale. Defaults to false."
+        },
+        "supports_cleartext_auth": {
+          "type": "boolean",
+          "default": false,
+          "description": "true to offer the cleartext-password authentication switch (sent as enable_cleartext_plugin), usable only over enforced TLS. Defaults to false."
         }
       }
     },

@@ -14,6 +14,12 @@ interface MockSelectProps {
 
 const driverState = vi.hoisted(() => ({
   defaultPort: 15432 as number | null,
+  capabilities: {
+    file_based: false,
+    folder_based: false,
+    connection_string: true,
+    supports_ssl: false,
+  } as Record<string, unknown>,
 }));
 
 const k8sMocks = vi.hoisted(() => ({
@@ -59,12 +65,7 @@ vi.mock("../../../src/hooks/useDrivers", () => ({
         version: "1.0.0",
         default_port: driverState.defaultPort,
         is_builtin: true,
-        capabilities: {
-          file_based: false,
-          folder_based: false,
-          connection_string: true,
-          supports_ssl: false,
-        },
+        capabilities: driverState.capabilities,
       },
     ],
     allDrivers: [],
@@ -91,6 +92,11 @@ vi.mock("../../../src/utils/k8s", () => ({
   getK8sNamespaces: k8sMocks.getK8sNamespaces,
   getK8sResources: k8sMocks.getK8sResources,
   getK8sResourcePorts: k8sMocks.getK8sResourcePorts,
+}));
+
+// The startup-script editor (Advanced tab) needs the theme provider and Monaco; it is irrelevant here.
+vi.mock("../../../src/components/ui/SqlEditorWrapper", () => ({
+  SqlEditorWrapper: () => null,
 }));
 
 vi.mock("../../../src/components/modals/NewConnectionModal/AppearanceSection", () => ({
@@ -219,5 +225,95 @@ describe("NewConnectionModal K8s port defaults", () => {
         }),
       );
     });
+  });
+});
+
+describe("NewConnectionModal capability-driven options", () => {
+  const baseCapabilities = {
+    file_based: false,
+    folder_based: false,
+    connection_string: true,
+    supports_ssl: false,
+  };
+
+  const optionValues = (select: HTMLElement) =>
+    Array.from(select.querySelectorAll("option"))
+      .map((o) => o.getAttribute("value"))
+      .filter((v): v is string => !!v);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    driverState.defaultPort = 15432;
+    driverState.capabilities = { ...baseCapabilities };
+    sshMocks.loadSshConnections.mockResolvedValue([]);
+    k8sMocks.loadK8sConnections.mockResolvedValue([]);
+  });
+
+  it("shows the port placeholder from the driver manifest, not from its name", () => {
+    driverState.defaultPort = 9000;
+    renderModal();
+    expect(screen.getByPlaceholderText("9000")).toBeInTheDocument();
+  });
+
+  it("shows no port hint for a driver without a default port", () => {
+    driverState.defaultPort = null;
+    renderModal();
+    expect(screen.queryByPlaceholderText("3306")).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("5432")).not.toBeInTheDocument();
+  });
+
+  it("offers the localhost scan only to drivers that declare it", () => {
+    renderModal();
+    expect(screen.queryByText("newConnection.scanLocalhost")).not.toBeInTheDocument();
+  });
+
+  it("offers the localhost scan when the driver declares it", () => {
+    driverState.capabilities = { ...baseCapabilities, supports_local_scan: true };
+    renderModal();
+    expect(screen.getByText("newConnection.scanLocalhost")).toBeInTheDocument();
+  });
+
+  it("lists the SSL modes and default the driver declares", () => {
+    driverState.capabilities = {
+      ...baseCapabilities,
+      supports_ssl: true,
+      ssl_modes: ["disable", "require"],
+      default_ssl_mode: "disable",
+    };
+    renderModal();
+    fireEvent.click(screen.getByText("SSL"));
+
+    const select = screen.getByLabelText("select");
+    expect(optionValues(select)).toEqual(["disable", "require"]);
+    expect(select).toHaveValue("disable");
+  });
+
+  it("falls back to the generic SSL modes for a driver that declares none", () => {
+    driverState.capabilities = { ...baseCapabilities, supports_ssl: true };
+    renderModal();
+    fireEvent.click(screen.getByText("SSL"));
+
+    const select = screen.getByLabelText("select");
+    expect(optionValues(select)).toEqual([
+      "disabled",
+      "preferred",
+      "required",
+      "verify_ca",
+      "verify_identity",
+    ]);
+    expect(select).toHaveValue("required");
+  });
+
+  it("shows the MySQL-protocol switches only when the driver declares them", () => {
+    renderModal();
+    fireEvent.click(screen.getByText("newConnection.advanced"));
+    expect(document.getElementById("pipes-as-concat-toggle")).toBeNull();
+  });
+
+  it("shows the PIPES_AS_CONCAT switch when the driver declares it", () => {
+    driverState.capabilities = { ...baseCapabilities, supports_pipes_as_concat: true };
+    renderModal();
+    fireEvent.click(screen.getByText("newConnection.advanced"));
+    expect(document.getElementById("pipes-as-concat-toggle")).not.toBeNull();
   });
 });

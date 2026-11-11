@@ -28,6 +28,11 @@ import { K8sConnectionsModal } from "./K8sConnectionsModal";
 import { Select } from "../ui/Select";
 import { SlotAnchor } from "../ui/SlotAnchor";
 import { useDrivers } from "../../hooks/useDrivers";
+import {
+  defaultSslModeLabel,
+  isSslDisabledMode,
+  resolveSslModes,
+} from "../../utils/connectionOptions";
 import { useAlert } from "../../hooks/useAlert";
 import { usePluginSlotRegistry } from "../../hooks/usePluginSlotRegistry";
 import { Modal } from "../ui/Modal";
@@ -412,6 +417,7 @@ export const NewConnectionModal = ({
       defaultValue: "e.g. mysql://user:pass@localhost:3306/db",
     });
   const isMultiDb = isMultiDatabaseCapable(activeDriver?.capabilities);
+  const sslOptions = resolveSslModes(activeDriver?.capabilities);
 
   // ── plugin slot: connection-modal.connection_content ──
   const slotRegistry = usePluginSlotRegistry();
@@ -1120,7 +1126,7 @@ export const NewConnectionModal = ({
           )}
 
           {/* Scan localhost for a running MySQL/PostgreSQL server */}
-          {(driver === "mysql" || driver === "postgres") && (
+          {activeDriver?.capabilities?.supports_local_scan && (
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
@@ -1139,12 +1145,7 @@ export const NewConnectionModal = ({
           )}
 
           {/* Host + Port */}
-          <div
-            className={clsx(
-              "grid gap-3",
-              driver === "postgres" ? "grid-cols-4" : "grid-cols-3",
-            )}
-          >
+          <div className="grid gap-3 grid-cols-3">
             <FieldInput
               className="col-span-2"
               label={t("newConnection.host")}
@@ -1157,7 +1158,7 @@ export const NewConnectionModal = ({
               value={formData.port}
               onChange={(v) => updateField("port", v)}
               type="number"
-              placeholder={driver === "mysql" ? "3306" : "5432"}
+              placeholder={activeDriver?.default_port?.toString() ?? ""}
             />
           </div>
 
@@ -1317,7 +1318,7 @@ export const NewConnectionModal = ({
   const advancedTabContent = (
     <div className="space-y-4">
       {/* MySQL: PIPES_AS_CONCAT compatibility (Vitess/PlanetScale) */}
-      {driver === "mysql" && (
+      {activeDriver?.capabilities?.supports_pipes_as_concat && (
         <div className="flex flex-col gap-1">
           <label className="flex items-center gap-2.5 cursor-pointer select-none w-fit">
             <input
@@ -1524,48 +1525,20 @@ export const NewConnectionModal = ({
           {t("newConnection.sslMode", { defaultValue: "SSL Mode" })}
         </label>
         <Select
-          value={
-            formData.ssl_mode ||
-            (driver === "postgres"
-              ? "prefer"
-              : driver === "clickhouse"
-                ? "disable"
-                : "required")
-          }
-          options={
-            driver === "postgres"
-              ? ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"]
-              : driver === "clickhouse"
-                ? ["disable", "require"]
-                : ["disabled", "preferred", "required", "verify_ca", "verify_identity"]
-          }
-          labels={
-            driver === "postgres"
-              ? {
-                  disable: t("newConnection.sslModes.disable", { defaultValue: "Disable" }),
-                  allow: t("newConnection.sslModes.allow", { defaultValue: "Allow" }),
-                  prefer: t("newConnection.sslModes.prefer", { defaultValue: "Prefer" }),
-                  require: t("newConnection.sslModes.require", { defaultValue: "Require" }),
-                  "verify-ca": t("newConnection.sslModes.verify-ca", { defaultValue: "Verify CA" }),
-                  "verify-full": t("newConnection.sslModes.verify-full", { defaultValue: "Verify Full" }),
-                }
-              : driver === "clickhouse"
-                ? {
-                    disable: t("newConnection.sslModes.disable", { defaultValue: "Disable" }),
-                    require: t("newConnection.sslModes.require", { defaultValue: "Require" }),
-                  }
-                : {
-                    disabled: t("newConnection.sslModes.disabled", { defaultValue: "Disabled" }),
-                    preferred: t("newConnection.sslModes.preferred", { defaultValue: "Preferred" }),
-                    required: t("newConnection.sslModes.required", { defaultValue: "Required" }),
-                    verify_ca: t("newConnection.sslModes.verify_ca", { defaultValue: "Verify CA" }),
-                    verify_identity: t("newConnection.sslModes.verify_identity", { defaultValue: "Verify Identity" }),
-                  }
-          }
+          value={formData.ssl_mode || sslOptions.defaultMode}
+          options={sslOptions.modes}
+          labels={Object.fromEntries(
+            sslOptions.modes.map((mode) => [
+              mode,
+              t(`newConnection.sslModes.${mode}`, {
+                defaultValue: defaultSslModeLabel(mode),
+              }),
+            ]),
+          )}
           onChange={(v) => {
             updateField("ssl_mode", v);
             // Cleartext auth must never go over an unencrypted link.
-            if (driver === "mysql" && v === "disabled") {
+            if (activeDriver?.capabilities?.supports_cleartext_auth && isSslDisabledMode(v)) {
               updateField("enable_cleartext_plugin", false);
             }
           }}
@@ -1574,7 +1547,7 @@ export const NewConnectionModal = ({
       </div>
 
       {/* SSL Certificate Files */}
-      {formData.ssl_mode && formData.ssl_mode !== "disable" && formData.ssl_mode !== "disabled" && (
+      {formData.ssl_mode && !isSslDisabledMode(formData.ssl_mode) && (
         <div className="space-y-3 pt-2">
           <p className="text-xs text-muted">
             {t("newConnection.sslCertificatesOptional", {
@@ -1699,9 +1672,9 @@ export const NewConnectionModal = ({
       )}
 
       {/* Cleartext password plugin (MySQL/MariaDB only) */}
-      {driver === "mysql" &&
+      {activeDriver?.capabilities?.supports_cleartext_auth &&
         (() => {
-          const effectiveSslMode = formData.ssl_mode || "required";
+          const effectiveSslMode = formData.ssl_mode || sslOptions.defaultMode;
           // Cleartext credentials must travel over enforced TLS. `preferred`
           // only attempts TLS and can silently fall back to plaintext, so it is
           // gated off here to match the backend (build_mysql_options).

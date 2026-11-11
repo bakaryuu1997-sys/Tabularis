@@ -1,20 +1,15 @@
 import { useCallback, useState } from "react";
+import type { DriverCapabilities } from "../types/plugins";
+import { beginTransactionSql } from "../utils/connectionOptions";
 
 type ShowAlert = (message: string, options?: { title?: string; kind?: "info" | "warning" | "error" }) => unknown;
 
 export type TransactionMode = "auto" | "manual";
 
-/**
- * SQL that opens a transaction. PostgreSQL and SQLite use `BEGIN`; every other driver gets the
- * standard `START TRANSACTION`.
- */
-export function beginTransactionSql(driver: string | null | undefined): string {
-  return driver === "postgres" || driver === "sqlite" ? "BEGIN;" : "START TRANSACTION;";
-}
-
 export interface UseTransactionControlOptions {
   connectionId: string | null | undefined;
-  driver: string | null | undefined;
+  /** Capabilities of the active driver; they say which statement opens a transaction. */
+  capabilities: Pick<DriverCapabilities, "begin_transaction_sql"> | null | undefined;
   /** Runs a statement on the active connection; rejects when it fails. */
   runQuery: (sql: string, page: number) => Promise<unknown>;
   showAlert: ShowAlert;
@@ -27,7 +22,7 @@ export interface UseTransactionControlOptions {
  */
 export function useTransactionControl({
   connectionId,
-  driver,
+  capabilities,
   runQuery,
   showAlert,
   t,
@@ -38,13 +33,13 @@ export function useTransactionControl({
   const startTransaction = useCallback(async () => {
     if (!connectionId) return;
     try {
-      await runQuery(beginTransactionSql(driver), 1);
+      await runQuery(beginTransactionSql(capabilities), 1);
       setIsTransactionActive(true);
       showAlert(t("editor.transactionStarted"), { title: "Transaction", kind: "info" });
     } catch (e) {
       showAlert(String(e), { title: "Transaction Error", kind: "error" });
     }
-  }, [connectionId, driver, runQuery, showAlert, t]);
+  }, [connectionId, capabilities, runQuery, showAlert, t]);
 
   const finish = useCallback(
     async (sql: "COMMIT;" | "ROLLBACK;", messageKey: string, errorTitle: string) => {

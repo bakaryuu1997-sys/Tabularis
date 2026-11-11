@@ -36,6 +36,19 @@ export interface DriverCapabilities {
   /** Shows the SSL/TLS configuration tab (mode + CA/client cert/key) in the connection modal.
    * Built-in network drivers (postgres, mysql) set this; plugins opt in via their manifest. Defaults to false. */
   supports_ssl?: boolean;
+  /** SSL modes offered in the connection modal, in display order. Omitted/empty: the generic list
+   * `disabled, preferred, required, verify_ca, verify_identity`. Labels come from `newConnection.sslModes.<mode>`. */
+  ssl_modes?: string[];
+  /** SSL mode preselected for a new connection. Omitted: `required` when offered, else the first mode. */
+  default_ssl_mode?: string;
+  /** SQL statement that opens a transaction (e.g. `BEGIN;`). Omitted: `START TRANSACTION;`. */
+  begin_transaction_sql?: string;
+  /** Offer "scan localhost" in the connection modal. Defaults to false. */
+  supports_local_scan?: boolean;
+  /** Offer the PIPES_AS_CONCAT compatibility switch (Vitess/PlanetScale). Defaults to false. */
+  supports_pipes_as_concat?: boolean;
+  /** Offer the cleartext-password authentication switch (MySQL/MariaDB). Defaults to false. */
+  supports_cleartext_auth?: boolean;
   /**
    * SQL dialect for the statement splitter / classifier. Plugins that
    * omit the field fall back to "postgres" (the dialect everyone got

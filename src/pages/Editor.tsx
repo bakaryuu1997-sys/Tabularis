@@ -3103,7 +3103,7 @@ export const Editor = () => {
     rollbackTransaction: handleRollbackTransaction,
   } = useTransactionControl({
     connectionId: activeConnectionId,
-    driver: activeDriver,
+    capabilities: activeCapabilities,
     runQuery,
     showAlert,
     t,

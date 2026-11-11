@@ -118,6 +118,27 @@ pub struct DriverCapabilities {
     /// their manifest. Defaults to `false`.
     #[serde(default, alias = "supportsSsl")]
     pub supports_ssl: bool,
+    /// SSL modes offered in the connection modal, in display order (e.g. `["disable", "require"]`).
+    /// Empty means the generic list `disabled, preferred, required, verify_ca, verify_identity`.
+    #[serde(default, alias = "sslModes")]
+    pub ssl_modes: Vec<String>,
+    /// SSL mode preselected for a new connection. Empty means `required` when it is offered, otherwise
+    /// the first entry of `ssl_modes`.
+    #[serde(default, alias = "defaultSslMode")]
+    pub default_ssl_mode: String,
+    /// SQL statement that opens a transaction (e.g. `BEGIN;`). Defaults to `START TRANSACTION;`.
+    #[serde(default = "default_begin_transaction_sql", alias = "beginTransactionSql")]
+    pub begin_transaction_sql: String,
+    /// The connection modal offers "scan localhost" to find a running server on the default port.
+    #[serde(default, alias = "supportsLocalScan")]
+    pub supports_local_scan: bool,
+    /// The connection modal offers the `PIPES_AS_CONCAT` compatibility switch (MySQL protocol servers
+    /// such as Vitess/PlanetScale).
+    #[serde(default, alias = "supportsPipesAsConcat")]
+    pub supports_pipes_as_concat: bool,
+    /// The connection modal offers the cleartext-password authentication switch (MySQL/MariaDB).
+    #[serde(default, alias = "supportsCleartextAuth")]
+    pub supports_cleartext_auth: bool,
     /// When `true`, the driver is read-only: all data modification operations
     /// (INSERT, UPDATE, DELETE) are disabled in the UI.
     /// Table/column management is also hidden regardless of `manage_tables`.
@@ -137,6 +158,25 @@ fn default_double_quote() -> String {
 
 fn default_true() -> bool {
     true
+}
+
+fn default_begin_transaction_sql() -> String {
+    "START TRANSACTION;".to_string()
+}
+
+/// SSL modes of the MySQL protocol, the list used when a plugin does not declare `ssl_modes`.
+pub fn mysql_ssl_modes() -> Vec<String> {
+    ["disabled", "preferred", "required", "verify_ca", "verify_identity"]
+        .iter()
+        .map(|m| m.to_string())
+        .collect()
+}
+
+pub fn postgres_ssl_modes() -> Vec<String> {
+    ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"]
+        .iter()
+        .map(|m| m.to_string())
+        .collect()
 }
 
 /// A UI extension slot entry declared in a plugin's manifest.
@@ -668,3 +708,6 @@ pub trait DatabaseDriver: Send + Sync {
         schema: Option<&str>,
     ) -> Result<HashMap<String, Vec<ForeignKey>>, String>;
 }
+
+#[cfg(test)]
+mod tests;

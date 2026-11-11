@@ -113,6 +113,12 @@ The manifest tells Tabularis everything about your plugin.
 | `manage_tables` | bool | `true` to enable table and column management UI (Create Table, Add/Modify/Drop Column, Drop Table). Does not control index or FK operations. Defaults to `true`. |
 | `readonly` | bool | When `true`, the driver is read-only: all data modification operations (INSERT, UPDATE, DELETE) are disabled in the UI. The add/delete row buttons, inline cell editing, and context menu edit actions are hidden. Table and column management is also hidden regardless of `manage_tables`. Defaults to `false`. |
 | `supports_ssl` | bool | `true` to show the SSL/TLS configuration tab (mode + CA/client cert/key) in the connection modal. The values are forwarded to the plugin as `ssl_mode`, `ssl_ca`, `ssl_cert`, and `ssl_key` in `ConnectionParams`. Network drivers only. Also accepted as camelCase `supportsSsl`. Defaults to `false`. |
+| `ssl_modes` | string[] | SSL modes listed in the connection modal's SSL tab, in display order (e.g. `["disable", "require"]`). The chosen value is forwarded as `ssl_mode`. Labels use `newConnection.sslModes.<mode>` and fall back to a capitalised form of the value. Omit it to get `disabled, preferred, required, verify_ca, verify_identity`. Also accepted as `sslModes`. |
+| `default_ssl_mode` | string | SSL mode preselected for new connections; must be one of `ssl_modes`. Omit it to preselect `required` when offered, otherwise the first mode. Also accepted as `defaultSslMode`. |
+| `begin_transaction_sql` | string | Statement that opens a transaction in manual transaction mode (e.g. `BEGIN;`). Defaults to `START TRANSACTION;`. Also accepted as `beginTransactionSql`. |
+| `supports_local_scan` | bool | Shows "scan localhost" in the connection modal. Only meaningful for the built-in MySQL and PostgreSQL drivers. Defaults to `false`. |
+| `supports_pipes_as_concat` | bool | Shows the `PIPES_AS_CONCAT` compatibility switch (forwarded as `pipes_as_concat`). Defaults to `false`. |
+| `supports_cleartext_auth` | bool | Shows the cleartext-password switch (forwarded as `enable_cleartext_plugin`); only usable over enforced TLS. Defaults to `false`. |
 
 ### Data Types
 

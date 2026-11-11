@@ -1,25 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { beginTransactionSql, useTransactionControl } from "../../src/hooks/useTransactionControl";
+import { useTransactionControl } from "../../src/hooks/useTransactionControl";
 
 const setup = (overrides: Partial<Parameters<typeof useTransactionControl>[0]> = {}) => {
   const runQuery = vi.fn().mockResolvedValue(undefined);
   const showAlert = vi.fn();
-  const options = { connectionId: "c1", driver: "postgres", runQuery, showAlert, t: (k: string) => k, ...overrides };
+  const options = { connectionId: "c1", capabilities: { begin_transaction_sql: "BEGIN;" }, runQuery, showAlert, t: (k: string) => k, ...overrides };
   return { runQuery, showAlert, ...renderHook(() => useTransactionControl(options)) };
 };
-
-describe("beginTransactionSql", () => {
-  it.each([
-    ["postgres", "BEGIN;"],
-    ["sqlite", "BEGIN;"],
-    ["mysql", "START TRANSACTION;"],
-    ["clickhouse", "START TRANSACTION;"],
-    [null, "START TRANSACTION;"],
-  ])("uses the right statement for %s", (driver, sql) => {
-    expect(beginTransactionSql(driver)).toBe(sql);
-  });
-});
 
 describe("useTransactionControl", () => {
   it("starts in auto mode with no open transaction", () => {
@@ -29,7 +17,7 @@ describe("useTransactionControl", () => {
   });
 
   it("opens a transaction with the driver's statement and tells the user", async () => {
-    const { result, runQuery, showAlert } = setup({ driver: "mysql" });
+    const { result, runQuery, showAlert } = setup({ capabilities: { begin_transaction_sql: "START TRANSACTION;" } });
     await act(async () => result.current.startTransaction());
     expect(runQuery).toHaveBeenCalledWith("START TRANSACTION;", 1);
     expect(result.current.isTransactionActive).toBe(true);

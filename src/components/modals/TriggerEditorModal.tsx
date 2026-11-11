@@ -53,7 +53,7 @@ export const TriggerEditorModal = ({
   onSuccess,
 }: TriggerEditorModalProps) => {
   const { t } = useTranslation();
-  const { activeSchema } = useDatabase();
+  const { activeSchema, activeCapabilities } = useDatabase();
   const resolvedSchema = schemaProp ?? activeSchema ?? undefined;
   const { showAlert } = useAlert();
 
@@ -120,9 +120,9 @@ export const TriggerEditorModal = ({
   const buildTriggerSql = (): string => {
     if (useRawSql) return rawSql;
     const q = (id: string) => quoteIdentifier(id, driver ?? "postgres");
-    // MySQL handles schema via the connection — including it in the ON clause causes error 1435
-    const isMysql = driver === "mysql";
-    const schemaPrefix = (!isMysql && resolvedSchema) ? `${q(resolvedSchema)}.` : "";
+    // Drivers without named schemas (MySQL) select the database on the connection — qualifying the table in
+    // the ON clause makes MySQL fail with error 1435.
+    const schemaPrefix = (activeCapabilities?.schemas && resolvedSchema) ? `${q(resolvedSchema)}.` : "";
     const eventStr = events.join(" OR ");
     return [
       `CREATE TRIGGER ${q(name)}`,
