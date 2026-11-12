@@ -2,9 +2,6 @@ name: Release
 env:
   GH_TOKEN: ${{ SECRETS.GITHUB_TOKEN }}
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       pr_number:

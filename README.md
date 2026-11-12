@@ -14,18 +14,6 @@
 > This is a fork of [TabularisDB/tabularis](https://github.com/TabularisDB/tabularis) (Apache-2.0). All upstream features remain; see [what this fork adds](#brse-edition-what-this-fork-adds). The upstream project's own site, package-manager listings and translations of this README describe the original app.
 
 <p align="center">
-  <strong>README:</strong>
-  <a href="./README.md">English</a> |
-  <a href="./README.it.md">Italiano</a> |
-  <a href="./README.es.md">Español</a> |
-  <a href="./README.zh-CN.md">中文</a> |
-  <a href="./README.fr.md">Français</a> |
-  <a href="./README.de.md">Deutsch</a> |
-  <a href="./README.ja.md">日本語</a> |
-  <a href="./README.ru.md">Русский</a>
-</p>
-
-<p align="center">
   <a href="https://github.com/bakaryuu1997-sys/Tabularis/stargazers"><img src="https://img.shields.io/github/stars/bakaryuu1997-sys/Tabularis?style=flat" alt="Stars" /></a>
   <a href="https://github.com/bakaryuu1997-sys/Tabularis/commits"><img src="https://img.shields.io/github/last-commit/bakaryuu1997-sys/Tabularis?style=flat" alt="Last commit" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat" alt="License" /></a>
@@ -64,33 +52,25 @@
 
 ## Download
 
-Installers of this fork are not published as GitHub releases yet. Build the Windows installer yourself (see [Windows installer](#windows-installer)) or run it from source:
+**Windows:** download `tabularis_0.14.0_x64-setup.exe` from the [Releases page](https://github.com/bakaryuu1997-sys/Tabularis/releases). The installer is not code-signed, so Windows SmartScreen may show a warning: choose *More info → Run anyway*.
+
+**Other platforms:** build from source.
 
 ```bash
 pnpm install
-pnpm tauri dev      # run
-pnpm tauri build    # package (NSIS installer on Windows)
+pnpm tauri dev      # run in development
+pnpm tauri build    # package (NSIS installer on Windows, AppImage/deb on Linux, dmg on macOS)
 ```
 
-The app UI is available in English, Japanese (日本語) and Vietnamese (Tiếng Việt).
-
-> The package-manager commands further down (`winget`, `brew`, `snap`, Flatpak, AUR) install the **original upstream app**, not this fork.
+The app UI is available in English, Japanese (日本語) and Vietnamese (Tiếng Việt). The app looks for updates at this repository's Releases; install a newer `setup.exe` to update.
 
 ## Table of Contents
 
+- [Download](#download)
 - [Screenshots](#screenshots)
 - [Why tabularis?](#why-tabularis)
   - [Database support](#database-support)
 - [BrSE edition: what this fork adds](#brse-edition-what-this-fork-adds)
-- [Installation](#installation)
-  - [Windows](#windows)
-  - [macOS](#macos)
-  - [Linux (Snap)](#linux-snap)
-  - [Linux (Flatpak)](#linux-flatpak)
-  - [Linux (AppImage)](#linux-appimage)
-  - [Arch Linux (AUR)](#arch-linux-aur)
-- [Updates](#updates)
-- [Discord](#discord)
 - [Changelog](#changelog)
 - [Features](#features)
   - [Connection Management](#connection-management)
@@ -110,7 +90,6 @@ The app UI is available in English, Japanese (日本語) and Vietnamese (Tiếng
 - [Development](#development)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
-- [Sponsors](#sponsors)
 - [Origin Story](#origin-story)
 - [License](#license)
 
@@ -150,93 +129,6 @@ This repository ([bakaryuu1997-sys/Tabularis](https://github.com/bakaryuu1997-sy
 | **Security fixes** | BLOB uploads, result exports, log exports and file saves go through native dialogs instead of paths sent by the web view (database dump/import still take a path), plugin files cannot escape their folder, foreign-key actions are validated, the MCP server no longer copies queries and result rows into its stderr log, and database errors are redacted before they reach the log. | Backend |
 
 Quick usage guide in Vietnamese: [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md).
-
-## Installation
-
-### Windows
-
-#### WinGet (Recommended)
-
-```bash
-winget install Debba.Tabularis
-```
-
-#### Direct Download
-
-Download the installer from the [Releases page](https://github.com/TabularisDB/tabularis/releases) and run it:
-
-```
-tabularis_x.x.x_x64-setup.exe
-```
-
-Follow the on-screen instructions to complete the installation.
-
-### macOS
-
-#### Homebrew (Recommended)
-
-To add our tap, run:
-
-```bash
-brew tap TabularisDB/tabularis
-```
-
-Then install:
-
-```bash
-brew install --cask tabularis
-```
-
-[![Homebrew](https://img.shields.io/badge/Homebrew-Repository-orange?logo=homebrew)](https://github.com/debba/homebrew-tabularis)
-
-#### Direct Download
-
-Builds from **v0.13.1** onward are signed and notarized by Apple, so they open without any extra steps.
-
-The notes below only apply to **older releases (before v0.13.1)** downloaded directly:
-
-- You need to allow accessibility access (Privacy & Security) to the tabularis app. If you are upgrading and already have tabularis on the allowed list, remove it manually before accessibility access can be granted to the new version.
-- You may need to run `xattr -c /Applications/tabularis.app` after copying the app to the Applications directory.
-
-### Linux (Snap)
-
-```bash
-sudo snap install tabularis
-```
-
-[![Snap Store](https://img.shields.io/badge/snap-tabularis-blue?logo=snapcraft)](https://snapcraft.io/tabularis)
-
-### Linux (Flatpak)
-
-```bash
-flatpak remote-add --if-not-exists flatpark https://dl.flatpark.org/flatpark.flatpakrepo
-flatpak install flatpark dev.tabularis.Tabularis
-```
-
-[![Flatpak (Flatpark)](https://img.shields.io/badge/flatpak-tabularis-4A90D9?logo=flatpak&logoColor=white)](https://flatpark.org/apps/dev.tabularis.Tabularis/)
-
-### Linux (AppImage)
-
-Download the `.AppImage` file from the [Releases page](https://github.com/TabularisDB/tabularis/releases), make it executable and run it:
-
-```bash
-chmod +x tabularis_x.x.x_amd64.AppImage
-./tabularis_x.x.x_amd64.AppImage
-```
-
-### Arch Linux (AUR)
-
-```bash
-yay -S tabularis-bin
-```
-
-## Updates
-
-Tabularis checks for updates automatically on startup and notifies you when a new version is available. You can also download the latest version directly from the [Releases page](https://github.com/TabularisDB/tabularis/releases).
-
-## Discord
-
-Join our [Discord server](https://discord.com/invite/K2hmhfHRSt) to talk with the maintainers, share feedback, suggest features, or get help from the community.
 
 ## [Changelog](./CHANGELOG.md)
 
@@ -445,22 +337,6 @@ Contributions are welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md). Good pla
 - [UI design system & visual identity — call for contributors](https://github.com/TabularisDB/tabularis/issues/195)
 - Write a driver plugin in any language — see the [Plugin Guide](./plugins/PLUGIN_GUIDE.md)
 
-<!-- SPONSORS:START -->
-
-## Sponsors
-
-- <a href="https://www.serversmtp.com/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor" target="_blank"><img src="https://tabularis.dev/img/sponsors/turbosmtp_compact.png" height="28" alt="turboSMTP" /></a> **[turboSMTP](https://www.serversmtp.com/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor)** — Professional SMTP relay — your emails delivered straight to the inbox, never to spam
-- <a href="https://www.kilo.ai/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor" target="_blank"><img src="https://tabularis.dev/img/sponsors/kilocode_compact.png" height="28" alt="Kilo Code" /></a> **[Kilo Code](https://www.kilo.ai/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor)** — Open source AI coding agent — build, ship, and iterate faster with 500+ models
-- <a href="https://m.do.co/c/f6ab3d158275?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor" target="_blank"><img src="https://tabularis.dev/img/sponsors/digitalocean_compact.png" height="28" alt="DigitalOcean" /></a> **[DigitalOcean](https://m.do.co/c/f6ab3d158275?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor)** — Simple, predictable cloud infrastructure for developers and growing teams.
-- <a href="https://vercel.com/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor" target="_blank"><img src="https://tabularis.dev/img/sponsors/vercel_compact.svg" height="28" alt="Vercel" /></a> **[Vercel](https://vercel.com/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor)** — The platform for the modern web — ship, preview, and scale frontend apps with zero config.
-- <a href="https://usero.io/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor" target="_blank"><img src="https://tabularis.dev/img/sponsors/usero_compact.png" height="28" alt="Usero" /></a> **[Usero](https://usero.io/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor)** — Feedback becomes code. Automatically.
-- <a href="https://devglobe.app/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor" target="_blank"><img src="https://tabularis.dev/img/sponsors/devglobe_compact.png" height="28" alt="DevGlobe" /></a> **[DevGlobe](https://devglobe.app/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor)** — Connect your IDE, show up on the globe, and showcase your projects to a community of builders.
-- <a href="https://tolgee.io/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor" target="_blank"><img src="https://tabularis.dev/img/sponsors/tolgee_compact.svg" height="28" alt="Tolgee" /></a> **[Tolgee](https://tolgee.io/?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor)** — Open-source localization platform — translate your app in context, without the spreadsheet chaos.
-- <a href="https://1password.com/developers?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor" target="_blank"><img src="https://tabularis.dev/img/sponsors/1password_compact.png" height="28" alt="1Password" /></a> **[1Password](https://1password.com/developers?utm_source=tabularis&utm_medium=referral&utm_campaign=sponsor)** — The password and secrets manager developers trust — free for open-source projects.
-
-_[Become a sponsor →](https://tabularis.dev/sponsors)_
-
-<!-- SPONSORS:END -->
 
 ## Origin Story
 
@@ -473,11 +349,5 @@ Apache License 2.0
 ---
 
 <p align="center">
-  Like tabularis? <a href="https://github.com/TabularisDB/tabularis">Star the repo</a> ⭐ — it helps the project a lot.
-</p>
-
-<p align="center">
-  <a href="https://repostars.dev/?repos=TabularisDB%2Ftabularis&theme=dark">
-    <img src="https://repostars.dev/api/embed?repo=TabularisDB%2Ftabularis&theme=dark" alt="RepoStars" />
-  </a>
+  Based on <a href="https://github.com/TabularisDB/tabularis">TabularisDB/tabularis</a> (Apache-2.0). If this fork helps you, a ⭐ on <a href="https://github.com/bakaryuu1997-sys/Tabularis">this repository</a> is appreciated.
 </p>
