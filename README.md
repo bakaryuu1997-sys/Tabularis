@@ -2,14 +2,16 @@
   <img src="public/logo-sm.png" width="120" height="120" />
 </div>
 
-# tabularis
+# tabularis · BrSE edition
 
 > 📖 **Hướng dẫn sử dụng nhanh (Tiếng Việt, có sơ đồ luồng trực quan):** [HUONG_DAN_SU_DUNG.md](HUONG_DAN_SU_DUNG.md)
 
 <p align="center">
-  <strong>Tabularis is an open-source desktop SQL workspace for PostgreSQL, MySQL/MariaDB, SQLite and 13+ more databases like DuckDB, ClickHouse, Redis and Firestore.<br />
-  Its built-in MCP server lets Claude, Cursor and Devin (formerly Windsurf) read your schema and run queries in the same app you already use.</strong>
+  <strong>A desktop SQL workspace for PostgreSQL, MySQL/MariaDB, SQLite and more — extended for Bridge System Engineers (BrSE) who work between Japanese customers and Vietnamese teams.<br />
+  Export CSV that opens correctly in Japanese Excel, generate テーブル定義書 table definition workbooks, and present safely on screen share with masked data.</strong>
 </p>
+
+> This is a fork of [TabularisDB/tabularis](https://github.com/TabularisDB/tabularis) (Apache-2.0). All upstream features remain; see [what this fork adds](#brse-edition-what-this-fork-adds). The upstream project's own site, package-manager listings and translations of this README describe the original app.
 
 <p align="center">
   <strong>README:</strong>
@@ -24,30 +26,16 @@
 </p>
 
 <p align="center">
-  
-![](https://img.shields.io/github/release/TabularisDB/tabularis.svg?style=flat)
-![](https://img.shields.io/github/stars/TabularisDB/tabularis?style=flat)
-![](https://img.shields.io/github/downloads/TabularisDB/tabularis/total.svg?style=flat)
-![Build & Release](https://github.com/TabularisDB/tabularis/workflows/Release/badge.svg)
-[![Discord](https://img.shields.io/discord/1502944695808950282?color=5865F2&logo=discord&logoColor=white)](https://discord.com/invite/K2hmhfHRSt)
-[![Gitster](https://gitster.dev/api/repositories/badge/cmlko1jr60005ne4yh7i7oy3e)](https://gitster.dev/repo/TabularisDB/tabularis)
-<br />
-<br />
-<a href="https://vercel.com/open-source-program">
-  <img alt="Vercel OSS Program" src="https://vercel.com/oss/program-badge-2026.svg" />
-</a>
-
-</p>
-
-<p align="center">
-  <a href="https://snapcraft.io/tabularis"><img src="https://img.shields.io/badge/snap-tabularis-blue?logo=snapcraft" alt="Snap Store" /></a>
-  <a href="https://flatpark.org/apps/dev.tabularis.Tabularis/"><img src="https://img.shields.io/badge/flatpak-tabularis-4A90D9?logo=flatpak&logoColor=white" alt="Flatpak (Flatpark)" /></a>
-  <a href="https://aur.archlinux.org/packages/tabularis-bin"><img src="https://img.shields.io/badge/AUR-tabularis--bin-1793D1?logo=archlinux&logoColor=white" alt="AUR" /></a>
-  <a href="https://winstall.app/apps/Debba.Tabularis"><img src="https://img.shields.io/winget/v/Debba.Tabularis?label=WinGet&logo=windows&color=0078D4" alt="WinGet" /></a>
+  <a href="https://github.com/bakaryuu1997-sys/Tabularis/stargazers"><img src="https://img.shields.io/github/stars/bakaryuu1997-sys/Tabularis?style=flat" alt="Stars" /></a>
+  <a href="https://github.com/bakaryuu1997-sys/Tabularis/commits"><img src="https://img.shields.io/github/last-commit/bakaryuu1997-sys/Tabularis?style=flat" alt="Last commit" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat" alt="License" /></a>
+  <img src="https://img.shields.io/badge/version-0.14.0-success?style=flat" alt="Version 0.14.0" />
+  <img src="https://img.shields.io/badge/Tauri-v2-24C8DB?logo=tauri&logoColor=white" alt="Tauri v2" />
+  <img src="https://img.shields.io/badge/UI-EN%20%7C%20日本語%20%7C%20Tiếng%20Việt-informational" alt="UI languages" />
 </p>
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/TabularisDB/website/main/public/img/overview.gif" alt="Tabularis" />
+  <img src="assets/screenshots/02-data-grid.png" alt="Tabularis BrSE edition: data grid with Vietnamese and Japanese data" width="900" />
 </div>
 
 ## Screenshots
@@ -76,19 +64,17 @@
 
 ## Download
 
+Installers of this fork are not published as GitHub releases yet. Build the Windows installer yourself (see [Windows installer](#windows-installer)) or run it from source:
+
 ```bash
-winget install Debba.Tabularis                                   # Windows
-brew tap TabularisDB/tabularis && brew install --cask tabularis  # macOS
-sudo snap install tabularis                                      # Linux
+pnpm install
+pnpm tauri dev      # run
+pnpm tauri build    # package (NSIS installer on Windows)
 ```
 
-Or grab an installer directly:
+The app UI is available in English, Japanese (日本語) and Vietnamese (Tiếng Việt).
 
-[![Windows](https://img.shields.io/badge/Windows-Download-blue?logo=windows)](https://github.com/TabularisDB/tabularis/releases/download/v0.13.28/tabularis_0.13.28_x64-setup.exe) [![macOS (Apple Silicon)](https://img.shields.io/badge/macOS-Apple%20Silicon-black?logo=apple)](https://github.com/TabularisDB/tabularis/releases/download/v0.13.28/tabularis_0.13.28_aarch64.dmg) [![macOS (Intel)](https://img.shields.io/badge/macOS-Intel-black?logo=apple)](https://github.com/TabularisDB/tabularis/releases/download/v0.13.28/tabularis_0.13.28_x64.dmg) [![Linux AppImage](https://img.shields.io/badge/Linux-AppImage-green?logo=linux)](https://github.com/TabularisDB/tabularis/releases/download/v0.13.28/tabularis_0.13.28_amd64.AppImage) [![Linux .deb](https://img.shields.io/badge/Linux-.deb-orange?logo=debian)](https://github.com/TabularisDB/tabularis/releases/download/v0.13.28/tabularis_0.13.28_amd64.deb) [![Linux .rpm](https://img.shields.io/badge/Linux-.rpm-red?logo=redhat)](https://github.com/TabularisDB/tabularis/releases/download/v0.13.28/tabularis-0.13.1-1.x86_64.rpm)
-
-The app UI is available in English, Japanese (日本語) and Vietnamese (Tiếng Việt). The other README translations below come from upstream and describe the upstream project.
-
-**Discord** — [Join our Discord server](https://discord.com/invite/K2hmhfHRSt) to talk with the maintainers, share feedback, and get help from the community.
+> The package-manager commands further down (`winget`, `brew`, `snap`, Flatpak, AUR) install the **original upstream app**, not this fork.
 
 ## Table of Contents
 
