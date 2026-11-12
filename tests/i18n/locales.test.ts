@@ -41,6 +41,8 @@ const VIETNAMESE_ALLOWLIST = new Set([
   "src/i18n/config.ts",
   "src/components/ai/AiChatWidget.tsx",
   "src/components/modals/UserGuideModal.tsx",
+  // Headings of the exported table-definition document, offered in Vietnamese on purpose.
+  "src/utils/tableSpec.ts",
 ]);
 
 /** Comments are never shown to users, so examples of Vietnamese text inside them are fine. */
