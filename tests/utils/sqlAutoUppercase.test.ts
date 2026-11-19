@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   findAutoUppercaseCandidate,
   isOffsetInNonCodeSpan,
+  getLocalSqlSlice,
   AUTO_UPPERCASE_KEYWORDS,
 } from '../../src/utils/sqlAutoUppercase';
 
@@ -77,6 +78,45 @@ describe('sqlAutoUppercase', () => {
       const sql = "/* select comment */ SELECT * FROM t;";
       expect(isOffsetInNonCodeSpan(5, sql, 'postgres')).toBe(true);
       expect(isOffsetInNonCodeSpan(25, sql, 'postgres')).toBe(false);
+    });
+  });
+
+  describe('getLocalSqlSlice', () => {
+    it('returns single line correctly with offset', () => {
+      const lines = ['SELECT 1;'];
+      const { slice, offsetInSlice } = getLocalSqlSlice((l) => lines[l - 1], 1, 8);
+      expect(slice).toBe('SELECT 1;');
+      expect(offsetInSlice).toBe(7);
+    });
+
+    it('bounds lookback to maxLookbackLines', () => {
+      const lines = Array.from({ length: 150 }, (_, i) => `-- line ${i + 1}`);
+      lines.push('select ');
+      // line 151
+      const { slice, offsetInSlice } = getLocalSqlSlice((l) => lines[l - 1], 151, 1, 50);
+      // Should only include lines 101 to 151 (51 lines)
+      const sliceLines = slice.split('\n');
+      expect(sliceLines.length).toBe(51);
+      expect(sliceLines[0]).toBe('-- line 101');
+      expect(sliceLines[sliceLines.length - 1]).toBe('select ');
+      expect(offsetInSlice).toBe(slice.length - 'select '.length);
+    });
+
+    it('correctly calculates offset when inside a multi-line block comment in lookback window', () => {
+      const lines = [
+        '/*',
+        ' * multi-line comment',
+        ' * select keyword here',
+        ' */',
+        'select * from t;',
+      ];
+      // line 3, column 4 (inside " * select")
+      const { slice, offsetInSlice } = getLocalSqlSlice((l) => lines[l - 1], 3, 4, 10);
+      expect(isOffsetInNonCodeSpan(offsetInSlice, slice, 'postgres')).toBe(true);
+
+      // line 5, column 1 ("select" outside comment)
+      const res5 = getLocalSqlSlice((l) => lines[l - 1], 5, 1, 10);
+      expect(isOffsetInNonCodeSpan(res5.offsetInSlice, res5.slice, 'postgres')).toBe(false);
     });
   });
 });

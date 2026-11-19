@@ -21,6 +21,7 @@ import {
 import {
   findAutoUppercaseCandidate,
   isOffsetInNonCodeSpan,
+  getLocalSqlSlice,
   AUTO_UPPERCASE_DELIMITERS,
 } from "../../utils/sqlAutoUppercase";
 import { validateSqlSchema } from "../../utils/autocomplete";
@@ -325,6 +326,13 @@ const SqlEditorInternal = ({
       domNode?.addEventListener('compositionstart', onCompStart, true);
       domNode?.addEventListener('compositionend', onCompEnd, true);
 
+      // Do not allow Monaco suggestion acceptance to hijack Enter while IME is composing (e.g. Japanese Kanji commit)
+      editor.onKeyDown((e) => {
+        if (isImeComposingRef.current && e.keyCode === monaco.KeyCode.Enter) {
+          e.stopPropagation();
+        }
+      });
+
       // Register SQL snippets quick trigger (Ctrl + J)
       editor.addAction({
         id: 'tabularis.showSqlSnippets',
@@ -550,15 +558,16 @@ const SqlEditorInternal = ({
             );
             if (!candidate) continue;
 
-            const wordOffset = model.getOffsetAt({
-              lineNumber: change.range.startLineNumber,
-              column: candidate.startColumn,
-            });
+            const { slice, offsetInSlice } = getLocalSqlSlice(
+              (l) => model.getLineContent(l),
+              change.range.startLineNumber,
+              candidate.startColumn,
+            );
 
             if (
               isOffsetInNonCodeSpan(
-                wordOffset,
-                model.getValue(),
+                offsetInSlice,
+                slice,
                 dialectRef.current,
               )
             ) {
@@ -635,6 +644,11 @@ const SqlEditorInternal = ({
             horizontalScrollbarSize: 8,
           },
           acceptSuggestionOnEnter: (settings.editorAcceptSuggestionOnEnter ?? true) ? 'smart' : 'off',
+          quickSuggestions: {
+            other: true,
+            comments: false,
+            strings: false,
+          },
           multiCursorModifier: 'ctrlCmd',
           automaticLayout: true,
           ...options

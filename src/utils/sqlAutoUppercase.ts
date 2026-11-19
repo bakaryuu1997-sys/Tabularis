@@ -106,3 +106,36 @@ export function isOffsetInNonCodeSpan(
   }
   return false;
 }
+
+/**
+ * Extracts a localized window of SQL text around the given lineNumber (at most maxLookbackLines before it)
+ * and returns the slice along with the adjusted offset of the target column within that slice.
+ * This avoids serializing the entire document via model.getValue() on large scripts.
+ */
+export function getLocalSqlSlice(
+  getLineContent: (line: number) => string,
+  lineNumber: number,
+  column: number,
+  maxLookbackLines: number = 100,
+): { slice: string; offsetInSlice: number } {
+  const startLine = Math.max(1, lineNumber - maxLookbackLines);
+  const lines: string[] = [];
+  let offsetInSlice = 0;
+
+  for (let l = startLine; l <= lineNumber; l++) {
+    const text = getLineContent(l);
+    if (l === lineNumber) {
+      offsetInSlice += Math.max(0, column - 1);
+      lines.push(text);
+    } else {
+      offsetInSlice += text.length + 1; // +1 for newline '\n'
+      lines.push(text);
+    }
+  }
+
+  return {
+    slice: lines.join('\n'),
+    offsetInSlice,
+  };
+}
+
