@@ -1120,8 +1120,26 @@ export const Editor = () => {
       addHistoryEntry,
       guardDangerousQuery,
       connections,
+      activeConnectionObj?.name,
+      effectiveSafeModeLevel,
+      showAlert,
     ],
   );
+
+  const {
+    transactionMode,
+    setTransactionMode,
+    isTransactionActive,
+    startTransaction: handleStartTransaction,
+    commitTransaction: handleCommitTransaction,
+    rollbackTransaction: handleRollbackTransaction,
+  } = useTransactionControl({
+    connectionId: activeConnectionId,
+    capabilities: activeCapabilities,
+    runQuery,
+    showAlert,
+    t,
+  });
 
   const runMultipleQueries = useCallback(
     async (queries: string[], paramsOverride?: Record<string, string>) => {
@@ -1681,6 +1699,12 @@ export const Editor = () => {
     runResultEntryPage,
     loadCount,
     updateTab,
+    activeDialect,
+    activeDriver,
+    activeSchema,
+    effectiveTables,
+    handleReattachResults,
+    runMultipleQueries,
   ]);
 
   const handleRunButton = useCallback(() => {
@@ -1845,7 +1869,7 @@ export const Editor = () => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleRunButton]);
+  }, [handleRunButton, handleCommitTransaction, handleRollbackTransaction]);
 
   // Global Ctrl+Tab shortcut: open tab switcher and advance to next tab circularly.
   // In split mode only the focused pane (explorerConnectionId) handles the shortcut.
@@ -2971,6 +2995,8 @@ export const Editor = () => {
     navigate,
     runQuery,
     t,
+    splitTabIds,
+    togglePin,
   ]);
 
   // Process pending executions when tabs are created/updated
@@ -3104,21 +3130,6 @@ export const Editor = () => {
     setIsRunDropdownOpen((prev) => !prev);
   }, [isRunDropdownOpen, activeTab, activeDialect]);
 
-  const {
-    transactionMode,
-    setTransactionMode,
-    isTransactionActive,
-    startTransaction: handleStartTransaction,
-    commitTransaction: handleCommitTransaction,
-    rollbackTransaction: handleRollbackTransaction,
-  } = useTransactionControl({
-    connectionId: activeConnectionId,
-    capabilities: activeCapabilities,
-    runQuery,
-    showAlert,
-    t,
-  });
-
   const handleInsertSqlTemplate = useCallback(
     (templateSql: string) => {
       if (!activeTab) return;
@@ -3148,6 +3159,9 @@ export const Editor = () => {
     },
     [activeTab, updateTab],
   );
+
+  const handleOpenExplainDiffRef = useRef(handleOpenExplainDiff);
+  handleOpenExplainDiffRef.current = handleOpenExplainDiff;
 
   useEffect(() => {
     const handleOpenTemplates = () => {
@@ -3183,7 +3197,7 @@ export const Editor = () => {
     window.addEventListener("tabularis:open-schema-diff", handleOpenSchemaDiff);
     window.addEventListener("tabularis:open-table-spec", handleOpenTableSpec);
     const handleOpenTeamSync = () => setIsTeamSyncOpen(true);
-    const handleOpenExplainDiffEvent = () => handleOpenExplainDiff();
+    const handleOpenExplainDiffEvent = () => handleOpenExplainDiffRef.current();
     window.addEventListener("tabularis:open-team-sync", handleOpenTeamSync);
     window.addEventListener("tabularis:open-explain-diff", handleOpenExplainDiffEvent);
     return () => {

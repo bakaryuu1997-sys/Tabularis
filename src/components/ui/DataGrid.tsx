@@ -1288,6 +1288,10 @@ export const DataGrid = React.memo(
         foreignKeys,
         columnMetadata,
         columnTypeMap,
+        columnDistributionMap,
+        data.length,
+        handleOpenQuickStats,
+        onSort,
       ],
     );
 

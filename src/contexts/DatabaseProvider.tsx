@@ -464,7 +464,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [activeConnectionId, connectionDataMap, updateConnectionData, loadDatabaseData]);
 
-  const connect = async (connectionId: string) => {
+  const connect = useCallback(
+    async (connectionId: string) => {
     // Capture previous state so we can restore it on failure
     const prevActiveConnectionId = activeConnectionId;
 
@@ -701,7 +702,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       setActiveConnectionId(prevActiveConnectionId);
       throw error;
     }
-  };
+  }, [activeConnectionId, openConnectionIds, updateConnectionData]);
 
   const disconnect = async (connectionId?: string) => {
     const targetId = connectionId || activeConnectionId;
@@ -806,6 +807,9 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     invoke('set_last_open_connections', { connectionIds: openConnectionIds }).catch(() => {});
   }, [openConnectionIds]);
 
+  const connectRef = useRef(connect);
+  connectRef.current = connect;
+
   // Listen for backend health-check failures and preserve workspace state while attempting auto-reconnect.
   useEffect(() => {
     const unlisten = listen<{ connectionId: string; error: string }>(
@@ -825,14 +829,14 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
         // Trigger automatic reconnect attempt
         console.log(`[DatabaseProvider] Attempting automatic reconnection for ${connectionId}...`);
         setTimeout(() => {
-          connect(connectionId).catch((err) => {
+          connectRef.current(connectionId).catch((err) => {
             console.warn(`[DatabaseProvider] Auto-reconnect failed for ${connectionId}:`, err);
           });
         }, 1500);
       },
     );
     return () => { unlisten.then(fn => fn()); };
-  }, [updateConnectionData, connect]);
+  }, [updateConnectionData]);
 
   // Connection Group methods
   const createGroup = useCallback(async (name: string): Promise<ConnectionGroup> => {
