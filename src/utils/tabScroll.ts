@@ -70,3 +70,42 @@ export function getTabSwitcherRowClassName(isActive: boolean): string {
   if (isActive) return `${base} bg-surface-secondary text-primary`;
   return `${base} text-secondary hover:bg-surface-secondary hover:text-primary`;
 }
+
+/**
+ * Calculates Chrome-style flexible tab width based on container width and tab count.
+ */
+export function calculateTabWidth(
+  containerWidth: number,
+  tabCount: number,
+  minWidth = 40,
+  maxWidth = 200,
+): number {
+  if (tabCount <= 0 || containerWidth <= 0) return maxWidth;
+  const availableWidth = containerWidth / tabCount;
+  return Math.min(maxWidth, Math.max(minWidth, availableWidth));
+}
+
+/**
+ * Calculates target scrollLeft offset when scrolling by one visible page.
+ */
+export function getScrollPageOffset(
+  currentScroll: number,
+  containerWidth: number,
+  direction: 'left' | 'right',
+  scrollRatio = 0.8,
+): number {
+  const delta = Math.max(100, Math.floor(containerWidth * scrollRatio));
+  if (direction === 'left') {
+    return Math.max(0, currentScroll - delta);
+  }
+  return currentScroll + delta;
+}
+
+/**
+ * Filters a list of tabs by search query (case-insensitive substring match).
+ */
+export function filterTabs<T extends { title: string }>(tabs: T[], query: string): T[] {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return tabs;
+  return tabs.filter((t) => t.title.toLowerCase().includes(trimmed));
+}

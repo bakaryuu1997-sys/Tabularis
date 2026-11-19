@@ -192,11 +192,11 @@ import {
 import { formatSqlIdentifier } from "../utils/identifiers";
 import { RelatedRecordsPanel } from "../components/ui/RelatedRecordsPanel";
 import {
-  getTabScrollState,
-  getAdjacentTabIndex,
   resolveNextTabId,
   isFocusedPane,
 } from "../utils/tabScroll";
+import { useScrollableTabStrip } from "../hooks/useScrollableTabStrip";
+import { TabSearchPopover } from "../components/ui/TabSearchPopover";
 import clsx from "clsx";
 
 interface EditorState {
@@ -679,49 +679,16 @@ export const Editor = () => {
   const runMultipleQueriesRef = useRef<typeof runMultipleQueries>(null!);
   const openExplainForQueryRef = useRef<(query: string) => void>(null!);
   const activeDialectRef = useRef<typeof activeDialect>(undefined);
-  const tabScrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  useEffect(() => {
-    const el = tabScrollRef.current;
-    if (!el || !activeTabId) return;
-    const idx = leftTabs.findIndex((t) => t.id === activeTabId);
-    if (idx === -1) return;
-    const tabEl = el.children[idx] as HTMLElement | undefined;
-    tabEl?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-  }, [activeTabId, leftTabs]);
-
-  const updateScrollArrows = useCallback(() => {
-    const el = tabScrollRef.current;
-    if (!el) return;
-    const { canScrollLeft, canScrollRight } = getTabScrollState(el);
-    setCanScrollLeft(canScrollLeft);
-    setCanScrollRight(canScrollRight);
-  }, []);
-
-  const scrollTabs = useCallback(
-    (direction: "left" | "right") => {
-      const currentIndex = leftTabs.findIndex((t) => t.id === activeTabId);
-      const targetIndex = getAdjacentTabIndex(
-        currentIndex,
-        leftTabs.length,
-        direction,
-      );
-      if (targetIndex === null) return;
-      const targetTab = leftTabs[targetIndex];
-      setActiveTabId(targetTab.id);
-      const el = tabScrollRef.current;
-      if (!el) return;
-      const tabEl = el.children[targetIndex] as HTMLElement | undefined;
-      tabEl?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
-      });
-    },
-    [leftTabs, activeTabId, setActiveTabId],
-  );
+  const {
+    containerRef: tabScrollRef,
+    canScrollLeft,
+    canScrollRight,
+    scrollByPage,
+    scrollTabIntoView,
+  } = useScrollableTabStrip({
+    activeTabId,
+    tabCount: leftTabs.length,
+  });
   const processingRef = useRef<string | null>(null);
   const pendingExecutionsRef = useRef<
     Record<string, { sql: string; page: number }>
@@ -788,10 +755,6 @@ export const Editor = () => {
     activeTabIdRef.current = activeTabId;
     detachedTabIdsRef.current = detachedTabIds;
   }, [tabs, activeTabId, detachedTabIds]);
-
-  useEffect(() => {
-    updateScrollArrows();
-  }, [tabs, updateScrollArrows]);
 
   const fetchPkColumn = useCallback(
     async (table: string, tabId?: string, tabSchema?: string) => {
@@ -3265,83 +3228,93 @@ export const Editor = () => {
         }
       >
         <button
-          onClick={() => scrollTabs("left")}
+          onClick={() => scrollByPage("left")}
           disabled={!canScrollLeft}
+          title={t("editor.scrollTabsLeft", "Scroll tabs left")}
           className="flex items-center justify-center w-7 h-full text-muted border-r border-default shrink-0 transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:text-primary hover:enabled:bg-surface-secondary"
         >
           <ChevronLeft size={14} />
         </button>
         <button
-          onClick={() => scrollTabs("right")}
+          onClick={() => scrollByPage("right")}
           disabled={!canScrollRight}
+          title={t("editor.scrollTabsRight", "Scroll tabs right")}
           className="flex items-center justify-center w-7 h-full text-muted border-r border-default shrink-0 transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:text-primary hover:enabled:bg-surface-secondary"
         >
           <ChevronRight size={14} />
         </button>
-        <div
-          ref={tabScrollRef}
-          onScroll={updateScrollArrows}
-          onDragOver={(e) => {
-            // Only a tab coming from the split pane needs the empty space; the strip's own tabs handle themselves.
-            if (tabDrag.payload?.origin !== "right") return;
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-          }}
-          onDrop={(e) => {
-            if (tabDrag.payload?.origin !== "right") return;
-            e.preventDefault();
-            const last = leftTabs[leftTabs.length - 1];
-            handleTabDrop(resolveTabDrop(tabDrag.payload, "left", last?.id ?? null, "after"));
-            tabDrag.clear();
-          }}
-          className="flex flex-1 overflow-x-auto no-scrollbar h-full"
-        >
-          {leftTabs.map((tab) => (
-            <div
-              key={tab.id}
-              draggable={editingTabId !== tab.id}
-              onDragStart={(e) => {
-                tabDrag.start({ tabId: tab.id, origin: "left" });
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData(TAB_DRAG_MIME, tab.id);
-              }}
-              onDragEnd={() => {
-                tabDrag.clear();
-                setTabDropMark(null);
-              }}
-              onDragOver={(e) => {
-                if (!tabDrag.payload) return;
-                e.preventDefault();
-                e.stopPropagation();
-                e.dataTransfer.dropEffect = "move";
-                setTabDropMark({
-                  id: tab.id,
-                  position: dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect()),
-                });
-              }}
-              onDragLeave={() => setTabDropMark((m) => (m?.id === tab.id ? null : m))}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const position = dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect());
-                setTabDropMark(null);
-                handleTabDrop(resolveTabDrop(tabDrag.payload, "left", tab.id, position));
-                tabDrag.clear();
-              }}
-              onClick={() => setActiveTabId(tab.id)}
-              onContextMenu={(e) => handleTabContextMenu(e, tab.id)}
-              onAuxClick={(e) => {
-                if (e.button === 1) {
+        <div className="relative flex-1 h-full min-w-0 overflow-hidden">
+          {canScrollLeft && (
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-base/90 to-transparent z-10" />
+          )}
+          {canScrollRight && (
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-base/90 to-transparent z-10" />
+          )}
+          <div
+            ref={tabScrollRef}
+            onDragOver={(e) => {
+              // Only a tab coming from the split pane needs the empty space; the strip's own tabs handle themselves.
+              if (tabDrag.payload?.origin !== "right") return;
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "move";
+            }}
+            onDrop={(e) => {
+              if (tabDrag.payload?.origin !== "right") return;
+              e.preventDefault();
+              const last = leftTabs[leftTabs.length - 1];
+              handleTabDrop(resolveTabDrop(tabDrag.payload, "left", last?.id ?? null, "after"));
+              tabDrag.clear();
+            }}
+            className="flex flex-1 overflow-x-auto no-scrollbar h-full"
+          >
+            {leftTabs.map((tab) => (
+              <div
+                key={tab.id}
+                data-tab-id={tab.id}
+                title={tab.title}
+                draggable={editingTabId !== tab.id}
+                onDragStart={(e) => {
+                  tabDrag.start({ tabId: tab.id, origin: "left" });
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData(TAB_DRAG_MIME, tab.id);
+                }}
+                onDragEnd={() => {
+                  tabDrag.clear();
+                  setTabDropMark(null);
+                }}
+                onDragOver={(e) => {
+                  if (!tabDrag.payload) return;
                   e.preventDefault();
-                  handleCloseTab(tab.id);
-                }
-              }}
-              className={clsx(
-                "flex items-center gap-2 px-3 h-full border-r border-default cursor-pointer min-w-[140px] max-w-[220px] text-xs transition-all duration-150 group relative select-none",
-                activeTabId === tab.id
-                  ? "bg-base text-primary font-medium"
-                  : "text-muted hover:bg-[var(--tab-hover)] hover:text-secondary",
-              )}
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = "move";
+                  setTabDropMark({
+                    id: tab.id,
+                    position: dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect()),
+                  });
+                }}
+                onDragLeave={() => setTabDropMark((m) => (m?.id === tab.id ? null : m))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const position = dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect());
+                  setTabDropMark(null);
+                  handleTabDrop(resolveTabDrop(tabDrag.payload, "left", tab.id, position));
+                  tabDrag.clear();
+                }}
+                onClick={() => setActiveTabId(tab.id)}
+                onContextMenu={(e) => handleTabContextMenu(e, tab.id)}
+                onAuxClick={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    handleCloseTab(tab.id);
+                  }
+                }}
+                className={clsx(
+                  "flex items-center gap-1.5 px-2.5 h-full border-r border-default cursor-pointer flex-1 min-w-[40px] max-w-[200px] text-xs transition-all duration-150 group relative select-none",
+                  activeTabId === tab.id
+                    ? "bg-base text-primary font-medium"
+                    : "text-muted hover:bg-[var(--tab-hover)] hover:text-secondary",
+                )}
               style={
                 activeTabId === tab.id
                   ? {
@@ -3441,6 +3414,7 @@ export const Editor = () => {
               )}
             </div>
           ))}
+          </div>
         </div>
         <button
           onClick={() =>
@@ -3477,6 +3451,23 @@ export const Editor = () => {
         >
           <BookOpen size={16} />
         </button>
+        <TabSearchPopover
+          leftTabs={leftTabs}
+          activeLeftTabId={activeTabId}
+          onSelectLeftTab={(id) => {
+            setActiveTabId(id);
+            scrollTabIntoView(id);
+          }}
+          onCloseLeftTab={(id) => handleCloseTab(id)}
+          rightTabs={pinnedTabs}
+          activeRightTabId={splitTab?.id ?? null}
+          onSelectRightTab={(id) => {
+            setActiveSplitTabId(id);
+          }}
+          onCloseRightTab={(id) => {
+            togglePin(id);
+          }}
+        />
       </div>
 
       {/* Toolbar — hidden for notebook tabs */}

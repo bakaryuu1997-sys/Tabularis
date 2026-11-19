@@ -1082,6 +1082,16 @@
     },
     "newVisualQuery": "Truy vấn trực quan mới",
     "activeDatabase": "Cơ sở dữ liệu hiện hành",
+    "scrollTabsLeft": "Cuộn tab sang trái",
+    "scrollTabsRight": "Cuộn tab sang phải",
+    "allTabs": {
+      "tooltip": "Tìm kiếm tab",
+      "searchPlaceholder": "Tìm kiếm tab...",
+      "leftPane": "Trình soạn thảo chính",
+      "rightPane": "Cửa sổ chia đôi",
+      "noTabs": "Không tìm thấy tab",
+      "active": "Đang mở"
+    },
     "tabSwitcher": {
       "title": "Tab đang mở",
       "hint": "Ctrl+Tab",
