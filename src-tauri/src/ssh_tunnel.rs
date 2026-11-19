@@ -75,6 +75,138 @@ impl client::Handler for RusshClientHandler {
     }
 }
 
+pub trait TunnelLiveness: Clone + Send + Sync + 'static {
+    fn is_alive(&self) -> bool;
+    fn stop(&self);
+    fn local_port(&self) -> u16;
+}
+
+#[derive(Debug)]
+pub struct TunnelEntry<T> {
+    pub tunnel: T,
+    pub active_connections: std::collections::HashSet<String>,
+}
+
+pub struct TunnelRegistry<T> {
+    entries: HashMap<String, TunnelEntry<T>>,
+}
+
+impl<T: TunnelLiveness> Default for TunnelRegistry<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T: TunnelLiveness> TunnelRegistry<T> {
+    pub fn new() -> Self {
+        Self {
+            entries: HashMap::new(),
+        }
+    }
+
+    /// Retrieve an existing alive tunnel, or create a new one using `create_fn`.
+    /// If an existing tunnel is found but is no longer alive, it will be stopped,
+    /// removed, and replaced with a fresh tunnel from `create_fn`.
+    /// If `connection_id` is provided, it is registered as an active user of the tunnel.
+    pub fn get_or_create<F, E>(
+        &mut self,
+        key: &str,
+        connection_id: Option<&str>,
+        create_fn: F,
+    ) -> Result<T, E>
+    where
+        F: FnOnce() -> Result<T, E>,
+    {
+        if let Some(entry) = self.entries.get_mut(key) {
+            if entry.tunnel.is_alive() {
+                if let Some(cid) = connection_id {
+                    entry.active_connections.insert(cid.to_string());
+                }
+                return Ok(entry.tunnel.clone());
+            } else {
+                log::info!(
+                    "[Tunnel Registry] Tunnel for key {} is dead, stopping and replacing",
+                    key
+                );
+                entry.tunnel.stop();
+                self.entries.remove(key);
+            }
+        }
+
+        let tunnel = create_fn()?;
+        let mut active_connections = std::collections::HashSet::new();
+        if let Some(cid) = connection_id {
+            active_connections.insert(cid.to_string());
+        }
+        self.entries.insert(
+            key.to_string(),
+            TunnelEntry {
+                tunnel: tunnel.clone(),
+                active_connections,
+            },
+        );
+        Ok(tunnel)
+    }
+
+    /// Releases a connection from all tunnels it was using.
+    /// If a tunnel has no remaining active connections, it is stopped and removed.
+    pub fn release_connection(&mut self, connection_id: &str) -> Vec<(String, T)> {
+        let mut to_remove = Vec::new();
+
+        for (key, entry) in self.entries.iter_mut() {
+            entry.active_connections.remove(connection_id);
+            if entry.active_connections.is_empty() {
+                to_remove.push(key.clone());
+            }
+        }
+
+        let mut stopped = Vec::new();
+        for key in to_remove {
+            if let Some(entry) = self.entries.remove(&key) {
+                log::info!(
+                    "[Tunnel Registry] Stopping idle tunnel for key {} (port {})",
+                    key,
+                    entry.tunnel.local_port()
+                );
+                entry.tunnel.stop();
+                stopped.push((key, entry.tunnel));
+            }
+        }
+        stopped
+    }
+
+    /// Removes and stops a specific tunnel by key (e.g. on transport error retry).
+    pub fn remove_and_stop(&mut self, key: &str) -> Option<T> {
+        if let Some(entry) = self.entries.remove(key) {
+            log::info!(
+                "[Tunnel Registry] Force stopping tunnel for key {} (port {})",
+                key,
+                entry.tunnel.local_port()
+            );
+            entry.tunnel.stop();
+            Some(entry.tunnel)
+        } else {
+            None
+        }
+    }
+
+    pub fn get(&self, key: &str) -> Option<&TunnelEntry<T>> {
+        self.entries.get(key)
+    }
+
+    pub fn contains_key(&self, key: &str) -> bool {
+        self.entries.contains_key(key)
+    }
+
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+}
+
 #[derive(Clone)]
 pub struct SshTunnel {
     pub local_port: u16,
@@ -82,9 +214,14 @@ pub struct SshTunnel {
 }
 
 pub static TUNNELS: OnceLock<Mutex<HashMap<String, SshTunnel>>> = OnceLock::new();
+pub static SSH_REGISTRY: OnceLock<Mutex<TunnelRegistry<SshTunnel>>> = OnceLock::new();
 
 pub fn get_tunnels() -> &'static Mutex<HashMap<String, SshTunnel>> {
     TUNNELS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn get_registry() -> &'static Mutex<TunnelRegistry<SshTunnel>> {
+    SSH_REGISTRY.get_or_init(|| Mutex::new(TunnelRegistry::new()))
 }
 
 impl SshTunnel {
@@ -190,6 +327,14 @@ impl SshTunnel {
 
         args.push("-o".to_string());
         args.push("StrictHostKeyChecking=accept-new".to_string());
+        args.push("-o".to_string());
+        args.push("ServerAliveInterval=30".to_string());
+        args.push("-o".to_string());
+        args.push("ServerAliveCountMax=3".to_string());
+        args.push("-o".to_string());
+        args.push("ExitOnForwardFailure=yes".to_string());
+        args.push("-o".to_string());
+        args.push("TCPKeepAlive=yes".to_string());
         args.push("-o".to_string());
         if ssh_allow_passphrase_prompt {
             args.push("BatchMode=no".to_string());
@@ -365,7 +510,10 @@ impl SshTunnel {
 
             let ready_tx_inner = ready_tx.clone();
             let result = runtime.block_on(async move {
-                let config = Arc::new(client::Config::default());
+                let mut config = client::Config::default();
+                config.keepalive_interval = Some(Duration::from_secs(30));
+                config.keepalive_max = 3;
+                let config = Arc::new(config);
                 let addr = format!("{}:{}", ssh_host, ssh_port);
 
                 let mut handle = client::connect(
@@ -468,6 +616,7 @@ impl SshTunnel {
 
                     let handle = handle.clone();
                     let r_host = remote_host.clone();
+                    let running_flag = running_clone.clone();
                     tokio::spawn(async move {
                         let handle = handle.lock().await;
                         let channel = match handle
@@ -482,6 +631,7 @@ impl SshTunnel {
                             Ok(c) => c,
                             Err(e) => {
                                 log::error!("[SSH Tunnel Error] Failed to open SSH channel: {}", e);
+                                running_flag.store(false, Ordering::Relaxed);
                                 return;
                             }
                         };
@@ -495,6 +645,7 @@ impl SshTunnel {
                     });
                 }
 
+                running_clone.store(false, Ordering::Relaxed);
                 Ok(())
             });
 
@@ -516,6 +667,19 @@ impl SshTunnel {
         }
     }
 
+    pub fn is_alive(&self) -> bool {
+        match &self.backend {
+            TunnelBackend::Russh(running) => running.load(Ordering::Relaxed),
+            TunnelBackend::SystemSsh(child) => {
+                if let Ok(mut c) = child.lock() {
+                    matches!(c.try_wait(), Ok(None))
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
     pub fn stop(&self) {
         match &self.backend {
             TunnelBackend::Russh(running) => {
@@ -524,9 +688,22 @@ impl SshTunnel {
             TunnelBackend::SystemSsh(child) => {
                 if let Ok(mut c) = child.lock() {
                     let _ = c.kill();
+                    let _ = c.wait();
                 }
             }
         }
+    }
+}
+
+impl TunnelLiveness for SshTunnel {
+    fn is_alive(&self) -> bool {
+        self.is_alive()
+    }
+    fn stop(&self) {
+        self.stop()
+    }
+    fn local_port(&self) -> u16 {
+        self.local_port
     }
 }
 
@@ -875,6 +1052,129 @@ mod tests {
         #[test]
         fn test_content_with_whitespace_is_not_empty() {
             assert!(!is_empty_or_whitespace(Some("  content  ")));
+        }
+    }
+
+    mod tunnel_registry_tests {
+        use super::*;
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        #[derive(Clone)]
+        struct FakeTunnel {
+            port: u16,
+            alive: Arc<AtomicBool>,
+            stopped: Arc<AtomicBool>,
+        }
+
+        impl FakeTunnel {
+            fn new(port: u16) -> Self {
+                Self {
+                    port,
+                    alive: Arc::new(AtomicBool::new(true)),
+                    stopped: Arc::new(AtomicBool::new(false)),
+                }
+            }
+        }
+
+        impl TunnelLiveness for FakeTunnel {
+            fn is_alive(&self) -> bool {
+                self.alive.load(Ordering::Relaxed)
+            }
+            fn stop(&self) {
+                self.alive.store(false, Ordering::Relaxed);
+                self.stopped.store(true, Ordering::Relaxed);
+            }
+            fn local_port(&self) -> u16 {
+                self.port
+            }
+        }
+
+        #[test]
+        fn test_registry_get_or_create_and_reuse() {
+            let mut registry = TunnelRegistry::new();
+            let key = "user@host:22:remote->3306";
+
+            let t1 = registry
+                .get_or_create(key, Some("conn-1"), || Ok::<_, String>(FakeTunnel::new(50001)))
+                .unwrap();
+            assert_eq!(t1.port, 50001);
+            assert_eq!(registry.len(), 1);
+
+            // Reusing with same key returns existing tunnel and registers conn-2
+            let t2 = registry
+                .get_or_create(key, Some("conn-2"), || Ok::<_, String>(FakeTunnel::new(50002)))
+                .unwrap();
+            assert_eq!(t2.port, 50001);
+            assert_eq!(registry.len(), 1);
+
+            let entry = registry.get(key).unwrap();
+            assert!(entry.active_connections.contains("conn-1"));
+            assert!(entry.active_connections.contains("conn-2"));
+        }
+
+        #[test]
+        fn test_registry_replaces_dead_tunnel() {
+            let mut registry = TunnelRegistry::new();
+            let key = "user@host:22:remote->3306";
+
+            let t1 = registry
+                .get_or_create(key, Some("conn-1"), || Ok::<_, String>(FakeTunnel::new(50001)))
+                .unwrap();
+            assert!(t1.is_alive());
+
+            // Mark dead
+            t1.alive.store(false, Ordering::Relaxed);
+            assert!(!t1.is_alive());
+
+            // Next get_or_create should detect dead tunnel, stop it, and replace with new one
+            let t2 = registry
+                .get_or_create(key, Some("conn-1"), || Ok::<_, String>(FakeTunnel::new(50002)))
+                .unwrap();
+            assert_eq!(t2.port, 50002);
+            assert!(t1.stopped.load(Ordering::Relaxed));
+            assert!(t2.is_alive());
+        }
+
+        #[test]
+        fn test_registry_ref_counting_and_release() {
+            let mut registry = TunnelRegistry::new();
+            let key = "user@host:22:remote->3306";
+
+            let t1 = registry
+                .get_or_create(key, Some("conn-1"), || Ok::<_, String>(FakeTunnel::new(50001)))
+                .unwrap();
+            registry
+                .get_or_create(key, Some("conn-2"), || Ok::<_, String>(FakeTunnel::new(50001)))
+                .unwrap();
+
+            // Releasing conn-1 leaves conn-2 active, tunnel is NOT stopped
+            let stopped = registry.release_connection("conn-1");
+            assert!(stopped.is_empty());
+            assert_eq!(registry.len(), 1);
+            assert!(!t1.stopped.load(Ordering::Relaxed));
+
+            // Releasing conn-2 drops active connections to 0, tunnel IS stopped and removed
+            let stopped2 = registry.release_connection("conn-2");
+            assert_eq!(stopped2.len(), 1);
+            assert_eq!(stopped2[0].0, key);
+            assert_eq!(registry.len(), 0);
+            assert!(t1.stopped.load(Ordering::Relaxed));
+        }
+
+        #[test]
+        fn test_registry_remove_and_stop() {
+            let mut registry = TunnelRegistry::new();
+            let key = "user@host:22:remote->3306";
+
+            let t1 = registry
+                .get_or_create(key, Some("conn-1"), || Ok::<_, String>(FakeTunnel::new(50001)))
+                .unwrap();
+            assert_eq!(registry.len(), 1);
+
+            let removed = registry.remove_and_stop(key);
+            assert!(removed.is_some());
+            assert!(t1.stopped.load(Ordering::Relaxed));
+            assert_eq!(registry.len(), 0);
         }
     }
 }

@@ -5,16 +5,29 @@
  * without unsafe casts.
  */
 export function toErrorMessage(err: unknown): string {
-  if (typeof err === "string") return err;
-  if (err instanceof Error) return err.message;
-  // Tauri invoke errors are often serialised as plain objects with a message field
-  if (
+  let message = "";
+  if (typeof err === "string") {
+    message = err;
+  } else if (err instanceof Error) {
+    message = err.message;
+  } else if (
     typeof err === "object" &&
     err !== null &&
     "message" in err &&
     typeof (err as Record<string, unknown>).message === "string"
   ) {
-    return (err as Record<string, unknown>).message as string;
+    // Tauri invoke errors are often serialised as plain objects with a message field
+    message = (err as Record<string, unknown>).message as string;
+  } else {
+    message = String(err);
   }
-  return String(err);
+
+  if (
+    message.includes("expected to read 4 bytes, got 0 bytes at EOF") ||
+    message.includes("got 0 bytes at EOF")
+  ) {
+    return "SSH tunnel was closed or disconnected (EOF). Please try reconnecting.";
+  }
+
+  return message;
 }

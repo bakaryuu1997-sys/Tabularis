@@ -11,6 +11,8 @@ const K8S_TUNNEL_TIMEOUT_SECS: u64 = 15;
 const K8S_CONNECT_RETRY_MS: u64 = 200;
 const LOG_BUFFER_INITIAL_CAPACITY: usize = 64;
 
+use crate::ssh_tunnel::{TunnelLiveness, TunnelRegistry};
+
 #[derive(Clone)]
 pub struct K8sTunnel {
     pub local_port: u16,
@@ -18,9 +20,14 @@ pub struct K8sTunnel {
 }
 
 pub static TUNNELS: OnceLock<Mutex<HashMap<String, K8sTunnel>>> = OnceLock::new();
+pub static K8S_REGISTRY: OnceLock<Mutex<TunnelRegistry<K8sTunnel>>> = OnceLock::new();
 
 pub fn get_tunnels() -> &'static Mutex<HashMap<String, K8sTunnel>> {
     TUNNELS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+pub fn get_registry() -> &'static Mutex<TunnelRegistry<K8sTunnel>> {
+    K8S_REGISTRY.get_or_init(|| Mutex::new(TunnelRegistry::new()))
 }
 
 impl K8sTunnel {
@@ -176,10 +183,20 @@ impl K8sTunnel {
         })
     }
 
-    /// Stop the tunnel by killing the kubectl child process.
+    /// Check if the kubectl port-forward process is still running.
+    pub fn is_alive(&self) -> bool {
+        if let Ok(mut c) = self.child.lock() {
+            matches!(c.try_wait(), Ok(None))
+        } else {
+            false
+        }
+    }
+
+    /// Stop the tunnel by killing and reaping the kubectl child process.
     pub fn stop(&self) {
         if let Ok(mut c) = self.child.lock() {
             let _ = c.kill();
+            let _ = c.wait();
             log::info!(
                 "[K8s Tunnel] Stopped tunnel on port {}",
                 self.local_port
@@ -579,5 +596,17 @@ mod tests {
             let result = parse_resource_ports("");
             assert!(result.is_empty());
         }
+    }
+}
+
+impl TunnelLiveness for K8sTunnel {
+    fn is_alive(&self) -> bool {
+        self.is_alive()
+    }
+    fn stop(&self) {
+        self.stop()
+    }
+    fn local_port(&self) -> u16 {
+        self.local_port
     }
 }
