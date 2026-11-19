@@ -1486,7 +1486,9 @@
   },
   "healthCheck": {
     "title": "Connection Lost",
-    "connectionLost": "A database connection was lost"
+    "connectionLost": "A database connection was lost",
+    "reconnecting": "Reconnecting to database...",
+    "reconnectFailed": "Could not reconnect to database after multiple attempts."
   },
   "erDiagram": {
     "title": "ER Diagram",

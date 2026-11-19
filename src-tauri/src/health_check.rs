@@ -137,7 +137,7 @@ async fn ping_all_connections(app: &tauri::AppHandle, failure_counts: &mut HashM
 }
 
 /// Ping a single connection by resolving its params and calling driver.ping().
-async fn ping_single_connection(app: &tauri::AppHandle, connection_id: &str) -> Result<(), String> {
+pub async fn ping_single_connection<R: tauri::Runtime>(app: &tauri::AppHandle<R>, connection_id: &str) -> Result<(), String> {
     let saved_conn = crate::commands::find_connection_by_id(app, connection_id)?;
 
     let expanded_params =

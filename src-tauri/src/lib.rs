@@ -298,6 +298,7 @@ pub fn run() {
             commands::get_connection_by_id,
             commands::disconnect_connection,
             commands::register_active_connection,
+            commands::ping_connection,
             commands::get_data_types,
             commands::map_inferred_column_types,
             // SSH Connections

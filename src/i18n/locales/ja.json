@@ -1486,7 +1486,9 @@
   },
   "healthCheck": {
     "title": "接続が失われました",
-    "connectionLost": "データベース接続が失われました"
+    "connectionLost": "データベース接続が失われました",
+    "reconnecting": "データベースに再接続中...",
+    "reconnectFailed": "複数回試行しましたが、データベースに再接続できませんでした。"
   },
   "erDiagram": {
     "title": "ER 図",
