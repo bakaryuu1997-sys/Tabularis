@@ -7,13 +7,15 @@ import { withVietnameseSafeFont } from "./fontStack";
 
 export const FONT_MAP: Record<string, string> = {
   System:
-    '"Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, Ubuntu, sans-serif',
-  "Open Sans": 'Open Sans, "Segoe UI", system-ui, sans-serif',
-  Roboto: 'Roboto, "Segoe UI", RobotoDraft, Helvetica, Arial, sans-serif',
-  "JetBrains Mono": "JetBrains Mono, Menlo, Monaco, Consolas, monospace",
-  Hack: "Hack, Menlo, Monaco, Consolas, monospace",
-  Menlo: "Menlo, Monaco, Consolas, monospace",
-  "DejaVu Sans Mono": "DejaVu Sans Mono, Menlo, Monaco, Consolas, monospace",
+    '"Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, Ubuntu, "Yu Gothic UI", Meiryo, sans-serif',
+  Inter:
+    '"Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, "Yu Gothic UI", Meiryo, sans-serif',
+  "Open Sans": 'Open Sans, "Inter", "Segoe UI", system-ui, sans-serif',
+  Roboto: 'Roboto, "Inter", "Segoe UI", RobotoDraft, Helvetica, Arial, sans-serif',
+  "JetBrains Mono": '"JetBrains Mono", Menlo, Monaco, Consolas, "Yu Gothic UI", Meiryo, monospace',
+  Hack: 'Hack, "JetBrains Mono", Menlo, Monaco, Consolas, monospace',
+  Menlo: 'Menlo, "JetBrains Mono", Monaco, Consolas, monospace',
+  "DejaVu Sans Mono": '"DejaVu Sans Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace',
 };
 
 export const DEFAULT_FONT_SIZE = 14;

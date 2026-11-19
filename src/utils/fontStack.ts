@@ -20,6 +20,12 @@ const GENERIC_FAMILIES = new Set([
 ]);
 const VIETNAMESE_SAFE_FONT = '"Segoe UI"';
 
+const GENERIC_MONO_FAMILIES = new Set([
+  "monospace",
+  "ui-monospace",
+]);
+const VIETNAMESE_SAFE_MONO_FONT = '"JetBrains Mono"';
+
 const bare = (family: string) => family.trim().replace(/^["']|["']$/g, "").toLowerCase();
 
 /**
@@ -48,6 +54,30 @@ export function withVietnameseSafeFont(stack: string): string {
   return [
     ...filtered.slice(0, firstGenericIndex),
     VIETNAMESE_SAFE_FONT,
+    ...filtered.slice(firstGenericIndex),
+  ].join(", ");
+}
+
+/**
+ * Ensures "JetBrains Mono" is placed BEFORE any generic monospace family in the mono font-family stack.
+ */
+export function withVietnameseSafeMonoFont(stack: string): string {
+  const families = stack
+    .split(",")
+    .map((f) => f.trim())
+    .filter(Boolean);
+  if (families.length === 0) return stack;
+
+  const filtered = families.filter((f) => bare(f) !== "jetbrains mono");
+  const firstGenericIndex = filtered.findIndex((f) => GENERIC_MONO_FAMILIES.has(bare(f)));
+
+  if (firstGenericIndex === -1) {
+    return [...filtered, VIETNAMESE_SAFE_MONO_FONT].join(", ");
+  }
+
+  return [
+    ...filtered.slice(0, firstGenericIndex),
+    VIETNAMESE_SAFE_MONO_FONT,
     ...filtered.slice(firstGenericIndex),
   ].join(", ");
 }

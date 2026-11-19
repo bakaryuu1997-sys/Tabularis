@@ -1,6 +1,19 @@
 @import "tailwindcss";
 
+/* Bundled local fonts with full Vietnamese (U+1EA0-1EF9) and Latin coverage */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+@import "@fontsource/jetbrains-mono/600.css";
+@import "@fontsource/jetbrains-mono/700.css";
+
 @theme {
+  --font-sans: var(--font-base);
+  --font-mono: var(--font-mono);
+
   /* Expose CSS variables as Tailwind colors */
   --color-base: var(--bg-base);
   --color-elevated: var(--bg-elevated);
@@ -48,10 +61,10 @@
 }
 
 :root {
-  /* Typography - Define BEFORE usage */
-  --font-base: "Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  /* Typography - Bundled Inter & JetBrains Mono first, Japanese system fonts as fallback */
+  --font-base: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, "Yu Gothic UI", Meiryo, sans-serif;
   --font-size-base: 14px;
-  --font-mono: "JetBrains Mono", "Consolas", "Courier New", monospace;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", "Yu Gothic UI", Meiryo, monospace;
 
   /* Apply immediately */
   font-family: var(--font-base);
