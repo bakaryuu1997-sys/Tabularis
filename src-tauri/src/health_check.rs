@@ -179,6 +179,13 @@ async fn handle_connection_failure(app: &tauri::AppHandle, connection_id: &str, 
             connection_id,
         )
         .await;
+
+        if saved_conn.params.ssh_enabled.unwrap_or(false) {
+            crate::ssh_tunnel::get_registry().lock().unwrap().release_connection(connection_id);
+        }
+        if saved_conn.params.k8s_enabled.unwrap_or(false) {
+            crate::k8s_tunnel::get_registry().lock().unwrap().release_connection(connection_id);
+        }
     }
 
     // Notify frontend.

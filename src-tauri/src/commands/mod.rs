@@ -16,7 +16,7 @@ use crate::models::{
     TableColumn, TableInfo, TestConnectionRequest, WhatIfExplainOutcome,
 };
 use crate::persistence;
-use crate::ssh_tunnel::{get_tunnels, SshTunnel};
+use crate::ssh_tunnel::SshTunnel;
 
 // Domain submodules split out of this (large) command module. Their commands
 // are re-exported so `lib.rs` can keep referencing `commands::<name>`.
@@ -226,7 +226,10 @@ fn build_tunnel_map_key(
 }
 
 /// Resolve K8s tunnel params synchronously (no saved-connection lookup; uses inline fields only).
-fn resolve_k8s_params(params: &ConnectionParams) -> Result<ConnectionParams, String> {
+fn resolve_k8s_params_internal(
+    params: &ConnectionParams,
+    connection_id: Option<&str>,
+) -> Result<ConnectionParams, String> {
     let context = params
         .k8s_context
         .as_deref()
@@ -249,61 +252,55 @@ fn resolve_k8s_params(params: &ConnectionParams) -> Result<ConnectionParams, Str
         context, namespace, resource_type, resource_name, port,
     );
 
-    // Check for existing tunnel
-    {
-        let tunnels = crate::k8s_tunnel::get_tunnels().lock().unwrap();
-        if let Some(tunnel) = tunnels.get(&map_key) {
-            log::debug!("Reusing existing K8s tunnel on port {}", tunnel.local_port);
-            let mut new_params = params.clone();
-            new_params.k8s_enabled = Some(false);
-            new_params.host = Some("127.0.0.1".to_string());
-            new_params.port = Some(tunnel.local_port);
-            return Ok(new_params);
-        }
-    }
-
-    log::info!(
-        "Creating new K8s tunnel for {}/{} in {}:{} (context: {})",
-        resource_type, resource_name, namespace, port, context
-    );
-
-    let tunnel = crate::k8s_tunnel::K8sTunnel::new(
-        context, namespace, resource_type, resource_name, port,
-    )
-    .map_err(|e| {
-        log::error!("[Connection Error] K8s Tunnel setup failed: {}", e);
-        e
-    })?;
-
-    let local_port = tunnel.local_port;
-    log::info!("K8s tunnel created successfully on port {}", local_port);
-
-    {
-        let mut tunnels = crate::k8s_tunnel::get_tunnels().lock().unwrap();
-        tunnels.insert(map_key, tunnel);
-    }
+    let tunnel = crate::ssh_tunnel::get_or_create_tunnel(
+        crate::k8s_tunnel::get_registry(),
+        &map_key,
+        connection_id,
+        || {
+            log::info!(
+                "Creating new K8s tunnel for {}/{} in {}:{} (context: {})",
+                resource_type, resource_name, namespace, port, context
+            );
+            crate::k8s_tunnel::K8sTunnel::new(
+                context, namespace, resource_type, resource_name, port,
+            )
+            .map_err(|e| {
+                log::error!("[Connection Error] K8s Tunnel setup failed: {}", e);
+                e
+            })
+        },
+    )?;
 
     let mut new_params = params.clone();
     new_params.k8s_enabled = Some(false);
     new_params.host = Some("127.0.0.1".to_string());
-    new_params.port = Some(local_port);
+    new_params.port = Some(tunnel.local_port);
     Ok(new_params)
 }
 
-pub fn resolve_connection_params(params: &ConnectionParams) -> Result<ConnectionParams, String> {
+pub fn resolve_k8s_params(params: &ConnectionParams) -> Result<ConnectionParams, String> {
+    resolve_k8s_params_internal(params, None)
+}
+
+
+
+fn resolve_connection_params_internal(
+    params: &ConnectionParams,
+    connection_id: Option<&str>,
+) -> Result<ConnectionParams, String> {
     // K8s and SSH are mutually exclusive
     if params.k8s_enabled.unwrap_or(false) && params.ssh_enabled.unwrap_or(false) {
         return Err(
-            "Kubernetes and SSH tunnel cannot both be enabled for the same connection".to_string()
+            "Kubernetes and SSH tunnel cannot both be enabled for the same connection".to_string(),
         );
     }
 
     // Handle K8s tunnel
     if params.k8s_enabled.unwrap_or(false) {
-        return resolve_k8s_params(params);
+        return resolve_k8s_params_internal(params, connection_id);
     }
 
-    // Handle SSH tunnel (existing logic)
+    // Handle SSH tunnel
     if !params.ssh_enabled.unwrap_or(false) {
         return Ok(params.clone());
     }
@@ -316,53 +313,43 @@ pub fn resolve_connection_params(params: &ConnectionParams) -> Result<Connection
 
     let map_key = build_tunnel_map_key(ssh_user, ssh_host, ssh_port, remote_host, remote_port);
 
-    // Check for existing tunnel
-    {
-        let tunnels = get_tunnels().lock().unwrap();
-        if let Some(tunnel) = tunnels.get(&map_key) {
-            log::debug!("Reusing existing SSH tunnel on port {}", tunnel.local_port);
-            let mut new_params = params.clone();
-            new_params.host = Some("127.0.0.1".to_string());
-            new_params.port = Some(tunnel.local_port);
-            return Ok(new_params);
-        }
-    }
-
-    // Create new tunnel
-    log::info!(
-        "Creating new SSH tunnel for {}@{}:{}",
-        ssh_user,
-        ssh_host,
-        ssh_port
-    );
-    let tunnel = SshTunnel::new(
-        ssh_host,
-        ssh_port,
-        ssh_user,
-        params.ssh_password.as_deref(),
-        params.ssh_key_file.as_deref(),
-        params.ssh_key_passphrase.as_deref(),
-        params.ssh_allow_passphrase_prompt.unwrap_or(false),
-        remote_host,
-        remote_port,
-    )
-    .map_err(|e| {
-        log::error!("[Connection Error] SSH Tunnel setup failed: {}", e);
-        e
-    })?;
-
-    let local_port = tunnel.local_port;
-    log::info!("SSH tunnel created successfully on port {}", local_port);
-
-    {
-        let mut tunnels = get_tunnels().lock().unwrap();
-        tunnels.insert(map_key, tunnel);
-    }
+    let tunnel = crate::ssh_tunnel::get_or_create_tunnel(
+        crate::ssh_tunnel::get_registry(),
+        &map_key,
+        connection_id,
+        || {
+            log::info!(
+                "Creating new SSH tunnel for {}@{}:{}",
+                ssh_user,
+                ssh_host,
+                ssh_port
+            );
+            SshTunnel::new(
+                ssh_host,
+                ssh_port,
+                ssh_user,
+                params.ssh_password.as_deref(),
+                params.ssh_key_file.as_deref(),
+                params.ssh_key_passphrase.as_deref(),
+                params.ssh_allow_passphrase_prompt.unwrap_or(false),
+                remote_host,
+                remote_port,
+            )
+            .map_err(|e| {
+                log::error!("[Connection Error] SSH Tunnel setup failed: {}", e);
+                e
+            })
+        },
+    )?;
 
     let mut new_params = params.clone();
     new_params.host = Some("127.0.0.1".to_string());
-    new_params.port = Some(local_port);
+    new_params.port = Some(tunnel.local_port);
     Ok(new_params)
+}
+
+pub fn resolve_connection_params(params: &ConnectionParams) -> Result<ConnectionParams, String> {
+    resolve_connection_params_internal(params, None)
 }
 
 /// Resolve connection params and set connection_id for stable pooling
@@ -370,7 +357,7 @@ pub fn resolve_connection_params_with_id(
     params: &ConnectionParams,
     connection_id: &str,
 ) -> Result<ConnectionParams, String> {
-    let mut resolved = resolve_connection_params(params)?;
+    let mut resolved = resolve_connection_params_internal(params, Some(connection_id))?;
     resolved.connection_id = Some(connection_id.to_string());
     Ok(resolved)
 }
@@ -1948,56 +1935,37 @@ pub async fn expand_k8s_connection_params<R: Runtime>(
         port,
     );
 
-    // Check for existing tunnel
-    {
-        let tunnels = crate::k8s_tunnel::get_tunnels().lock().unwrap();
-        if let Some(tunnel) = tunnels.get(&map_key) {
-            log::debug!(
-                "Reusing existing K8s tunnel on port {}",
-                tunnel.local_port
+    let tunnel = crate::ssh_tunnel::get_or_create_tunnel(
+        crate::k8s_tunnel::get_registry(),
+        &map_key,
+        params.connection_id.as_deref(),
+        || {
+            log::info!(
+                "Creating new K8s tunnel for {}/{} in {}:{} (context: {})",
+                resource_type,
+                resource_name,
+                namespace,
+                port,
+                context
             );
-            let mut new_params = params.clone();
-            new_params.k8s_enabled = Some(false);
-            new_params.host = Some("127.0.0.1".to_string());
-            new_params.port = Some(tunnel.local_port);
-            return Ok(new_params);
-        }
-    }
-
-    // Create new tunnel
-    log::info!(
-        "Creating new K8s tunnel for {}/{} in {}:{} (context: {})",
-        resource_type,
-        resource_name,
-        namespace,
-        port,
-        context
-    );
-
-    let tunnel = crate::k8s_tunnel::K8sTunnel::new(
-        &context,
-        &namespace,
-        &resource_type,
-        &resource_name,
-        port,
-    )
-    .map_err(|e| {
-        log::error!("[Connection Error] K8s Tunnel setup failed: {}", e);
-        e
-    })?;
-
-    let local_port = tunnel.local_port;
-    log::info!("K8s tunnel created successfully on port {}", local_port);
-
-    {
-        let mut tunnels = crate::k8s_tunnel::get_tunnels().lock().unwrap();
-        tunnels.insert(map_key, tunnel);
-    }
+            crate::k8s_tunnel::K8sTunnel::new(
+                &context,
+                &namespace,
+                &resource_type,
+                &resource_name,
+                port,
+            )
+            .map_err(|e| {
+                log::error!("[Connection Error] K8s Tunnel setup failed: {}", e);
+                e
+            })
+        },
+    )?;
 
     let mut new_params = params.clone();
     new_params.k8s_enabled = Some(false);
     new_params.host = Some("127.0.0.1".to_string());
-    new_params.port = Some(local_port);
+    new_params.port = Some(tunnel.local_port);
     Ok(new_params)
 }
 
@@ -2017,6 +1985,68 @@ async fn get_k8s_connection_by_id<R: Runtime>(
         .into_iter()
         .find(|c| c.id == k8s_id)
         .ok_or_else(|| format!("K8s connection with ID {} not found", k8s_id))
+}
+
+pub fn is_dropped_transport_error(err: &str) -> bool {
+    let lower = err.to_lowercase();
+    lower.contains("expected to read 4 bytes, got 0 bytes at eof")
+        || lower.contains("got 0 bytes at eof")
+        || lower.contains("connection reset")
+        || lower.contains("broken pipe")
+        || lower.contains("unexpected end of file")
+        || lower.contains("connection closed before message completed")
+}
+
+/// Key of the SSH tunnel used by these expanded (not yet resolved) params, if any.
+pub(crate) fn ssh_tunnel_key_for(params: &ConnectionParams) -> Option<String> {
+    if !params.ssh_enabled.unwrap_or(false) {
+        return None;
+    }
+    let ssh_host = params.ssh_host.as_deref()?;
+    let ssh_user = params.ssh_user.as_deref()?;
+    Some(build_tunnel_map_key(
+        ssh_user,
+        ssh_host,
+        params.ssh_port.unwrap_or(22),
+        params.host.as_deref().unwrap_or("localhost"),
+        params.port.unwrap_or(DEFAULT_MYSQL_PORT),
+    ))
+}
+
+/// After a dropped transport (EOF, reset, broken pipe): stop and forget the SSH
+/// tunnel and close this connection's pools, so the next query reconnects.
+async fn reset_dropped_connection(expanded_params: &ConnectionParams, connection_id: &str) {
+    if let Some(key) = ssh_tunnel_key_for(expanded_params) {
+        // Scoped so the std mutex guard is released before the await below.
+        let _ = crate::ssh_tunnel::get_registry().lock().unwrap().remove_and_stop(&key);
+    }
+    crate::pool_manager::close_pools_for_connection_id(&expanded_params.driver, connection_id).await;
+}
+
+pub fn format_transport_error(err: &str, is_ssh: bool) -> String {
+    if is_dropped_transport_error(err) {
+        if is_ssh {
+            "ERR_SSH_CONNECTION_RESET: SSH tunnel connection was reset. Please run the query again.".to_string()
+        } else {
+            "ERR_CONNECTION_RESET: Connection was reset. Please run the query again.".to_string()
+        }
+    } else {
+        err.to_string()
+    }
+}
+
+async fn run_driver_test(params: &ConnectionParams) -> Result<(), String> {
+    let drv = driver_for(&params.driver).await?;
+    if drv.manifest().capabilities.file_based {
+        let db_path = std::path::Path::new(params.database.primary());
+        if !db_path.exists() {
+            return Err(format!(
+                "Database file not found: {}",
+                params.database
+            ));
+        }
+    }
+    drv.test_connection(params).await
 }
 
 #[tauri::command]
@@ -2054,32 +2084,89 @@ pub async fn test_connection<R: Runtime>(
         resolved_params.port
     );
 
-    let drv = driver_for(&resolved_params.driver).await?;
-
-    // For file-based drivers, verify the database file exists before attempting connection
-    if drv.manifest().capabilities.file_based {
-        let db_path = std::path::Path::new(resolved_params.database.primary());
-        if !db_path.exists() {
-            return Err(format!(
-                "Database file not found: {}",
-                resolved_params.database
-            ));
+    match run_driver_test(&resolved_params).await {
+        Ok(_) => {
+            log::info!(
+                "Connection test successful for database: {}",
+                request.params.database
+            );
+            Ok("Connection successful!".to_string())
         }
+        Err(e) if is_dropped_transport_error(&e) && expanded_params.ssh_enabled.unwrap_or(false) => {
+            log::warn!("[test_connection] SSH transport dropped ({}), recreating tunnel and retrying once...", e);
+            match &request.connection_id {
+                Some(conn_id) => reset_dropped_connection(&expanded_params, conn_id).await,
+                None => {
+                    if let Some(key) = ssh_tunnel_key_for(&expanded_params) {
+                        let _ = crate::ssh_tunnel::get_registry().lock().unwrap().remove_and_stop(&key);
+                    }
+                }
+            }
+
+            let retried_params = if let Some(conn_id) = &request.connection_id {
+                resolve_connection_params_with_id(&expanded_params, conn_id)?
+            } else {
+                resolve_connection_params(&expanded_params)?
+            };
+
+            match run_driver_test(&retried_params).await {
+                Ok(_) => {
+                    log::info!(
+                        "Connection test retry successful for database: {}",
+                        request.params.database
+                    );
+                    Ok("Connection successful!".to_string())
+                }
+                Err(e2) => Err(format_transport_error(&e2, true)),
+            }
+        }
+        Err(e) => Err(format_transport_error(&e, expanded_params.ssh_enabled.unwrap_or(false))),
     }
-
-    drv.test_connection(&resolved_params).await?;
-
-    log::info!(
-        "Connection test successful for database: {}",
-        request.params.database
-    );
-    Ok("Connection successful!".to_string())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::models::DatabaseSelection;
+
+    mod transport_errors {
+        use super::*;
+
+        #[test]
+        fn detects_dropped_transport_errors() {
+            assert!(is_dropped_transport_error(
+                "error communicating with database: expected to read 4 bytes, got 0 bytes at EOF"
+            ));
+            assert!(is_dropped_transport_error("Connection reset by peer (os error 10054)"));
+            assert!(!is_dropped_transport_error("Access denied for user 'root'"));
+        }
+
+        #[test]
+        fn formats_ssh_and_plain_resets_with_codes() {
+            let eof = "expected to read 4 bytes, got 0 bytes at EOF";
+            assert!(format_transport_error(eof, true).starts_with("ERR_SSH_CONNECTION_RESET"));
+            assert!(format_transport_error(eof, false).starts_with("ERR_CONNECTION_RESET"));
+            assert_eq!(format_transport_error("syntax error", true), "syntax error");
+        }
+
+        #[test]
+        fn ssh_tunnel_key_only_for_ssh_connections() {
+            let mut params = base_params();
+            assert_eq!(ssh_tunnel_key_for(&params), None);
+
+            params.ssh_enabled = Some(true);
+            params.ssh_host = Some("bastion".to_string());
+            params.ssh_user = Some("deploy".to_string());
+            let key = ssh_tunnel_key_for(&params).expect("ssh connection has a tunnel key");
+            assert_eq!(
+                key,
+                build_tunnel_map_key("deploy", "bastion", 22, "localhost", 3306)
+            );
+
+            params.ssh_host = None;
+            assert_eq!(ssh_tunnel_key_for(&params), None);
+        }
+    }
 
     fn base_params() -> ConnectionParams {
         ConnectionParams {
@@ -3513,6 +3600,15 @@ pub async fn execute_query<R: Runtime>(
         }
         Ok(Err(e)) => {
             log::error!("Query execution failed: {}", crate::log_redact::redact_db_error(&e));
+            if is_dropped_transport_error(&e) {
+                // Do not retry: a write that failed mid-flight could run twice.
+                // Forget the tunnel and pools so the next run reconnects cleanly.
+                reset_dropped_connection(&expanded_params, &connection_id).await;
+                return Err(format_transport_error(
+                    &e,
+                    expanded_params.ssh_enabled.unwrap_or(false),
+                ));
+            }
             Err(e)
         }
         Err(_) => {
@@ -3624,6 +3720,15 @@ pub async fn execute_query_batch<R: Runtime>(
         }
         Ok(Err(e)) => {
             log::error!("Batch execution failed at setup: {}", crate::log_redact::redact_db_error(&e));
+            if is_dropped_transport_error(&e) {
+                // Do not retry: a write that failed mid-flight could run twice.
+                // Forget the tunnel and pools so the next run reconnects cleanly.
+                reset_dropped_connection(&expanded_params, &connection_id).await;
+                return Err(format_transport_error(
+                    &e,
+                    expanded_params.ssh_enabled.unwrap_or(false),
+                ));
+            }
             Err(e)
         }
         Err(_) => {
@@ -4042,6 +4147,14 @@ pub async fn disconnect_connection<R: Runtime>(
     // cluster must not prevent pool cleanup (#1065).
     crate::pool_manager::close_pools_for_connection_id(&saved_conn.params.driver, &connection_id)
         .await;
+
+    // Release and cleanup idle tunnels for this connection
+    if saved_conn.params.ssh_enabled.unwrap_or(false) {
+        crate::ssh_tunnel::get_registry().lock().unwrap().release_connection(&connection_id);
+    }
+    if saved_conn.params.k8s_enabled.unwrap_or(false) {
+        crate::k8s_tunnel::get_registry().lock().unwrap().release_connection(&connection_id);
+    }
 
     log::info!(
         "Successfully disconnected from connection: {}",

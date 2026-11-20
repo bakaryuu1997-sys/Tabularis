@@ -49,6 +49,41 @@ static MYSQL_POOLS: Lazy<PoolMap<MySql>> = Lazy::new(|| Arc::new(RwLock::new(Has
 static POSTGRES_POOLS: Lazy<PgPoolMap> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 static SQLITE_POOLS: Lazy<PoolMap<Sqlite>> = Lazy::new(|| Arc::new(RwLock::new(HashMap::new())));
 
+/// The `host:port` each cached pool was built against, by pool key.
+///
+/// Pool keys of saved connections do not contain the port on purpose (a pool
+/// must be closable without resolving its tunnel, #1065). But when an SSH or
+/// K8s tunnel dies and is recreated it listens on a new local port, and a pool
+/// cached under the same key would keep dialing the dead port. Comparing the
+/// recorded endpoint on every lookup lets the getters rebuild such a pool.
+static POOL_ENDPOINTS: Lazy<std::sync::Mutex<HashMap<String, String>>> =
+    Lazy::new(|| std::sync::Mutex::new(HashMap::new()));
+
+/// The network endpoint a pool for these (already resolved) params connects to.
+pub(crate) fn pool_endpoint(params: &ConnectionParams) -> String {
+    format!(
+        "{}:{}",
+        params.host.as_deref().unwrap_or(""),
+        params.port.map(|p| p.to_string()).unwrap_or_default()
+    )
+}
+
+/// True when a cached pool was built against a different endpoint than the one
+/// the params now resolve to. An unknown endpoint is treated as unchanged.
+pub(crate) fn endpoint_changed(recorded: Option<&str>, current: &str) -> bool {
+    matches!(recorded, Some(r) if r != current)
+}
+
+fn pool_endpoint_is_stale(key: &str, params: &ConnectionParams) -> bool {
+    let endpoints = POOL_ENDPOINTS.lock().unwrap_or_else(|e| e.into_inner());
+    endpoint_changed(endpoints.get(key).map(String::as_str), &pool_endpoint(params))
+}
+
+fn record_pool_endpoint(key: &str, params: &ConnectionParams) {
+    let mut endpoints = POOL_ENDPOINTS.lock().unwrap_or_else(|e| e.into_inner());
+    endpoints.insert(key.to_string(), pool_endpoint(params));
+}
+
 const DEFAULT_MYSQL_CONNECT_TIMEOUT_MS: u64 = 60_000;
 const DEFAULT_MYSQL_TIMEZONE: &str = "SYSTEM";
 
@@ -711,7 +746,13 @@ async fn get_mysql_pool_for_database_with_id(
     };
 
     // Try to get existing pool
-    {
+    if pool_endpoint_is_stale(&key, params) {
+        let stale = MYSQL_POOLS.write().await.remove(&key);
+        if let Some(pool) = stale {
+            log::info!("Tunnel endpoint changed; rebuilding MySQL connection pool (key: {key})");
+            pool.close().await;
+        }
+    } else {
         let pools = MYSQL_POOLS.read().await;
         if let Some(pool) = pools.get(&key) {
             log::debug!(
@@ -777,6 +818,7 @@ async fn get_mysql_pool_for_database_with_id(
     // Store pool
     {
         let mut pools = MYSQL_POOLS.write().await;
+        record_pool_endpoint(&key, params);
         pools.insert(key, pool.clone());
     }
 
@@ -795,7 +837,13 @@ pub async fn get_postgres_pool_with_id(
     let key = build_connection_key(params, connection_id);
 
     // Try to get existing pool
-    {
+    if pool_endpoint_is_stale(&key, params) {
+        let stale = POSTGRES_POOLS.write().await.remove(&key);
+        if let Some(pool) = stale {
+            log::info!("Tunnel endpoint changed; rebuilding PostgreSQL connection pool (key: {key})");
+            pool.close();
+        }
+    } else {
         let pools = POSTGRES_POOLS.read().await;
         if let Some(pool) = pools.get(&key) {
             log::debug!(
@@ -868,6 +916,7 @@ pub async fn get_postgres_pool_with_id(
     // Store pool
     {
         let mut pools = POSTGRES_POOLS.write().await;
+        record_pool_endpoint(&key, params);
         pools.insert(key, pool.clone());
     }
 
