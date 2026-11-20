@@ -2,7 +2,8 @@
 mod tests {
     use crate::models::{ConnectionParams, DatabaseSelection};
     use crate::pool_manager::{
-        build_connection_key, build_mysql_options, connection_pool_prefix, format_error_chain,
+        build_connection_key, build_mysql_options, connection_pool_prefix, endpoint_changed,
+        format_error_chain, pool_endpoint,
         is_pipes_as_concat_unsupported, remove_pools_with_prefix,
     };
     use sqlx::mysql::MySqlSslMode;
@@ -345,6 +346,22 @@ mod tests {
         assert!(!is_pipes_as_concat_unsupported(
             "Access denied for user 'root'@'localhost'"
         ));
+    }
+
+    #[test]
+    fn pool_endpoint_uses_resolved_host_and_port() {
+        let mut params = connection_params("mysql", None);
+        params.host = Some("127.0.0.1".to_string());
+        params.port = Some(51234);
+        assert_eq!(pool_endpoint(&params), "127.0.0.1:51234");
+    }
+
+    #[test]
+    fn endpoint_change_is_detected_only_when_known_and_different() {
+        assert!(!endpoint_changed(None, "127.0.0.1:51234"));
+        assert!(!endpoint_changed(Some("127.0.0.1:51234"), "127.0.0.1:51234"));
+        // A recreated SSH tunnel listens on a new local port.
+        assert!(endpoint_changed(Some("127.0.0.1:51234"), "127.0.0.1:60001"));
     }
 }
 

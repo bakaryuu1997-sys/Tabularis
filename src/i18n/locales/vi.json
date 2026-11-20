@@ -1,4 +1,8 @@
 {
+  "connectionErrors": {
+    "sshConnectionReset": "Kết nối SSH tunnel đã bị đặt lại. Vui lòng chạy lại truy vấn.",
+    "connectionReset": "Kết nối đã bị đặt lại. Vui lòng chạy lại truy vấn."
+  },
   "toolbar": {
     "filters": "Bộ lọc",
     "toggleFilterPanel": "Bật/tắt bảng lọc có cấu trúc",

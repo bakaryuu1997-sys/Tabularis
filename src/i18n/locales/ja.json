@@ -1,4 +1,8 @@
 {
+  "connectionErrors": {
+    "sshConnectionReset": "SSH トンネル接続がリセットされました。もう一度クエリを実行してください。",
+    "connectionReset": "接続がリセットされました。もう一度クエリを実行してください。"
+  },
   "toolbar": {
     "filters": "フィルター",
     "toggleFilterPanel": "構造化フィルターパネルを切り替え",

@@ -14,17 +14,28 @@ describe("errors", () => {
     expect(toErrorMessage({ message: "Custom error" })).toBe("Custom error");
   });
 
-  it("maps MySQL EOF error to friendly SSH message", () => {
-    const raw = "error communicating with database: expected to read 4 bytes, got 0 bytes at EOF";
+  it("maps ERR_SSH_CONNECTION_RESET error code to clean SSH retry message", () => {
+    const raw = "ERR_SSH_CONNECTION_RESET: SSH tunnel connection was reset. Please run the query again.";
     expect(toErrorMessage(raw)).toBe(
-      "SSH tunnel was closed or disconnected (EOF). Please try reconnecting."
+      "SSH tunnel connection was reset. Please run the query again."
     );
   });
 
-  it("maps generic 0 bytes at EOF error to friendly SSH message", () => {
-    const raw = "Database stream disconnected: got 0 bytes at EOF";
+  it("maps ERR_CONNECTION_RESET error code to generic retry message", () => {
+    const raw = "ERR_CONNECTION_RESET: Connection was reset. Please run the query again.";
     expect(toErrorMessage(raw)).toBe(
-      "SSH tunnel was closed or disconnected (EOF). Please try reconnecting."
+      "Connection was reset. Please run the query again."
     );
+  });
+
+  it("finds the code when the backend message is wrapped", () => {
+    expect(toErrorMessage("Query failed: ERR_CONNECTION_RESET: Connection was reset.")).toBe(
+      "Connection was reset. Please run the query again."
+    );
+  });
+
+  it("does not misattribute non-SSH EOF errors to SSH", () => {
+    const raw = "error communicating with database: expected to read 4 bytes, got 0 bytes at EOF";
+    expect(toErrorMessage(raw)).toBe(raw);
   });
 });

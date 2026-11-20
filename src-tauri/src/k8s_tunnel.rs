@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command, Stdio};
@@ -19,12 +18,7 @@ pub struct K8sTunnel {
     child: Arc<Mutex<Child>>,
 }
 
-pub static TUNNELS: OnceLock<Mutex<HashMap<String, K8sTunnel>>> = OnceLock::new();
 pub static K8S_REGISTRY: OnceLock<Mutex<TunnelRegistry<K8sTunnel>>> = OnceLock::new();
-
-pub fn get_tunnels() -> &'static Mutex<HashMap<String, K8sTunnel>> {
-    TUNNELS.get_or_init(|| Mutex::new(HashMap::new()))
-}
 
 pub fn get_registry() -> &'static Mutex<TunnelRegistry<K8sTunnel>> {
     K8S_REGISTRY.get_or_init(|| Mutex::new(TunnelRegistry::new()))

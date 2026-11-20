@@ -108,6 +108,74 @@ impl<T: TunnelLiveness> TunnelRegistry<T> {
     /// If an existing tunnel is found but is no longer alive, it will be stopped,
     /// removed, and replaced with a fresh tunnel from `create_fn`.
     /// If `connection_id` is provided, it is registered as an active user of the tunnel.
+    /// Check if an alive tunnel exists for key. If a tunnel exists but is dead,
+    /// it is removed, stopped, and its active connection IDs returned so their
+    /// cached pools can be closed (R3.1).
+    pub fn get_live_or_prepare_create(
+        &mut self,
+        key: &str,
+        connection_id: Option<&str>,
+    ) -> (Option<T>, Vec<String>) {
+        if let Some(entry) = self.entries.get_mut(key) {
+            if entry.tunnel.is_alive() {
+                if let Some(cid) = connection_id {
+                    entry.active_connections.insert(cid.to_string());
+                }
+                return (Some(entry.tunnel.clone()), Vec::new());
+            } else {
+                log::info!(
+                    "[Tunnel Registry] Tunnel for key {} is dead, stopping and replacing",
+                    key
+                );
+                entry.tunnel.stop();
+                let dead_connections: Vec<String> = entry.active_connections.iter().cloned().collect();
+                self.entries.remove(key);
+                return (None, dead_connections);
+            }
+        }
+        (None, Vec::new())
+    }
+
+    /// Insert newly created tunnel. If another live tunnel was inserted concurrently,
+    /// stops new_tunnel and returns the existing one (R3.2).
+    pub fn insert_or_use_existing(
+        &mut self,
+        key: &str,
+        connection_id: Option<&str>,
+        new_tunnel: T,
+    ) -> T {
+        if let Some(entry) = self.entries.get_mut(key) {
+            if entry.tunnel.is_alive() {
+                log::info!(
+                    "[Tunnel Registry] Another live tunnel for key {} was registered concurrently; using existing",
+                    key
+                );
+                new_tunnel.stop();
+                if let Some(cid) = connection_id {
+                    entry.active_connections.insert(cid.to_string());
+                }
+                return entry.tunnel.clone();
+            } else {
+                entry.tunnel.stop();
+                self.entries.remove(key);
+            }
+        }
+
+        let mut active_connections = std::collections::HashSet::new();
+        if let Some(cid) = connection_id {
+            active_connections.insert(cid.to_string());
+        }
+        self.entries.insert(
+            key.to_string(),
+            TunnelEntry {
+                tunnel: new_tunnel.clone(),
+                active_connections,
+            },
+        );
+        new_tunnel
+    }
+
+    /// Retrieve an existing alive tunnel, or create a new one using `create_fn`.
     pub fn get_or_create<F, E>(
         &mut self,
         key: &str,
@@ -117,35 +185,12 @@ impl<T: TunnelLiveness> TunnelRegistry<T> {
     where
         F: FnOnce() -> Result<T, E>,
     {
-        if let Some(entry) = self.entries.get_mut(key) {
-            if entry.tunnel.is_alive() {
-                if let Some(cid) = connection_id {
-                    entry.active_connections.insert(cid.to_string());
-                }
-                return Ok(entry.tunnel.clone());
-            } else {
-                log::info!(
-                    "[Tunnel Registry] Tunnel for key {} is dead, stopping and replacing",
-                    key
-                );
-                entry.tunnel.stop();
-                self.entries.remove(key);
-            }
+        let (existing, _replaced_connections) = self.get_live_or_prepare_create(key, connection_id);
+        if let Some(t) = existing {
+            return Ok(t);
         }
-
         let tunnel = create_fn()?;
-        let mut active_connections = std::collections::HashSet::new();
-        if let Some(cid) = connection_id {
-            active_connections.insert(cid.to_string());
-        }
-        self.entries.insert(
-            key.to_string(),
-            TunnelEntry {
-                tunnel: tunnel.clone(),
-                active_connections,
-            },
-        );
-        Ok(tunnel)
+        Ok(self.insert_or_use_existing(key, connection_id, tunnel))
     }
 
     /// Releases a connection from all tunnels it was using.
@@ -176,7 +221,8 @@ impl<T: TunnelLiveness> TunnelRegistry<T> {
     }
 
     /// Removes and stops a specific tunnel by key (e.g. on transport error retry).
-    pub fn remove_and_stop(&mut self, key: &str) -> Option<T> {
+    /// Returns the stopped tunnel and all connection IDs that were using it (R3.1).
+    pub fn remove_and_stop(&mut self, key: &str) -> (Option<T>, Vec<String>) {
         if let Some(entry) = self.entries.remove(key) {
             log::info!(
                 "[Tunnel Registry] Force stopping tunnel for key {} (port {})",
@@ -184,9 +230,10 @@ impl<T: TunnelLiveness> TunnelRegistry<T> {
                 entry.tunnel.local_port()
             );
             entry.tunnel.stop();
-            Some(entry.tunnel)
+            let cids: Vec<String> = entry.active_connections.into_iter().collect();
+            (Some(entry.tunnel), cids)
         } else {
-            None
+            (None, Vec::new())
         }
     }
 
@@ -213,16 +260,49 @@ pub struct SshTunnel {
     backend: TunnelBackend,
 }
 
-pub static TUNNELS: OnceLock<Mutex<HashMap<String, SshTunnel>>> = OnceLock::new();
 pub static SSH_REGISTRY: OnceLock<Mutex<TunnelRegistry<SshTunnel>>> = OnceLock::new();
-
-pub fn get_tunnels() -> &'static Mutex<HashMap<String, SshTunnel>> {
-    TUNNELS.get_or_init(|| Mutex::new(HashMap::new()))
-}
 
 pub fn get_registry() -> &'static Mutex<TunnelRegistry<SshTunnel>> {
     SSH_REGISTRY.get_or_init(|| Mutex::new(TunnelRegistry::new()))
 }
+
+/// Creates a tunnel outside the global registry mutex, avoiding blocking other
+/// threads/health checks during SSH setup or passphrase prompts (R3.2).
+pub fn get_or_create_tunnel<T, F, E>(
+    registry_mutex: &Mutex<TunnelRegistry<T>>,
+    key: &str,
+    connection_id: Option<&str>,
+    create_fn: F,
+) -> Result<T, E>
+where
+    T: TunnelLiveness,
+    F: FnOnce() -> Result<T, E>,
+{
+    // Step 1: Quick lock check
+    // A replaced tunnel listens on a new local port; pools still pointing at the
+    // old one are rebuilt by pool_manager on their next lookup (endpoint check).
+    let (existing, _replaced_connections) = {
+        let mut reg = registry_mutex.lock().unwrap();
+        reg.get_live_or_prepare_create(key, connection_id)
+    };
+
+    if let Some(tunnel) = existing {
+        return Ok(tunnel);
+    }
+
+    // Step 2: Create outside the lock!
+    let new_tunnel = create_fn()?;
+
+    // Step 3: Re-lock to insert or use existing if race occurred
+    let final_tunnel = {
+        let mut reg = registry_mutex.lock().unwrap();
+        reg.insert_or_use_existing(key, connection_id, new_tunnel)
+    };
+
+    Ok(final_tunnel)
+}
+
+
 
 impl SshTunnel {
     pub fn new(
@@ -596,6 +676,16 @@ impl SshTunnel {
 
                 log::info!("[SSH Tunnel] Starting tunnel forwarding loop");
                 while running_clone.load(Ordering::Relaxed) {
+                    // Check if russh handle is closed (keepalive failed or remote server closed session)
+                    {
+                        let h = handle.lock().await;
+                        if h.is_closed() {
+                            log::info!("[SSH Tunnel] Underlying russh handle is closed, terminating accept loop");
+                            running_clone.store(false, Ordering::Relaxed);
+                            break;
+                        }
+                    }
+
                     let accept = tokio::time::timeout(
                         Duration::from_millis(SSH_ACCEPT_POLL_MS),
                         listener.accept(),
@@ -630,7 +720,10 @@ impl SshTunnel {
                         {
                             Ok(c) => c,
                             Err(e) => {
-                                log::error!("[SSH Tunnel Error] Failed to open SSH channel: {}", e);
+                                log::warn!(
+                                    "[SSH Tunnel] Failed to open SSH channel (remote DB unreachable or connection dropped): {}. Marking tunnel as not running.",
+                                    e
+                                );
                                 running_flag.store(false, Ordering::Relaxed);
                                 return;
                             }
@@ -1171,8 +1264,9 @@ mod tests {
                 .unwrap();
             assert_eq!(registry.len(), 1);
 
-            let removed = registry.remove_and_stop(key);
+            let (removed, connections) = registry.remove_and_stop(key);
             assert!(removed.is_some());
+            assert_eq!(connections, vec!["conn-1".to_string()]);
             assert!(t1.stopped.load(Ordering::Relaxed));
             assert_eq!(registry.len(), 0);
         }

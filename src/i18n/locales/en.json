@@ -1,4 +1,8 @@
 {
+  "connectionErrors": {
+    "sshConnectionReset": "SSH tunnel connection was reset. Please run the query again.",
+    "connectionReset": "Connection was reset. Please run the query again."
+  },
   "toolbar": {
     "filters": "Filters",
     "toggleFilterPanel": "Toggle structured filter panel",
