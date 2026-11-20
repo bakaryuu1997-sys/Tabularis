@@ -59,7 +59,9 @@ export function withVietnameseSafeFont(stack: string): string {
 }
 
 /**
- * Ensures "JetBrains Mono" is placed BEFORE any generic monospace family in the mono font-family stack.
+ * Ensures the bundled "JetBrains Mono" (full Vietnamese coverage) is in the mono stack before any
+ * generic monospace family, so a CJK system monospace font never renders Vietnamese text.
+ * A stack that already lists JetBrains Mono is returned unchanged: the user's or theme's order wins.
  */
 export function withVietnameseSafeMonoFont(stack: string): string {
   const families = stack
@@ -67,17 +69,16 @@ export function withVietnameseSafeMonoFont(stack: string): string {
     .map((f) => f.trim())
     .filter(Boolean);
   if (families.length === 0) return stack;
+  if (families.some((f) => bare(f) === "jetbrains mono")) return stack;
 
-  const filtered = families.filter((f) => bare(f) !== "jetbrains mono");
-  const firstGenericIndex = filtered.findIndex((f) => GENERIC_MONO_FAMILIES.has(bare(f)));
-
+  const firstGenericIndex = families.findIndex((f) => GENERIC_MONO_FAMILIES.has(bare(f)));
   if (firstGenericIndex === -1) {
-    return [...filtered, VIETNAMESE_SAFE_MONO_FONT].join(", ");
+    return [...families, VIETNAMESE_SAFE_MONO_FONT].join(", ");
   }
 
   return [
-    ...filtered.slice(0, firstGenericIndex),
+    ...families.slice(0, firstGenericIndex),
     VIETNAMESE_SAFE_MONO_FONT,
-    ...filtered.slice(firstGenericIndex),
+    ...families.slice(firstGenericIndex),
   ].join(", ");
 }

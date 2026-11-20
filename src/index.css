@@ -12,7 +12,6 @@
 
 @theme {
   --font-sans: var(--font-base);
-  --font-mono: var(--font-mono);
 
   /* Expose CSS variables as Tailwind colors */
   --color-base: var(--bg-base);

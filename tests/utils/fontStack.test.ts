@@ -42,9 +42,12 @@ describe("withVietnameseSafeMonoFont", () => {
     expect(withVietnameseSafeMonoFont("Consolas, Menlo")).toBe('Consolas, Menlo, "JetBrains Mono"');
   });
 
-  it("does not duplicate JetBrains Mono if already present", () => {
+  it("keeps a stack that already lists JetBrains Mono unchanged", () => {
     expect(withVietnameseSafeMonoFont('"JetBrains Mono", Consolas, monospace')).toBe(
-      'Consolas, "JetBrains Mono", monospace',
+      '"JetBrains Mono", Consolas, monospace',
+    );
+    expect(withVietnameseSafeMonoFont("Fira Code, JetBrains Mono, monospace")).toBe(
+      "Fira Code, JetBrains Mono, monospace",
     );
   });
 

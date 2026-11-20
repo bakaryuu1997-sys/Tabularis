@@ -7,7 +7,7 @@ import { withVietnameseSafeFont } from "./fontStack";
 
 export const FONT_MAP: Record<string, string> = {
   System:
-    '"Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, Roboto, Ubuntu, "Yu Gothic UI", Meiryo, sans-serif',
+    '"Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, "Inter", Roboto, Ubuntu, "Yu Gothic UI", Meiryo, sans-serif',
   Inter:
     '"Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, "Yu Gothic UI", Meiryo, sans-serif',
   "Open Sans": 'Open Sans, "Inter", "Segoe UI", system-ui, sans-serif',
