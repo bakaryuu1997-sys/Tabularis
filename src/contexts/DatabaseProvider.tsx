@@ -464,7 +464,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [activeConnectionId, connectionDataMap, updateConnectionData, loadDatabaseData]);
 
-  const connect = async (connectionId: string) => {
+  const connect = useCallback(
+    async (connectionId: string) => {
     // Capture previous state so we can restore it on failure
     const prevActiveConnectionId = activeConnectionId;
 
@@ -701,7 +702,7 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
       setActiveConnectionId(prevActiveConnectionId);
       throw error;
     }
-  };
+  }, [activeConnectionId, openConnectionIds, updateConnectionData]);
 
   const disconnect = async (connectionId?: string) => {
     const targetId = connectionId || activeConnectionId;

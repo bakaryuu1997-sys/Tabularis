@@ -462,115 +462,121 @@ export function AiChatWidget() {
     [handleInsertSql, handleRunSql, activeConnectionId],
   );
 
-  const handleSend = async (override?: string) => {
-    const text = (override ?? input).trim();
-    if (!text || loading) return;
-    if (!provider) {
-      setError(t("aiChat.errorNoProvider"));
-      return;
-    }
+  const handleSend = useCallback(
+    async (override?: string) => {
+      const text = (override ?? input).trim();
+      if (!text || loading) return;
+      if (!provider) {
+        setError(t("aiChat.errorNoProvider"));
+        return;
+      }
 
-    cancelRef.current = false;
-    const userMsg: ChatMessage = { role: "user", content: text };
-    const history = [...messages, userMsg];
+      cancelRef.current = false;
+      const userMsg: ChatMessage = { role: "user", content: text };
+      const history = [...messages, userMsg];
 
-    // Auto-name a still-unnamed session from its first user message.
-    if (messages.every((m) => m.role !== "user")) {
-      const title = text.replace(/\s+/g, " ").trim().slice(0, 40) || DEFAULT_TITLE;
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === currentId && isDefaultTitle(s.title)
-            ? { ...s, title }
-            : s,
-        ),
-      );
-    }
+      // Auto-name a still-unnamed session from its first user message.
+      if (messages.every((m) => m.role !== "user")) {
+        const title = text.replace(/\s+/g, " ").trim().slice(0, 40) || DEFAULT_TITLE;
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === currentId && isDefaultTitle(s.title)
+              ? { ...s, title }
+              : s,
+          ),
+        );
+      }
 
-    setMessages(history);
-    setInput("");
-    setError(null);
-    setLoading(true);
+      setMessages(history);
+      setInput("");
+      setError(null);
+      setLoading(true);
 
-    const schema = await getSchemaContext();
+      const schema = await getSchemaContext();
 
-    // Append an empty assistant bubble that streaming deltas fill in.
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
-    let acc = "";
-    let rafId: number | null = null;
-    const channel = new Channel<string>();
-    channel.onmessage = (delta) => {
-      if (cancelRef.current) return;
-      acc += delta;
-      if (rafId === null) {
-        rafId = requestAnimationFrame(() => {
-          rafId = null;
-          setMessages((prev) => {
-            const copy = [...prev];
-            copy[copy.length - 1] = { role: "assistant", content: acc };
-            return copy;
+      // Append an empty assistant bubble that streaming deltas fill in.
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      let acc = "";
+      let rafId: number | null = null;
+      const channel = new Channel<string>();
+      channel.onmessage = (delta) => {
+        if (cancelRef.current) return;
+        acc += delta;
+        if (rafId === null) {
+          rafId = requestAnimationFrame(() => {
+            rafId = null;
+            setMessages((prev) => {
+              const copy = [...prev];
+              copy[copy.length - 1] = { role: "assistant", content: acc };
+              return copy;
+            });
           });
-        });
-      }
-    };
-
-    const req = {
-      provider,
-      model: settings.aiModel || "",
-      messages: history,
-      schema,
-    };
-
-    try {
-      await invoke<string>("chat_ai_stream", { req, onEvent: channel });
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      if (cancelRef.current) return;
-      // If the provider streamed nothing and backend fallback also came back
-      // empty, surface a hint instead of a blank bubble.
-      setMessages((prev) => {
-        const copy = [...prev];
-        copy[copy.length - 1] = {
-          role: "assistant",
-          content: acc.trim() ? acc : t("aiChat.emptyResponse"),
-        };
-        return copy;
-      });
-    } catch (e) {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-      if (cancelRef.current) return;
-      // Drop the empty placeholder and show the error.
-      setMessages((prev) => {
-        const copy = [...prev];
-        if (
-          copy.length > 0 &&
-          copy[copy.length - 1].role === "assistant" &&
-          !copy[copy.length - 1].content
-        ) {
-          copy.pop();
         }
-        return copy;
-      });
-      setError(String(e));
-    } finally {
-      if (!cancelRef.current) {
-        setLoading(false);
-        inputRef.current?.focus();
+      };
+
+      const req = {
+        provider,
+        model: settings.aiModel || "",
+        messages: history,
+        schema,
+      };
+
+      try {
+        await invoke<string>("chat_ai_stream", { req, onEvent: channel });
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        if (cancelRef.current) return;
+        // If the provider streamed nothing and backend fallback also came back
+        // empty, surface a hint instead of a blank bubble.
+        setMessages((prev) => {
+          const copy = [...prev];
+          copy[copy.length - 1] = {
+            role: "assistant",
+            content: acc.trim() ? acc : t("aiChat.emptyResponse"),
+          };
+          return copy;
+        });
+      } catch (e) {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        if (cancelRef.current) return;
+        // Drop the empty placeholder and show the error.
+        setMessages((prev) => {
+          const copy = [...prev];
+          if (
+            copy.length > 0 &&
+            copy[copy.length - 1].role === "assistant" &&
+            !copy[copy.length - 1].content
+          ) {
+            copy.pop();
+          }
+          return copy;
+        });
+        setError(String(e));
+      } finally {
+        if (!cancelRef.current) {
+          setLoading(false);
+          inputRef.current?.focus();
+        }
       }
-    }
-  };
+    },
+    [input, loading, provider, t, messages, currentId, getSchemaContext, settings.aiModel],
+  );
+
+  const handleSendRef = useRef(handleSend);
+  handleSendRef.current = handleSend;
 
   // Listen for prompts requested from external components (e.g. "Ask AI to fix error" button).
   useEffect(() => {
     return onAiPrompt((prompt) => {
       setOpen(true);
-      void handleSend(prompt);
+      void handleSendRef.current(prompt);
     });
-  }, [handleSend]);
+  }, []);
 
   // Client-side stop: ignore further deltas and finalize the current bubble.
   // (The backend request may run a moment longer, but its output is discarded.)

@@ -1120,8 +1120,26 @@ export const Editor = () => {
       addHistoryEntry,
       guardDangerousQuery,
       connections,
+      activeConnectionObj?.name,
+      effectiveSafeModeLevel,
+      showAlert,
     ],
   );
+
+  const {
+    transactionMode,
+    setTransactionMode,
+    isTransactionActive,
+    startTransaction: handleStartTransaction,
+    commitTransaction: handleCommitTransaction,
+    rollbackTransaction: handleRollbackTransaction,
+  } = useTransactionControl({
+    connectionId: activeConnectionId,
+    capabilities: activeCapabilities,
+    runQuery,
+    showAlert,
+    t,
+  });
 
   const runMultipleQueries = useCallback(
     async (queries: string[], paramsOverride?: Record<string, string>) => {
@@ -1530,8 +1548,36 @@ export const Editor = () => {
   // asynchronously — gating behind the first detach races that emit and can leave
   // the window stuck on "Loading…". Each handler self-guards (action via
   // detachedTabIdsRef, ready via the tabsRef lookup, closed via prev.has).
+  //
+  // For the same reason the subscription must stay stable: the handlers read the
+  // current values through detachedWindowCtxRef instead of listing them as
+  // dependencies, which would tear down and re-register the listeners on almost
+  // every render (lost handshakes, or an action handled twice while an old
+  // unsubscribe is still pending).
+  const detachedWindowCtx = {
+    activeConnectionId,
+    copyFormat,
+    csvDelimiter,
+    csvIncludeHeaders,
+    activeDriver,
+    effectiveTables,
+    activeSchema,
+    activeDialect,
+    runQuery,
+    runMultipleQueries,
+    runResultEntryPage,
+    loadCount,
+    updateTab,
+    handleReattachResults,
+  };
+  const detachedWindowCtxRef = useRef(detachedWindowCtx);
+  useEffect(() => {
+    detachedWindowCtxRef.current = detachedWindowCtx;
+  });
+
   useEffect(() => {
     const emitSyncFor = (tabId: string) => {
+      const ctx = detachedWindowCtxRef.current;
       const tab = tabsRef.current.find((t) => t.id === tabId);
       if (tab) {
         emit(
@@ -1539,20 +1585,29 @@ export const Editor = () => {
           buildSyncPayload(
             tab,
             {
-              connectionId: activeConnectionId,
-              copyFormat,
-              csvDelimiter,
-              csvIncludeHeaders,
+              connectionId: ctx.activeConnectionId,
+              copyFormat: ctx.copyFormat,
+              csvDelimiter: ctx.csvDelimiter,
+              csvIncludeHeaders: ctx.csvIncludeHeaders,
             },
-            activeDriver ?? undefined,
-            effectiveTables,
-            activeSchema,
+            ctx.activeDriver ?? undefined,
+            ctx.effectiveTables,
+            ctx.activeSchema,
           ),
         );
       }
     };
 
     const makeHandlers = (tabId: string): ResultsWindowActionHandlers => {
+      const {
+        activeDialect,
+        runQuery,
+        runMultipleQueries,
+        runResultEntryPage,
+        loadCount,
+        updateTab,
+        handleReattachResults,
+      } = detachedWindowCtxRef.current;
       const tabResults = () => {
         const tab = tabsRef.current.find((t) => t.id === tabId);
         return tab && tab.results ? tab : null;
@@ -1672,16 +1727,7 @@ export const Editor = () => {
       actionP.then((u) => u());
       closedP.then((u) => u());
     };
-  }, [
-    activeConnectionId,
-    copyFormat,
-    csvDelimiter,
-    csvIncludeHeaders,
-    runQuery,
-    runResultEntryPage,
-    loadCount,
-    updateTab,
-  ]);
+  }, []);
 
   const handleRunButton = useCallback(() => {
     if (!activeTab) return;
@@ -1845,7 +1891,7 @@ export const Editor = () => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleRunButton]);
+  }, [handleRunButton, handleCommitTransaction, handleRollbackTransaction]);
 
   // Global Ctrl+Tab shortcut: open tab switcher and advance to next tab circularly.
   // In split mode only the focused pane (explorerConnectionId) handles the shortcut.
@@ -2971,6 +3017,8 @@ export const Editor = () => {
     navigate,
     runQuery,
     t,
+    splitTabIds,
+    togglePin,
   ]);
 
   // Process pending executions when tabs are created/updated
@@ -3104,21 +3152,6 @@ export const Editor = () => {
     setIsRunDropdownOpen((prev) => !prev);
   }, [isRunDropdownOpen, activeTab, activeDialect]);
 
-  const {
-    transactionMode,
-    setTransactionMode,
-    isTransactionActive,
-    startTransaction: handleStartTransaction,
-    commitTransaction: handleCommitTransaction,
-    rollbackTransaction: handleRollbackTransaction,
-  } = useTransactionControl({
-    connectionId: activeConnectionId,
-    capabilities: activeCapabilities,
-    runQuery,
-    showAlert,
-    t,
-  });
-
   const handleInsertSqlTemplate = useCallback(
     (templateSql: string) => {
       if (!activeTab) return;
@@ -3148,6 +3181,9 @@ export const Editor = () => {
     },
     [activeTab, updateTab],
   );
+
+  const handleOpenExplainDiffRef = useRef(handleOpenExplainDiff);
+  handleOpenExplainDiffRef.current = handleOpenExplainDiff;
 
   useEffect(() => {
     const handleOpenTemplates = () => {
@@ -3183,7 +3219,7 @@ export const Editor = () => {
     window.addEventListener("tabularis:open-schema-diff", handleOpenSchemaDiff);
     window.addEventListener("tabularis:open-table-spec", handleOpenTableSpec);
     const handleOpenTeamSync = () => setIsTeamSyncOpen(true);
-    const handleOpenExplainDiffEvent = () => handleOpenExplainDiff();
+    const handleOpenExplainDiffEvent = () => handleOpenExplainDiffRef.current();
     window.addEventListener("tabularis:open-team-sync", handleOpenTeamSync);
     window.addEventListener("tabularis:open-explain-diff", handleOpenExplainDiffEvent);
     return () => {
