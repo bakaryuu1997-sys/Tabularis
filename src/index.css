@@ -1,14 +1,6 @@
 @import "tailwindcss";
 
-/* Bundled local fonts with full Vietnamese (U+1EA0-1EF9) and Latin coverage */
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
-@import "@fontsource/jetbrains-mono/400.css";
-@import "@fontsource/jetbrains-mono/500.css";
-@import "@fontsource/jetbrains-mono/600.css";
-@import "@fontsource/jetbrains-mono/700.css";
+/* Bundled fonts (Inter, JetBrains Mono) are imported from src/fonts.ts. */
 
 @theme {
   --font-sans: var(--font-base);

@@ -6,6 +6,7 @@ import './monacoSetup';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
+import './fonts';
 import './index.css';
 import './i18n/config';
 import { DatabaseProvider } from './contexts/DatabaseProvider';
