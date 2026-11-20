@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   findAutoUppercaseCandidate,
   isOffsetInNonCodeSpan,
-  getLocalSqlSlice,
   AUTO_UPPERCASE_KEYWORDS,
 } from '../../src/utils/sqlAutoUppercase';
 
@@ -81,42 +80,22 @@ describe('sqlAutoUppercase', () => {
     });
   });
 
-  describe('getLocalSqlSlice', () => {
-    it('returns single line correctly with offset', () => {
-      const lines = ['SELECT 1;'];
-      const { slice, offsetInSlice } = getLocalSqlSlice((l) => lines[l - 1], 1, 8);
-      expect(slice).toBe('SELECT 1;');
-      expect(offsetInSlice).toBe(7);
+  describe('isOffsetInNonCodeSpan on a script prefix', () => {
+    it('treats a word inside a block comment opened far above as non-code', () => {
+      const lines = ['/*', ...Array.from({ length: 300 }, (_, i) => ` * note ${i}`), ' * select'];
+      const prefix = lines.join('\n');
+      const offset = prefix.length - 'select'.length;
+      expect(isOffsetInNonCodeSpan(offset, prefix, 'postgres')).toBe(true);
     });
 
-    it('bounds lookback to maxLookbackLines', () => {
-      const lines = Array.from({ length: 150 }, (_, i) => `-- line ${i + 1}`);
-      lines.push('select ');
-      // line 151
-      const { slice, offsetInSlice } = getLocalSqlSlice((l) => lines[l - 1], 151, 1, 50);
-      // Should only include lines 101 to 151 (51 lines)
-      const sliceLines = slice.split('\n');
-      expect(sliceLines.length).toBe(51);
-      expect(sliceLines[0]).toBe('-- line 101');
-      expect(sliceLines[sliceLines.length - 1]).toBe('select ');
-      expect(offsetInSlice).toBe(slice.length - 'select '.length);
+    it('treats a word after a closed block comment as code', () => {
+      const prefix = '/* a\n b */\nselect';
+      expect(isOffsetInNonCodeSpan(prefix.length - 'select'.length, prefix, 'postgres')).toBe(false);
     });
 
-    it('correctly calculates offset when inside a multi-line block comment in lookback window', () => {
-      const lines = [
-        '/*',
-        ' * multi-line comment',
-        ' * select keyword here',
-        ' */',
-        'select * from t;',
-      ];
-      // line 3, column 4 (inside " * select")
-      const { slice, offsetInSlice } = getLocalSqlSlice((l) => lines[l - 1], 3, 4, 10);
-      expect(isOffsetInNonCodeSpan(offsetInSlice, slice, 'postgres')).toBe(true);
-
-      // line 5, column 1 ("select" outside comment)
-      const res5 = getLocalSqlSlice((l) => lines[l - 1], 5, 1, 10);
-      expect(isOffsetInNonCodeSpan(res5.offsetInSlice, res5.slice, 'postgres')).toBe(false);
+    it('treats a word inside an unterminated string as non-code', () => {
+      const prefix = "SELECT 'abc\nselect";
+      expect(isOffsetInNonCodeSpan(prefix.length - 'select'.length, prefix, 'mysql')).toBe(true);
     });
   });
 });

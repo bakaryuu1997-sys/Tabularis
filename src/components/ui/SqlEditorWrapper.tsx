@@ -21,7 +21,6 @@ import {
 import {
   findAutoUppercaseCandidate,
   isOffsetInNonCodeSpan,
-  getLocalSqlSlice,
   AUTO_UPPERCASE_DELIMITERS,
 } from "../../utils/sqlAutoUppercase";
 import { validateSqlSchema } from "../../utils/autocomplete";
@@ -326,13 +325,6 @@ const SqlEditorInternal = ({
       domNode?.addEventListener('compositionstart', onCompStart, true);
       domNode?.addEventListener('compositionend', onCompEnd, true);
 
-      // Do not allow Monaco suggestion acceptance to hijack Enter while IME is composing (e.g. Japanese Kanji commit)
-      editor.onKeyDown((e) => {
-        if (isImeComposingRef.current && e.keyCode === monaco.KeyCode.Enter) {
-          e.stopPropagation();
-        }
-      });
-
       // Register SQL snippets quick trigger (Ctrl + J)
       editor.addAction({
         id: 'tabularis.showSqlSnippets',
@@ -558,16 +550,21 @@ const SqlEditorInternal = ({
             );
             if (!candidate) continue;
 
-            const { slice, offsetInSlice } = getLocalSqlSlice(
-              (l) => model.getLineContent(l),
-              change.range.startLineNumber,
-              candidate.startColumn,
-            );
+            // Scan from the top of the script up to the end of the word, so a
+            // comment or string opened any number of lines above is seen. Ending
+            // the text after the word keeps an unterminated comment covering it.
+            const prefix = model.getValueInRange({
+              startLineNumber: 1,
+              startColumn: 1,
+              endLineNumber: change.range.startLineNumber,
+              endColumn: candidate.endColumn,
+            });
+            const wordOffset = prefix.length - (candidate.endColumn - candidate.startColumn);
 
             if (
               isOffsetInNonCodeSpan(
-                offsetInSlice,
-                slice,
+                wordOffset,
+                prefix,
                 dialectRef.current,
               )
             ) {
