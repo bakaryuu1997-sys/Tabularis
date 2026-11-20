@@ -1,117 +1,127 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { useAlert } from "../hooks/useAlert";
 import { useDatabase } from "../hooks/useDatabase";
+import { RECONNECT_DELAYS_MS, reconnectAttemptCount } from "../utils/reconnect";
 
-const BACKOFF_DELAYS = [2000, 5000, 15000];
-
-interface ReconnectingState {
-  connectionId: string;
+interface ReconnectProgress {
   attempt: number;
   maxAttempts: number;
 }
 
 /**
- * Component that listens for backend connection-health-failed events
- * and manages auto-reconnect with exponential backoff (2s, 5s, 15s) and a visible
- * status indicator, without flooding toasts or running polling SQL queries.
+ * Listens for backend `connection-health-failed` events and reconnects the
+ * failed connection with backoff, showing a small status pill meanwhile.
+ *
+ * This is the only auto-reconnect path: the backend health check has already
+ * closed the pools and released the tunnel before emitting the event. Each
+ * connection has its own retry loop; a new failure event for the same
+ * connection cancels the previous loop.
  */
 export function ConnectionHealthMonitor() {
   const { showAlert } = useAlert();
   const { t } = useTranslation();
   const { connect } = useDatabase();
-  const [reconnectingState, setReconnectingState] = useState<ReconnectingState | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [progress, setProgress] = useState<Record<string, ReconnectProgress>>({});
+
+  // Read through refs so the event subscription stays stable across renders.
+  const connectRef = useRef(connect);
+  const showAlertRef = useRef(showAlert);
+  const tRef = useRef(t);
+  useEffect(() => {
+    connectRef.current = connect;
+    showAlertRef.current = showAlert;
+    tRef.current = t;
+  });
+
+  // Incremented per connection to cancel an older loop; cleared on unmount.
+  const runIdsRef = useRef<Record<string, number>>({});
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   useEffect(() => {
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-    };
-  }, []);
+    let disposed = false;
+    const timers = timersRef.current;
+    const maxAttempts = reconnectAttemptCount();
 
-  const attemptReconnect = useCallback(
-    async (connectionId: string) => {
-      for (let attemptIndex = 0; attemptIndex < BACKOFF_DELAYS.length; attemptIndex++) {
-        setReconnectingState({
-          connectionId,
-          attempt: attemptIndex + 1,
-          maxAttempts: BACKOFF_DELAYS.length,
-        });
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          timers.delete(timer);
+          resolve();
+        }, ms);
+        timers.add(timer);
+      });
 
+    const setAttempt = (connectionId: string, attempt: number | null) =>
+      setProgress((prev) => {
+        const next = { ...prev };
+        if (attempt === null) delete next[connectionId];
+        else next[connectionId] = { attempt, maxAttempts };
+        return next;
+      });
+
+    const reconnect = async (connectionId: string) => {
+      const runId = (runIdsRef.current[connectionId] ?? 0) + 1;
+      runIdsRef.current[connectionId] = runId;
+      const cancelled = () => disposed || runIdsRef.current[connectionId] !== runId;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        if (cancelled()) return;
+        setAttempt(connectionId, attempt);
         try {
-          await connect(connectionId);
-          // Reconnected successfully
-          setReconnectingState(null);
+          await connectRef.current(connectionId);
+          if (!cancelled()) setAttempt(connectionId, null);
           return;
         } catch {
-          // Wait for the backoff delay before the next retry
-          const delay = BACKOFF_DELAYS[attemptIndex];
-          await new Promise<void>((resolve) => {
-            reconnectTimeoutRef.current = setTimeout(resolve, delay);
-          });
+          // No wait after the final attempt.
+          if (attempt < maxAttempts) await wait(RECONNECT_DELAYS_MS[attempt - 1]);
         }
       }
 
-      // Failed after all backoff retries
-      setReconnectingState(null);
-      showAlert(
-        t("healthCheck.reconnectFailed", {
-          defaultValue: "Could not reconnect to database after multiple attempts.",
-        }),
-        {
-          kind: "error",
-          title: t("healthCheck.title"),
-        }
-      );
-    },
-    [connect, showAlert, t]
-  );
+      if (cancelled()) return;
+      setAttempt(connectionId, null);
+      showAlertRef.current(tRef.current("healthCheck.reconnectFailed"), {
+        kind: "error",
+        title: tRef.current("healthCheck.title"),
+      });
+    };
 
-  useEffect(() => {
     const unlisten = listen<{ connectionId: string; error: string }>(
       "connection-health-failed",
       (event) => {
         const { connectionId, error } = event.payload;
-        showAlert(
-          `${t("healthCheck.connectionLost")}: ${error}`,
-          {
-            kind: "warning",
-            title: t("healthCheck.title"),
-          },
-        );
-        if (connectionId) {
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          attemptReconnect(connectionId);
-        }
+        showAlertRef.current(`${tRef.current("healthCheck.connectionLost")}: ${error}`, {
+          kind: "warning",
+          title: tRef.current("healthCheck.title"),
+        });
+        if (connectionId) void reconnect(connectionId);
       },
     );
+
     return () => {
+      disposed = true;
+      timers.forEach(clearTimeout);
+      timers.clear();
       unlisten.then((fn) => fn());
     };
-  }, [attemptReconnect, showAlert, t]);
+  }, []);
 
-  if (!reconnectingState) {
-    return null;
-  }
+  const entries = Object.values(progress);
+  if (entries.length === 0) return null;
+  const { attempt, maxAttempts } = entries[0];
 
   return (
     <div
       role="status"
       aria-live="polite"
-      className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2 rounded-full bg-amber-500/90 text-white text-xs font-medium shadow-lg backdrop-blur border border-amber-400/40 animate-pulse pointer-events-none select-none"
+      className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 px-4 py-2 rounded-full bg-amber-500/90 text-white text-xs font-medium shadow-lg backdrop-blur border border-amber-400/40 pointer-events-none select-none"
     >
       <Loader2 className="w-3.5 h-3.5 animate-spin" />
       <span>
-        {t("healthCheck.reconnecting", {
-          defaultValue: "Reconnecting to database...",
-        })}{" "}
-        ({reconnectingState.attempt}/{reconnectingState.maxAttempts})
+        {t("healthCheck.reconnecting")} ({attempt}/{maxAttempts})
+        {entries.length > 1 ? ` +${entries.length - 1}` : ""}
       </span>
     </div>
   );

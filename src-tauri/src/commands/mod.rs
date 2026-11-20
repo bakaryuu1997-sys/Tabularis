@@ -4021,15 +4021,6 @@ pub async fn register_active_connection(connection_id: String) {
     crate::health_check::register_connection(connection_id).await;
 }
 
-/// Ping a single active database connection using its driver's native ping method.
-#[tauri::command]
-pub async fn ping_connection<R: Runtime>(
-    app: AppHandle<R>,
-    connection_id: String,
-) -> Result<(), String> {
-    crate::health_check::ping_single_connection(&app, &connection_id).await
-}
-
 /// Disconnect from a database connection by closing its connection pool
 #[tauri::command]
 pub async fn disconnect_connection<R: Runtime>(
