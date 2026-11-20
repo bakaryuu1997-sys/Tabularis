@@ -87,11 +87,13 @@ mod safe_path_tests {
 
     #[test]
     fn normalizes_good_relative_paths() {
-        assert_eq!(normalize_relative_path("ui/panel.js").unwrap().to_string_lossy(), "ui/panel.js");
-        assert_eq!(normalize_relative_path("ui\\panel.js").unwrap().to_string_lossy(), "ui/panel.js");
-        assert_eq!(normalize_relative_path("a.js").unwrap().to_string_lossy(), "a.js");
+        // The result is a native PathBuf: compare with '/' so the test also holds on Windows.
+        let norm = |p: &str| normalize_relative_path(p).unwrap().to_string_lossy().replace('\\', "/");
+        assert_eq!(norm("ui/panel.js"), "ui/panel.js");
+        assert_eq!(norm("ui\\panel.js"), "ui/panel.js");
+        assert_eq!(norm("a.js"), "a.js");
         // An interior "." is harmless and is dropped.
-        assert_eq!(normalize_relative_path("a/./b.js").unwrap().to_string_lossy(), "a/b.js");
+        assert_eq!(norm("a/./b.js"), "a/b.js");
     }
 
     #[test]

@@ -787,6 +787,8 @@ mod blob_file_ref_tests {
         assert!(err.contains("exceeds maximum allowed size"), "{err}");
     }
 
+    // ':' is not allowed in Windows file names, so this case only exists on Unix.
+    #[cfg(unix)]
     #[test]
     fn colons_in_the_path_are_kept() {
         let dir = tempfile::tempdir().unwrap();
