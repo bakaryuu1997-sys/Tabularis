@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, type KeyboardEvent } from "react";
+import { useState, useRef, useEffect, useMemo, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
@@ -63,7 +63,7 @@ export function TabSearchPopover({
     setIsOpen(false);
   };
 
-  const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
     if (flatItems.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
