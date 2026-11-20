@@ -14,8 +14,9 @@ import {
 } from "lucide-react";
 import type { Tab } from "../../types/editor";
 import { statementLabel } from "../../utils/sql";
-import { extractQueryParams } from "../../utils/queryParameters";
 import {
+  canEditParameters,
+  canExportResult,
   getRunShortcutLabel,
   getRunAriaShortcut,
   getActiveDatabaseLabel,
@@ -175,10 +176,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       {!isTableTab && (
         <button
           onClick={onEditParams}
-          disabled={
-            !activeTab?.query ||
-            extractQueryParams(activeTab.query).length === 0
-          }
+          disabled={!canEditParameters(activeTab)}
           className="flex items-center gap-2 px-3 py-1.5 bg-surface-secondary hover:bg-surface text-primary rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-strong"
           title={t("editor.queryParameters")}
         >
@@ -192,7 +190,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       <div className="relative ml-auto">
         <button
           onClick={onToggleExportMenu}
-          disabled={!activeTab.result || activeTab.result.rows.length === 0}
+          disabled={!canExportResult(activeTab.result)}
           aria-haspopup="menu"
           aria-expanded={exportMenuOpen}
           className={clsx(
