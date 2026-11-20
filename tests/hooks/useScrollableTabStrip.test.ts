@@ -2,80 +2,74 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useScrollableTabStrip } from "../../src/hooks/useScrollableTabStrip";
 
+function makeContainer(): HTMLDivElement {
+  const el = document.createElement("div");
+  Object.defineProperty(el, "clientWidth", { value: 500, configurable: true });
+  Object.defineProperty(el, "scrollWidth", { value: 1000, configurable: true });
+  Object.defineProperty(el, "scrollLeft", { value: 0, writable: true, configurable: true });
+  el.scrollTo = vi.fn() as unknown as typeof el.scrollTo;
+  return el;
+}
+
+function wheel(deltaY: number): WheelEvent {
+  const event = new Event("wheel", { cancelable: true }) as WheelEvent;
+  Object.defineProperty(event, "deltaY", { value: deltaY });
+  return event;
+}
+
 describe("useScrollableTabStrip", () => {
-  let mockContainer: HTMLDivElement;
+  let container: HTMLDivElement;
 
   beforeEach(() => {
-    mockContainer = document.createElement("div");
-    Object.defineProperty(mockContainer, "clientWidth", { value: 500, configurable: true });
-    Object.defineProperty(mockContainer, "scrollWidth", { value: 1000, configurable: true });
-    Object.defineProperty(mockContainer, "scrollLeft", { value: 0, writable: true, configurable: true });
-    mockContainer.scrollBy = vi.fn();
+    container = makeContainer();
   });
 
-  it("initializes with canScrollLeft=false and canScrollRight=false before mounting container", () => {
+  it("starts with both chevrons disabled before the strip is mounted", () => {
     const { result } = renderHook(() => useScrollableTabStrip());
     expect(result.current.canScrollLeft).toBe(false);
     expect(result.current.canScrollRight).toBe(false);
   });
 
-  it("updates canScrollLeft and canScrollRight when attached to container", () => {
+  it("computes the chevron state as soon as the strip mounts", () => {
     const { result } = renderHook(() => useScrollableTabStrip());
-    // Attach container
-    Object.assign(result.current.containerRef, { current: mockContainer });
-
-    act(() => {
-      result.current.updateScrollState();
-    });
-
+    act(() => result.current.containerRef(container));
     expect(result.current.canScrollLeft).toBe(false);
     expect(result.current.canScrollRight).toBe(true);
 
-    // Scroll to middle
-    mockContainer.scrollLeft = 200;
-    act(() => {
-      result.current.updateScrollState();
-    });
+    container.scrollLeft = 200;
+    act(() => result.current.updateScrollState());
     expect(result.current.canScrollLeft).toBe(true);
     expect(result.current.canScrollRight).toBe(true);
 
-    // Scroll to end
-    mockContainer.scrollLeft = 500;
+    container.scrollLeft = 500;
     act(() => {
-      result.current.updateScrollState();
+      container.dispatchEvent(new Event("scroll"));
     });
     expect(result.current.canScrollLeft).toBe(true);
     expect(result.current.canScrollRight).toBe(false);
   });
 
-  it("scrollByPage calls container.scrollBy with smooth behavior and proportional offset", () => {
+  it("scrollByPage scrolls by a share of the visible width", () => {
     const { result } = renderHook(() => useScrollableTabStrip({ scrollRatio: 0.8 }));
-    Object.assign(result.current.containerRef, { current: mockContainer });
+    act(() => result.current.containerRef(container));
 
-    act(() => {
-      result.current.scrollByPage("right");
-    });
-    // 500 * 0.8 = 400
-    expect(mockContainer.scrollBy).toHaveBeenCalledWith({ left: 400, behavior: "smooth" });
+    act(() => result.current.scrollByPage("right"));
+    expect(container.scrollTo).toHaveBeenLastCalledWith({ left: 400, behavior: "smooth" });
 
-    act(() => {
-      result.current.scrollByPage("left");
-    });
-    expect(mockContainer.scrollBy).toHaveBeenCalledWith({ left: -400, behavior: "smooth" });
+    container.scrollLeft = 600;
+    act(() => result.current.scrollByPage("left"));
+    expect(container.scrollTo).toHaveBeenLastCalledWith({ left: 200, behavior: "smooth" });
   });
 
-  it("scrollTabIntoView finds element with data-tab-id and calls scrollIntoView", () => {
+  it("scrollTabIntoView scrolls the matching tab into view", () => {
     const tabEl = document.createElement("div");
     tabEl.setAttribute("data-tab-id", "tab-123");
     tabEl.scrollIntoView = vi.fn();
-    mockContainer.appendChild(tabEl);
+    container.appendChild(tabEl);
 
     const { result } = renderHook(() => useScrollableTabStrip());
-    Object.assign(result.current.containerRef, { current: mockContainer });
-
-    act(() => {
-      result.current.scrollTabIntoView("tab-123");
-    });
+    act(() => result.current.containerRef(container));
+    act(() => result.current.scrollTabIntoView("tab-123"));
 
     expect(tabEl.scrollIntoView).toHaveBeenCalledWith({
       behavior: "smooth",
@@ -84,32 +78,43 @@ describe("useScrollableTabStrip", () => {
     });
   });
 
-  it("handles mouse wheel event by translating vertical delta to horizontal scroll", () => {
+  it("turns vertical wheel into horizontal scroll", () => {
     const { result } = renderHook(() => useScrollableTabStrip());
-    Object.assign(result.current.containerRef, { current: mockContainer });
+    act(() => result.current.containerRef(container));
 
-    // Manually trigger effect by simulating addEventListener
-    const addEventListenerSpy = vi.spyOn(mockContainer, "addEventListener");
-    const removeEventListenerSpy = vi.spyOn(mockContainer, "removeEventListener");
-
-    const { unmount } = renderHook(() => {
-      const hook = useScrollableTabStrip();
-      Object.assign(hook.containerRef, { current: mockContainer });
-      return hook;
-    });
-
-    // Verify wheel listener can be dispatched
-    const wheelEvent = new Event("wheel", { cancelable: true }) as WheelEvent;
-    Object.defineProperty(wheelEvent, "deltaY", { value: 120 });
-    const preventDefaultSpy = vi.spyOn(wheelEvent, "preventDefault");
-
-    // Dispatch directly to container
+    const event = wheel(120);
     act(() => {
-      mockContainer.dispatchEvent(wheelEvent);
+      container.dispatchEvent(event);
     });
-    expect(addEventListenerSpy).toBeDefined();
 
-    unmount();
-    expect(removeEventListenerSpy).toBeDefined();
+    expect(event.defaultPrevented).toBe(true);
+    expect(container.scrollLeft).toBe(120);
+  });
+
+  it("attaches the wheel listener when the strip mounts after the first render", () => {
+    // The split pane strip only renders once a second tab is pinned.
+    const { result, rerender } = renderHook(({ count }) => useScrollableTabStrip({ tabCount: count }), {
+      initialProps: { count: 1 },
+    });
+    rerender({ count: 2 });
+    act(() => result.current.containerRef(container));
+
+    act(() => {
+      container.dispatchEvent(wheel(80));
+    });
+    expect(container.scrollLeft).toBe(80);
+  });
+
+  it("detaches the wheel listener when the strip unmounts", () => {
+    const { result } = renderHook(() => useScrollableTabStrip());
+    act(() => result.current.containerRef(container));
+    act(() => result.current.containerRef(null));
+
+    const event = wheel(120);
+    act(() => {
+      container.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(false);
+    expect(container.scrollLeft).toBe(0);
   });
 });

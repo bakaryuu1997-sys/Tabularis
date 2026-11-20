@@ -1090,7 +1090,8 @@
       "leftPane": "Main Editor",
       "rightPane": "Split Pane",
       "noTabs": "No tabs found",
-      "active": "Active"
+      "active": "Active",
+      "moveToMain": "Move back to the main editor"
     },
     "tabSwitcher": {
       "title": "Open Tabs",

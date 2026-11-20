@@ -125,4 +125,48 @@ describe("TabSearchPopover", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByPlaceholderText(/Search tabs\.\.\.|editor\.allTabs\.searchPlaceholder/i)).not.toBeInTheDocument();
   });
+  it("moves the highlight with arrow keys and opens the highlighted tab with Enter", () => {
+    const onSelectLeftTab = vi.fn();
+    const onSelectRightTab = vi.fn();
+    render(
+      <TabSearchPopover
+        leftTabs={leftTabs}
+        activeLeftTabId="1"
+        onSelectLeftTab={onSelectLeftTab}
+        onCloseLeftTab={vi.fn()}
+        rightTabs={rightTabs}
+        activeRightTabId="3"
+        onSelectRightTab={onSelectRightTab}
+        onCloseRightTab={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Search and list all tabs|editor\.allTabs\.tooltip/i }));
+    const input = screen.getByPlaceholderText(/Search tabs\.\.\.|editor\.allTabs\.searchPlaceholder/i);
+
+    // users -> Console 1 -> orders (right pane)
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelectRightTab).toHaveBeenCalledWith("3");
+    expect(onSelectLeftTab).not.toHaveBeenCalled();
+    expect(screen.queryByPlaceholderText(/Search tabs\.\.\.|editor\.allTabs\.searchPlaceholder/i)).not.toBeInTheDocument();
+  });
+
+  it("labels the split pane action as moving the tab back, not closing it", () => {
+    render(
+      <TabSearchPopover
+        leftTabs={leftTabs}
+        activeLeftTabId="1"
+        onSelectLeftTab={vi.fn()}
+        onCloseLeftTab={vi.fn()}
+        rightTabs={rightTabs}
+        activeRightTabId="3"
+        onSelectRightTab={vi.fn()}
+        onCloseRightTab={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Search and list all tabs|editor\.allTabs\.tooltip/i }));
+    expect(screen.getAllByRole("button", { name: /Move back to the main editor|editor\.allTabs\.moveToMain/i })).toHaveLength(1);
+  });
 });

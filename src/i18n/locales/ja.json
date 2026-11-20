@@ -1120,7 +1120,8 @@
       "leftPane": "メインエディタ",
       "rightPane": "分割ペイン",
       "noTabs": "タブが見つかりません",
-      "active": "アクティブ"
+      "active": "アクティブ",
+      "moveToMain": "メインエディタに戻す"
     },
     "tabSwitcher": {
       "title": "開いているタブ",

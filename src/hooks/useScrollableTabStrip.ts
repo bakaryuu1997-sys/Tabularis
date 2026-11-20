@@ -1,5 +1,5 @@
-import { useRef, useState, useEffect, useCallback, type RefObject } from "react";
-import { getTabScrollState } from "../utils/tabScroll";
+import { useState, useEffect, useCallback } from "react";
+import { getTabScrollState, getScrollPageOffset } from "../utils/tabScroll";
 
 export interface UseScrollableTabStripOptions {
   activeTabId?: string | null;
@@ -8,7 +8,13 @@ export interface UseScrollableTabStripOptions {
 }
 
 export interface UseScrollableTabStripReturn {
-  containerRef: RefObject<HTMLDivElement | null>;
+  /**
+   * Callback ref for the scrollable strip. A callback ref (instead of a ref
+   * object) lets the listeners attach when the strip mounts later than the
+   * component using the hook, e.g. the split pane strip that only renders once
+   * a second tab is pinned.
+   */
+  containerRef: (element: HTMLDivElement | null) => void;
   canScrollLeft: boolean;
   canScrollRight: boolean;
   updateScrollState: () => void;
@@ -21,96 +27,77 @@ export function useScrollableTabStrip({
   tabCount = 0,
   scrollRatio = 0.8,
 }: UseScrollableTabStripOptions = {}): UseScrollableTabStripReturn {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  const containerRef = useCallback((element: HTMLDivElement | null) => {
+    setContainer(element);
+  }, []);
+
   const updateScrollState = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const state = getTabScrollState(el);
+    if (!container) return;
+    const state = getTabScrollState(container);
     setCanScrollLeft(state.canScrollLeft);
     setCanScrollRight(state.canScrollRight);
-  }, []);
+  }, [container]);
 
   const scrollByPage = useCallback(
     (direction: "left" | "right") => {
-      const el = containerRef.current;
-      if (!el) return;
-      const offset = (direction === "left" ? -1 : 1) * Math.max(100, Math.floor(el.clientWidth * scrollRatio));
-      el.scrollBy({ left: offset, behavior: "smooth" });
+      if (!container) return;
+      const left = getScrollPageOffset(
+        container.scrollLeft,
+        container.clientWidth,
+        direction,
+        scrollRatio,
+      );
+      container.scrollTo({ left, behavior: "smooth" });
     },
-    [scrollRatio],
+    [container, scrollRatio],
   );
 
-  const scrollTabIntoView = useCallback((tabId: string) => {
-    const el = containerRef.current;
-    if (!el || !tabId) return;
-    try {
-      // Find tab by data-tab-id attribute
-      const escapedId = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(tabId) : tabId;
-      const tabEl = el.querySelector<HTMLElement>(`[data-tab-id="${escapedId}"]`);
-      if (tabEl) {
-        tabEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-      }
-    } catch {
-      // If CSS.escape fails on special characters, fallback to looping childNodes
-      const children = Array.from(el.children) as HTMLElement[];
-      const found = children.find((c) => c.getAttribute("data-tab-id") === tabId);
-      found?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-    }
-  }, []);
+  const scrollTabIntoView = useCallback(
+    (tabId: string) => {
+      if (!container || !tabId) return;
+      const tabEl = Array.from(container.children).find(
+        (child) => child.getAttribute("data-tab-id") === tabId,
+      ) as HTMLElement | undefined;
+      tabEl?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    },
+    [container],
+  );
 
-  // Vertical mouse wheel translated to horizontal scroll (non-passive listener)
+  // Vertical mouse wheel scrolls the strip horizontally (non-passive listener).
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
+    if (!container) return;
     const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-        updateScrollState();
-      }
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
     };
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, [container]);
 
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      el.removeEventListener("wheel", handleWheel);
-    };
-  }, [updateScrollState]);
-
-  // Track size, scroll, and tab count changes
+  // Keep the chevrons in sync with scrolling, resizing and tab changes.
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
+    if (!container) return;
     updateScrollState();
+    container.addEventListener("scroll", updateScrollState, { passive: true });
 
-    const handleScroll = () => {
-      updateScrollState();
-    };
-    el.addEventListener("scroll", handleScroll, { passive: true });
-
-    let resizeObserver: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(() => {
-        updateScrollState();
-      });
-      resizeObserver.observe(el);
-    }
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateScrollState) : null;
+    resizeObserver?.observe(container);
 
     return () => {
-      el.removeEventListener("scroll", handleScroll);
+      container.removeEventListener("scroll", updateScrollState);
       resizeObserver?.disconnect();
     };
-  }, [updateScrollState, tabCount]);
+  }, [container, updateScrollState, tabCount]);
 
-  // Auto-scroll active tab into view whenever activeTabId changes
+  // Keep the active tab visible.
   useEffect(() => {
-    if (activeTabId) {
-      scrollTabIntoView(activeTabId);
-    }
+    if (activeTabId) scrollTabIntoView(activeTabId);
   }, [activeTabId, scrollTabIntoView]);
 
   return {

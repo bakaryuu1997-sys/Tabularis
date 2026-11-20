@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
@@ -46,6 +46,38 @@ export function TabSearchPopover({
   const filteredRightTabs = useMemo(() => filterTabs(rightTabs, query), [rightTabs, query]);
 
   const totalFilteredCount = filteredLeftTabs.length + filteredRightTabs.length;
+  // Keyboard highlight over the flattened list (left pane first, then right).
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const flatItems = useMemo(
+    () => [
+      ...filteredLeftTabs.map((tab) => ({ tab, pane: "left" as const })),
+      ...filteredRightTabs.map((tab) => ({ tab, pane: "right" as const })),
+    ],
+    [filteredLeftTabs, filteredRightTabs],
+  );
+  const highlightedId = flatItems[Math.min(highlightedIndex, flatItems.length - 1)]?.tab.id;
+
+  const selectItem = (item: (typeof flatItems)[number]) => {
+    if (item.pane === "left") onSelectLeftTab(item.tab.id);
+    else onSelectRightTab?.(item.tab.id);
+    setIsOpen(false);
+  };
+
+  const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (flatItems.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((i) => (Math.min(i, flatItems.length - 1) + 1) % flatItems.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex(
+        (i) => (Math.min(i, flatItems.length - 1) - 1 + flatItems.length) % flatItems.length,
+      );
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      selectItem(flatItems[Math.min(highlightedIndex, flatItems.length - 1)]);
+    }
+  };
   const hasBothPanes = leftTabs.length > 0 && rightTabs.length > 0;
 
   // Handle outside click & escape key
@@ -83,7 +115,10 @@ export function TabSearchPopover({
 
   const handleToggle = () => {
     setIsOpen((prev) => {
-      if (!prev) setQuery("");
+      if (!prev) {
+        setQuery("");
+        setHighlightedIndex(0);
+      }
       return !prev;
     });
   };
@@ -106,18 +141,22 @@ export function TabSearchPopover({
     isActive: boolean,
     onSelect: () => void,
     onClose: () => void,
+    closeLabel: string,
   ) => (
     <div
       key={tab.id}
+      role="option"
+      aria-selected={tab.id === highlightedId}
       onClick={() => {
         onSelect();
         setIsOpen(false);
       }}
       className={clsx(
         "group flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors text-xs select-none",
-        isActive
-          ? "bg-surface-secondary text-primary font-medium"
+        isActive || tab.id === highlightedId
+          ? "bg-surface-secondary text-primary"
           : "text-secondary hover:bg-surface-secondary hover:text-primary",
+        isActive && "font-medium",
       )}
     >
       {renderTabIcon(tab.type)}
@@ -134,7 +173,8 @@ export function TabSearchPopover({
           e.stopPropagation();
           onClose();
         }}
-        title={t("editor.closeTab", "Close tab")}
+        title={closeLabel}
+        aria-label={closeLabel}
         className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-surface-tertiary text-muted hover:text-primary transition-opacity shrink-0"
       >
         <X size={12} />
@@ -171,7 +211,11 @@ export function TabSearchPopover({
               ref={searchInputRef}
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setHighlightedIndex(0);
+              }}
+              onKeyDown={handleSearchKeyDown}
               placeholder={t("editor.allTabs.searchPlaceholder", "Search tabs...")}
               className="w-full bg-transparent text-xs text-primary placeholder-muted focus:outline-none"
             />
@@ -186,7 +230,7 @@ export function TabSearchPopover({
           </div>
 
           {/* Tab Lists */}
-          <div className="overflow-y-auto flex-1 py-1 divide-y divide-default/40">
+          <div role="listbox" className="overflow-y-auto flex-1 py-1 divide-y divide-default/40">
             {totalFilteredCount === 0 ? (
               <div className="py-6 text-center text-xs text-muted">
                 {t("editor.allTabs.noTabs", "No tabs found")}
@@ -206,6 +250,7 @@ export function TabSearchPopover({
                         tab.id === activeLeftTabId,
                         () => onSelectLeftTab(tab.id),
                         () => onCloseLeftTab(tab.id),
+                        t("editor.closeTab", "Close tab"),
                       ),
                     )}
                   </div>
@@ -224,6 +269,7 @@ export function TabSearchPopover({
                         tab.id === activeRightTabId,
                         () => onSelectRightTab?.(tab.id),
                         () => onCloseRightTab?.(tab.id),
+                        t("editor.allTabs.moveToMain", "Move back to the main editor"),
                       ),
                     )}
                   </div>

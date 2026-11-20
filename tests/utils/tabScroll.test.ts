@@ -5,7 +5,6 @@ import {
   resolveNextTabId,
   getTabSwitcherRowClassName,
   isFocusedPane,
-  calculateTabWidth,
   getScrollPageOffset,
   filterTabs,
 } from '../../src/utils/tabScroll';
@@ -195,29 +194,6 @@ describe('tabScroll', () => {
 
     it('should return false when activeConnectionId is null and split mode is active', () => {
       expect(isFocusedPane('conn-1', null)).toBe(false);
-    });
-  });
-
-  describe('calculateTabWidth', () => {
-    it('returns maxWidth if tabCount is 0 or negative', () => {
-      expect(calculateTabWidth(800, 0, 40, 200)).toBe(200);
-      expect(calculateTabWidth(800, -1, 40, 200)).toBe(200);
-    });
-
-    it('returns maxWidth if containerWidth is 0 or negative', () => {
-      expect(calculateTabWidth(0, 5, 40, 200)).toBe(200);
-    });
-
-    it('clamps to maxWidth when available space is large', () => {
-      expect(calculateTabWidth(1000, 2, 40, 200)).toBe(200);
-    });
-
-    it('distributes evenly when between min and max width', () => {
-      expect(calculateTabWidth(1000, 10, 40, 200)).toBe(100);
-    });
-
-    it('clamps to minWidth when tabs exceed container capacity', () => {
-      expect(calculateTabWidth(600, 30, 40, 200)).toBe(40);
     });
   });
 

@@ -72,20 +72,6 @@ export function getTabSwitcherRowClassName(isActive: boolean): string {
 }
 
 /**
- * Calculates Chrome-style flexible tab width based on container width and tab count.
- */
-export function calculateTabWidth(
-  containerWidth: number,
-  tabCount: number,
-  minWidth = 40,
-  maxWidth = 200,
-): number {
-  if (tabCount <= 0 || containerWidth <= 0) return maxWidth;
-  const availableWidth = containerWidth / tabCount;
-  return Math.min(maxWidth, Math.max(minWidth, availableWidth));
-}
-
-/**
  * Calculates target scrollLeft offset when scrolling by one visible page.
  */
 export function getScrollPageOffset(
