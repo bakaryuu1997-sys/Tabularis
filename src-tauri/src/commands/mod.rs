@@ -3475,7 +3475,7 @@ pub async fn execute_query<R: Runtime>(
         connection_id,
         log_preview(&query)
     );
-    log::debug!("Full query text: {}", query);
+    log::debug!("Query length: {} bytes", query.len());
 
     let sanitized_query = sanitize_user_query(&query);
 
