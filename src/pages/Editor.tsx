@@ -1548,8 +1548,36 @@ export const Editor = () => {
   // asynchronously — gating behind the first detach races that emit and can leave
   // the window stuck on "Loading…". Each handler self-guards (action via
   // detachedTabIdsRef, ready via the tabsRef lookup, closed via prev.has).
+  //
+  // For the same reason the subscription must stay stable: the handlers read the
+  // current values through detachedWindowCtxRef instead of listing them as
+  // dependencies, which would tear down and re-register the listeners on almost
+  // every render (lost handshakes, or an action handled twice while an old
+  // unsubscribe is still pending).
+  const detachedWindowCtx = {
+    activeConnectionId,
+    copyFormat,
+    csvDelimiter,
+    csvIncludeHeaders,
+    activeDriver,
+    effectiveTables,
+    activeSchema,
+    activeDialect,
+    runQuery,
+    runMultipleQueries,
+    runResultEntryPage,
+    loadCount,
+    updateTab,
+    handleReattachResults,
+  };
+  const detachedWindowCtxRef = useRef(detachedWindowCtx);
+  useEffect(() => {
+    detachedWindowCtxRef.current = detachedWindowCtx;
+  });
+
   useEffect(() => {
     const emitSyncFor = (tabId: string) => {
+      const ctx = detachedWindowCtxRef.current;
       const tab = tabsRef.current.find((t) => t.id === tabId);
       if (tab) {
         emit(
@@ -1557,20 +1585,29 @@ export const Editor = () => {
           buildSyncPayload(
             tab,
             {
-              connectionId: activeConnectionId,
-              copyFormat,
-              csvDelimiter,
-              csvIncludeHeaders,
+              connectionId: ctx.activeConnectionId,
+              copyFormat: ctx.copyFormat,
+              csvDelimiter: ctx.csvDelimiter,
+              csvIncludeHeaders: ctx.csvIncludeHeaders,
             },
-            activeDriver ?? undefined,
-            effectiveTables,
-            activeSchema,
+            ctx.activeDriver ?? undefined,
+            ctx.effectiveTables,
+            ctx.activeSchema,
           ),
         );
       }
     };
 
     const makeHandlers = (tabId: string): ResultsWindowActionHandlers => {
+      const {
+        activeDialect,
+        runQuery,
+        runMultipleQueries,
+        runResultEntryPage,
+        loadCount,
+        updateTab,
+        handleReattachResults,
+      } = detachedWindowCtxRef.current;
       const tabResults = () => {
         const tab = tabsRef.current.find((t) => t.id === tabId);
         return tab && tab.results ? tab : null;
@@ -1690,22 +1727,7 @@ export const Editor = () => {
       actionP.then((u) => u());
       closedP.then((u) => u());
     };
-  }, [
-    activeConnectionId,
-    copyFormat,
-    csvDelimiter,
-    csvIncludeHeaders,
-    runQuery,
-    runResultEntryPage,
-    loadCount,
-    updateTab,
-    activeDialect,
-    activeDriver,
-    activeSchema,
-    effectiveTables,
-    handleReattachResults,
-    runMultipleQueries,
-  ]);
+  }, []);
 
   const handleRunButton = useCallback(() => {
     if (!activeTab) return;
