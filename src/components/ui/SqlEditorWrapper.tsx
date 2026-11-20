@@ -550,15 +550,21 @@ const SqlEditorInternal = ({
             );
             if (!candidate) continue;
 
-            const wordOffset = model.getOffsetAt({
-              lineNumber: change.range.startLineNumber,
-              column: candidate.startColumn,
+            // Scan from the top of the script up to the end of the word, so a
+            // comment or string opened any number of lines above is seen. Ending
+            // the text after the word keeps an unterminated comment covering it.
+            const prefix = model.getValueInRange({
+              startLineNumber: 1,
+              startColumn: 1,
+              endLineNumber: change.range.startLineNumber,
+              endColumn: candidate.endColumn,
             });
+            const wordOffset = prefix.length - (candidate.endColumn - candidate.startColumn);
 
             if (
               isOffsetInNonCodeSpan(
                 wordOffset,
-                model.getValue(),
+                prefix,
                 dialectRef.current,
               )
             ) {
@@ -635,6 +641,11 @@ const SqlEditorInternal = ({
             horizontalScrollbarSize: 8,
           },
           acceptSuggestionOnEnter: (settings.editorAcceptSuggestionOnEnter ?? true) ? 'smart' : 'off',
+          quickSuggestions: {
+            other: true,
+            comments: false,
+            strings: false,
+          },
           multiCursorModifier: 'ctrlCmd',
           automaticLayout: true,
           ...options

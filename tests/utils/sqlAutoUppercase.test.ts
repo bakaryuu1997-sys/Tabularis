@@ -79,4 +79,23 @@ describe('sqlAutoUppercase', () => {
       expect(isOffsetInNonCodeSpan(25, sql, 'postgres')).toBe(false);
     });
   });
+
+  describe('isOffsetInNonCodeSpan on a script prefix', () => {
+    it('treats a word inside a block comment opened far above as non-code', () => {
+      const lines = ['/*', ...Array.from({ length: 300 }, (_, i) => ` * note ${i}`), ' * select'];
+      const prefix = lines.join('\n');
+      const offset = prefix.length - 'select'.length;
+      expect(isOffsetInNonCodeSpan(offset, prefix, 'postgres')).toBe(true);
+    });
+
+    it('treats a word after a closed block comment as code', () => {
+      const prefix = '/* a\n b */\nselect';
+      expect(isOffsetInNonCodeSpan(prefix.length - 'select'.length, prefix, 'postgres')).toBe(false);
+    });
+
+    it('treats a word inside an unterminated string as non-code', () => {
+      const prefix = "SELECT 'abc\nselect";
+      expect(isOffsetInNonCodeSpan(prefix.length - 'select'.length, prefix, 'mysql')).toBe(true);
+    });
+  });
 });
