@@ -20,6 +20,12 @@ const GENERIC_FAMILIES = new Set([
 ]);
 const VIETNAMESE_SAFE_FONT = '"Segoe UI"';
 
+const GENERIC_MONO_FAMILIES = new Set([
+  "monospace",
+  "ui-monospace",
+]);
+const VIETNAMESE_SAFE_MONO_FONT = '"JetBrains Mono"';
+
 const bare = (family: string) => family.trim().replace(/^["']|["']$/g, "").toLowerCase();
 
 /**
@@ -49,5 +55,30 @@ export function withVietnameseSafeFont(stack: string): string {
     ...filtered.slice(0, firstGenericIndex),
     VIETNAMESE_SAFE_FONT,
     ...filtered.slice(firstGenericIndex),
+  ].join(", ");
+}
+
+/**
+ * Ensures the bundled "JetBrains Mono" (full Vietnamese coverage) is in the mono stack before any
+ * generic monospace family, so a CJK system monospace font never renders Vietnamese text.
+ * A stack that already lists JetBrains Mono is returned unchanged: the user's or theme's order wins.
+ */
+export function withVietnameseSafeMonoFont(stack: string): string {
+  const families = stack
+    .split(",")
+    .map((f) => f.trim())
+    .filter(Boolean);
+  if (families.length === 0) return stack;
+  if (families.some((f) => bare(f) === "jetbrains mono")) return stack;
+
+  const firstGenericIndex = families.findIndex((f) => GENERIC_MONO_FAMILIES.has(bare(f)));
+  if (firstGenericIndex === -1) {
+    return [...families, VIETNAMESE_SAFE_MONO_FONT].join(", ");
+  }
+
+  return [
+    ...families.slice(0, firstGenericIndex),
+    VIETNAMESE_SAFE_MONO_FONT,
+    ...families.slice(firstGenericIndex),
   ].join(", ");
 }

@@ -18,3 +18,10 @@ self.MonacoEnvironment = {
 };
 
 loader.config({ monaco });
+
+// Monaco measures glyph widths when an editor is created. The bundled WOFF2 fonts
+// (JetBrains Mono, Inter) may finish loading later, which would leave the cursor
+// misaligned on long lines; remeasure once every font face is ready.
+if (typeof document !== "undefined" && document.fonts?.ready) {
+  void document.fonts.ready.then(() => monaco.editor.remeasureFonts());
+}

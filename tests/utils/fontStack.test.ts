@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { withVietnameseSafeFont } from "../../src/utils/fontStack";
+import { withVietnameseSafeFont, withVietnameseSafeMonoFont } from "../../src/utils/fontStack";
 
 describe("withVietnameseSafeFont", () => {
   it("puts Segoe UI before system-ui so it wins over a CJK system font", () => {
@@ -28,5 +28,30 @@ describe("withVietnameseSafeFont", () => {
 
   it("leaves an empty value alone", () => {
     expect(withVietnameseSafeFont("")).toBe("");
+  });
+});
+
+describe("withVietnameseSafeMonoFont", () => {
+  it("puts JetBrains Mono before generic monospace", () => {
+    expect(withVietnameseSafeMonoFont("Fira Code, Monaco, Consolas, monospace")).toBe(
+      'Fira Code, Monaco, Consolas, "JetBrains Mono", monospace',
+    );
+  });
+
+  it("appends JetBrains Mono when no generic mono family is present", () => {
+    expect(withVietnameseSafeMonoFont("Consolas, Menlo")).toBe('Consolas, Menlo, "JetBrains Mono"');
+  });
+
+  it("keeps a stack that already lists JetBrains Mono unchanged", () => {
+    expect(withVietnameseSafeMonoFont('"JetBrains Mono", Consolas, monospace')).toBe(
+      '"JetBrains Mono", Consolas, monospace',
+    );
+    expect(withVietnameseSafeMonoFont("Fira Code, JetBrains Mono, monospace")).toBe(
+      "Fira Code, JetBrains Mono, monospace",
+    );
+  });
+
+  it("leaves an empty string alone", () => {
+    expect(withVietnameseSafeMonoFont("")).toBe("");
   });
 });
