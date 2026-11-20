@@ -47,6 +47,13 @@
   --color-semantic-new: var(--semantic-new);
 }
 
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  background: #020617;
+  color: #f8fafc;
+}
+
 :root {
   /* Typography - Define BEFORE usage */
   --font-base: "Segoe UI", Inter, system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
