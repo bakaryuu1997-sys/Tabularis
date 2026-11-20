@@ -1490,7 +1490,9 @@
   },
   "healthCheck": {
     "title": "Mất kết nối",
-    "connectionLost": "Một kết nối cơ sở dữ liệu đã bị mất"
+    "connectionLost": "Một kết nối cơ sở dữ liệu đã bị mất",
+    "reconnecting": "Đang kết nối lại cơ sở dữ liệu...",
+    "reconnectFailed": "Không thể kết nối lại cơ sở dữ liệu sau nhiều lần thử."
   },
   "erDiagram": {
     "title": "Sơ đồ ER",

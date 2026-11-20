@@ -806,7 +806,8 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
     invoke('set_last_open_connections', { connectionIds: openConnectionIds }).catch(() => {});
   }, [openConnectionIds]);
 
-  // Listen for backend health-check failures and preserve workspace state while attempting auto-reconnect.
+  // Listen for backend health-check failures and preserve workspace state.
+  // The reconnect itself (with backoff) is driven by ConnectionHealthMonitor.
   useEffect(() => {
     const unlisten = listen<{ connectionId: string; error: string }>(
       'connection-health-failed',
@@ -821,18 +822,10 @@ export const DatabaseProvider = ({ children }: { children: ReactNode }) => {
           isConnected: false,
           error,
         });
-
-        // Trigger automatic reconnect attempt
-        console.log(`[DatabaseProvider] Attempting automatic reconnection for ${connectionId}...`);
-        setTimeout(() => {
-          connect(connectionId).catch((err) => {
-            console.warn(`[DatabaseProvider] Auto-reconnect failed for ${connectionId}:`, err);
-          });
-        }, 1500);
       },
     );
     return () => { unlisten.then(fn => fn()); };
-  }, [updateConnectionData, connect]);
+  }, [updateConnectionData]);
 
   // Connection Group methods
   const createGroup = useCallback(async (name: string): Promise<ConnectionGroup> => {
