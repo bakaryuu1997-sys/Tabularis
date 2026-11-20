@@ -33,6 +33,12 @@ export function useScrollableTabStrip({
 
   const containerRef = useCallback((element: HTMLDivElement | null) => {
     setContainer(element);
+    // Compute the chevron state right away when the strip mounts.
+    if (element) {
+      const state = getTabScrollState(element);
+      setCanScrollLeft(state.canScrollLeft);
+      setCanScrollRight(state.canScrollRight);
+    }
   }, []);
 
   const updateScrollState = useCallback(() => {
@@ -82,7 +88,8 @@ export function useScrollableTabStrip({
   // Keep the chevrons in sync with scrolling, resizing and tab changes.
   useEffect(() => {
     if (!container) return;
-    updateScrollState();
+    // Tabs were added or removed: re-check once the strip has laid out again.
+    const frame = requestAnimationFrame(updateScrollState);
     container.addEventListener("scroll", updateScrollState, { passive: true });
 
     const resizeObserver =
@@ -90,6 +97,7 @@ export function useScrollableTabStrip({
     resizeObserver?.observe(container);
 
     return () => {
+      cancelAnimationFrame(frame);
       container.removeEventListener("scroll", updateScrollState);
       resizeObserver?.disconnect();
     };
