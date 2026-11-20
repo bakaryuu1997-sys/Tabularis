@@ -1086,6 +1086,17 @@
     },
     "newVisualQuery": "New Visual Query",
     "activeDatabase": "Active database",
+    "scrollTabsLeft": "Scroll tabs left",
+    "scrollTabsRight": "Scroll tabs right",
+    "allTabs": {
+      "tooltip": "Search tabs",
+      "searchPlaceholder": "Search tabs...",
+      "leftPane": "Main Editor",
+      "rightPane": "Split Pane",
+      "noTabs": "No tabs found",
+      "active": "Active",
+      "moveToMain": "Move back to the main editor"
+    },
     "tabSwitcher": {
       "title": "Open Tabs",
       "hint": "Ctrl+Tab",

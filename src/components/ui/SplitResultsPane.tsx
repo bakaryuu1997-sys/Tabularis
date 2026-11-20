@@ -23,6 +23,7 @@ import {
   type CopyFormat,
 } from "../../utils/resultsWindowSync";
 import type { SplitOrientation } from "../../utils/splitView";
+import { useScrollableTabStrip } from "../../hooks/useScrollableTabStrip";
 import {
   TAB_DRAG_MIME,
   dropPositionFromPointer,
@@ -119,6 +120,16 @@ export function SplitResultsPane({
   // Where a dragged tab would land on the chip strip, and whether the pane itself is a drop target.
   const [chipDropMark, setChipDropMark] = useState<{ id: string; position: DropPosition } | null>(null);
   const [paneDragOver, setPaneDragOver] = useState(false);
+
+  const {
+    containerRef: pinnedScrollRef,
+    canScrollLeft,
+    canScrollRight,
+    scrollByPage,
+  } = useScrollableTabStrip({
+    activeTabId: activeSplitTabId ?? tab.id,
+    tabCount: pinnedTabs?.length ?? 0,
+  });
   const acceptsTabDrop = !!onDropTab;
 
   const payload = buildSyncPayload(tab, {
@@ -262,73 +273,111 @@ export function SplitResultsPane({
 
       {/* Pinned-tab switcher strip (only when more than one tab is pinned) */}
       {pinnedTabs && pinnedTabs.length > 1 && (
-        <div className="shrink-0 flex items-stretch gap-0.5 px-1 py-1 bg-base border-b border-default overflow-x-auto no-scrollbar">
-          {pinnedTabs.map((p) => {
-            const isActive = p.id === (activeSplitTabId ?? tab.id);
-            return (
-              <div
-                key={p.id}
-                draggable={acceptsTabDrop}
-                onDragStart={(e) => {
-                  tabDrag.start({ tabId: p.id, origin: "right" });
-                  e.dataTransfer.effectAllowed = "move";
-                  e.dataTransfer.setData(TAB_DRAG_MIME, p.id);
-                }}
-                onDragEnd={() => {
-                  tabDrag.clear();
-                  setChipDropMark(null);
-                  setPaneDragOver(false);
-                }}
-                onDragOver={(e) => {
-                  if (!acceptsTabDrop || !tabDrag.payload) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.dataTransfer.dropEffect = "move";
-                  setChipDropMark({
-                    id: p.id,
-                    position: dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect()),
-                  });
-                }}
-                onDragLeave={() => setChipDropMark((m) => (m?.id === p.id ? null : m))}
-                onDrop={(e) => {
-                  if (!acceptsTabDrop) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const position = dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect());
-                  setChipDropMark(null);
-                  setPaneDragOver(false);
-                  const action = resolveTabDrop(tabDrag.payload, "right", p.id, position);
-                  if (action.kind !== "none") onDropTab?.(action);
-                  tabDrag.clear();
-                }}
-                className={`group/chip relative flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xs cursor-pointer whitespace-nowrap transition-colors ${
-                  isActive
-                    ? "bg-blue-600/20 text-blue-200 border border-blue-500/40"
-                    : "text-muted hover:text-secondary hover:bg-surface-secondary border border-transparent"
-                }`}
-                onClick={() => onSelectPinned?.(p.id)}
-              >
-                {chipDropMark?.id === p.id && (
-                  <span
-                    className={`absolute top-0 bottom-0 w-0.5 bg-blue-400 rounded ${
-                      chipDropMark.position === "before" ? "-left-0.5" : "-right-0.5"
+        <div className="shrink-0 flex items-center bg-base border-b border-default h-7">
+          <button
+            onClick={() => scrollByPage("left")}
+            disabled={!canScrollLeft}
+            title={t("editor.scrollTabsLeft", "Scroll tabs left")}
+            className="flex items-center justify-center w-6 h-full text-muted border-r border-default shrink-0 transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:text-primary hover:enabled:bg-surface-secondary"
+          >
+            <ChevronLeft size={12} />
+          </button>
+          <button
+            onClick={() => scrollByPage("right")}
+            disabled={!canScrollRight}
+            title={t("editor.scrollTabsRight", "Scroll tabs right")}
+            className="flex items-center justify-center w-6 h-full text-muted border-r border-default shrink-0 transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:text-primary hover:enabled:bg-surface-secondary"
+          >
+            <ChevronRight size={12} />
+          </button>
+
+          <div className="relative flex-1 h-full min-w-0 overflow-hidden">
+            {canScrollLeft && (
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-base/90 to-transparent z-10" />
+            )}
+            {canScrollRight && (
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-base/90 to-transparent z-10" />
+            )}
+            <div
+              ref={pinnedScrollRef}
+              className="flex items-center gap-0.5 px-1 h-full overflow-x-auto no-scrollbar"
+            >
+              {pinnedTabs.map((p) => {
+                const isActive = p.id === (activeSplitTabId ?? tab.id);
+                return (
+                  <div
+                    key={p.id}
+                    data-tab-id={p.id}
+                    title={p.title}
+                    draggable={acceptsTabDrop}
+                    onDragStart={(e) => {
+                      tabDrag.start({ tabId: p.id, origin: "right" });
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData(TAB_DRAG_MIME, p.id);
+                    }}
+                    onDragEnd={() => {
+                      tabDrag.clear();
+                      setChipDropMark(null);
+                      setPaneDragOver(false);
+                    }}
+                    onDragOver={(e) => {
+                      if (!acceptsTabDrop || !tabDrag.payload) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = "move";
+                      setChipDropMark({
+                        id: p.id,
+                        position: dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect()),
+                      });
+                    }}
+                    onDragLeave={() => setChipDropMark((m) => (m?.id === p.id ? null : m))}
+                    onDrop={(e) => {
+                      if (!acceptsTabDrop) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const position = dropPositionFromPointer(e.clientX, e.currentTarget.getBoundingClientRect());
+                      setChipDropMark(null);
+                      setPaneDragOver(false);
+                      const action = resolveTabDrop(tabDrag.payload, "right", p.id, position);
+                      if (action.kind !== "none") onDropTab?.(action);
+                      tabDrag.clear();
+                    }}
+                    onAuxClick={(e) => {
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        onUnpin?.(p.id);
+                      }
+                    }}
+                    className={`group/chip relative flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xs cursor-pointer select-none transition-colors flex-1 min-w-[36px] max-w-[140px] shrink-0 ${
+                      isActive
+                        ? "bg-blue-600/20 text-blue-200 border border-blue-500/40"
+                        : "text-muted hover:text-secondary hover:bg-surface-secondary border border-transparent"
                     }`}
-                  />
-                )}
-                <span className="truncate max-w-[120px]">{p.title}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUnpin?.(p.id);
-                  }}
-                  title={t("editor.split.close")}
-                  className="opacity-0 group-hover/chip:opacity-100 hover:text-secondary transition-opacity"
-                >
-                  <X size={11} />
-                </button>
-              </div>
-            );
-          })}
+                    onClick={() => onSelectPinned?.(p.id)}
+                  >
+                    {chipDropMark?.id === p.id && (
+                      <span
+                        className={`absolute top-0 bottom-0 w-0.5 bg-blue-400 rounded ${
+                          chipDropMark.position === "before" ? "-left-0.5" : "-right-0.5"
+                        }`}
+                      />
+                    )}
+                    <span className="truncate max-w-[120px]">{p.title}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUnpin?.(p.id);
+                      }}
+                      title={t("editor.split.close")}
+                      className="opacity-0 group-hover/chip:opacity-100 hover:text-secondary transition-opacity"
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 

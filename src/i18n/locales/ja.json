@@ -1116,6 +1116,17 @@
     },
     "newVisualQuery": "新規ビジュアルクエリ",
     "activeDatabase": "アクティブなデータベース",
+    "scrollTabsLeft": "タブを左にスクロール",
+    "scrollTabsRight": "タブを右にスクロール",
+    "allTabs": {
+      "tooltip": "タブを検索",
+      "searchPlaceholder": "タブを検索...",
+      "leftPane": "メインエディタ",
+      "rightPane": "分割ペイン",
+      "noTabs": "タブが見つかりません",
+      "active": "アクティブ",
+      "moveToMain": "メインエディタに戻す"
+    },
     "tabSwitcher": {
       "title": "開いているタブ",
       "hint": "Ctrl+Tab",

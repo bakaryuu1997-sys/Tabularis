@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { getTabScrollState, getAdjacentTabIndex, resolveNextTabId, getTabSwitcherRowClassName, isFocusedPane } from '../../src/utils/tabScroll';
+import {
+  getTabScrollState,
+  getAdjacentTabIndex,
+  resolveNextTabId,
+  getTabSwitcherRowClassName,
+  isFocusedPane,
+  getScrollPageOffset,
+  filterTabs,
+} from '../../src/utils/tabScroll';
 
 describe('tabScroll', () => {
   describe('getTabScrollState', () => {
@@ -186,6 +194,47 @@ describe('tabScroll', () => {
 
     it('should return false when activeConnectionId is null and split mode is active', () => {
       expect(isFocusedPane('conn-1', null)).toBe(false);
+    });
+  });
+
+  describe('getScrollPageOffset', () => {
+    it('computes left scroll offset bounded at 0', () => {
+      expect(getScrollPageOffset(150, 500, 'left', 0.8)).toBe(0);
+      expect(getScrollPageOffset(600, 500, 'left', 0.8)).toBe(200);
+    });
+
+    it('computes right scroll offset', () => {
+      expect(getScrollPageOffset(100, 500, 'right', 0.8)).toBe(500);
+    });
+
+    it('respects min delta of 100px for small containers', () => {
+      expect(getScrollPageOffset(200, 50, 'left')).toBe(100);
+      expect(getScrollPageOffset(200, 50, 'right')).toBe(300);
+    });
+  });
+
+  describe('filterTabs', () => {
+    const tabs = [
+      { id: '1', title: 'users' },
+      { id: '2', title: 'Orders' },
+      { id: '3', title: 'order_items' },
+    ];
+
+    it('returns all tabs when query is empty or whitespace', () => {
+      expect(filterTabs(tabs, '')).toEqual(tabs);
+      expect(filterTabs(tabs, '   ')).toEqual(tabs);
+    });
+
+    it('filters case-insensitively by title substring', () => {
+      expect(filterTabs(tabs, 'order')).toEqual([
+        { id: '2', title: 'Orders' },
+        { id: '3', title: 'order_items' },
+      ]);
+      expect(filterTabs(tabs, 'user')).toEqual([{ id: '1', title: 'users' }]);
+    });
+
+    it('returns empty array when no matches', () => {
+      expect(filterTabs(tabs, 'products')).toEqual([]);
     });
   });
 });
